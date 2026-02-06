@@ -53,6 +53,9 @@ http://localhost:8080
 ### Dashboard
 ![Dashboard](screenshots/dashboard.jpg)
 
+### Watchlist
+![Watchlist](screenshots/watchlist.jpg)
+
 ## Version History
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
