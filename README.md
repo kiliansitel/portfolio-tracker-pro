@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.svg" alt="Portfolio Tracker Pro" width="128" height="128">
+  <img src="https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/logo.svg" alt="Portfolio Tracker Pro" width="128" height="128">
 </p>
 
 <h1 align="center">Portfolio Tracker Pro</h1>
@@ -72,34 +72,34 @@ Open http://localhost:8080
 ## Screenshots
 
 ### Dashboard
-![Dashboard](screenshots/dashboard.jpg)
+![Dashboard](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/dashboard.jpg)
 
 ### Positions
-![Positions](screenshots/positions.jpg)
+![Positions](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/positions.jpg)
 
 ### Add/Edit Position
-![Add Position](screenshots/add-position.jpg)
+![Add Position](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/add-position.jpg)
 
 ### Watchlist
-![Watchlist](screenshots/watchlist.jpg)
+![Watchlist](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/watchlist.jpg)
 
 ### Add to Watchlist
-![Add Watchlist](screenshots/add-watchlist.jpg)
+![Add Watchlist](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/add-watchlist.jpg)
 
 ### Alerts
-![Alerts](screenshots/alerts.jpg)
+![Alerts](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/alerts.jpg)
 
 ### News
-![News](screenshots/news.jpg)
+![News](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/news.jpg)
 
 ### Transactions
-![Transactions](screenshots/transactions.jpg)
+![Transactions](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/transactions.jpg)
 
 ### Chart Detail
-![Chart Detail](screenshots/chart-detail.jpg)
+![Chart Detail](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/chart-detail.jpg)
 
 ### Settings
-![Settings](screenshots/settings.jpg)
+![Settings](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/settings.jpg)
 
 ## Version History
 
