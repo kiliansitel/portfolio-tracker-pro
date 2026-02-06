@@ -993,6 +993,36 @@
                     </div>
                 </div>
 
+                <div class="card" id="performanceCard" style="display:none;">
+                    <div class="card-header">
+                        <span>📈 Portfolio Performance</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn" onclick="setPerformanceRange(7)">1W</button>
+                            <button class="chart-btn active" onclick="setPerformanceRange(30)">1M</button>
+                            <button class="chart-btn" onclick="setPerformanceRange(90)">3M</button>
+                            <button class="chart-btn" onclick="setPerformanceRange(365)">1Y</button>
+                            <button class="chart-btn" onclick="setPerformanceRange(0)">All</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="performanceChartContainer" style="height:200px;"></div>
+                        <div id="performanceSummary" style="display:flex;justify-content:space-around;padding-top:12px;border-top:1px solid var(--border-color);margin-top:12px;font-size:0.85rem;">
+                            <div style="text-align:center;">
+                                <div style="color:var(--text-secondary);">Start</div>
+                                <div id="perfStart">--</div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="color:var(--text-secondary);">Current</div>
+                                <div id="perfCurrent">--</div>
+                            </div>
+                            <div style="text-align:center;">
+                                <div style="color:var(--text-secondary);">Return</div>
+                                <div id="perfReturn">--</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
                         <span>📈 Chart</span>
@@ -2402,6 +2432,93 @@
             document.getElementById('totalPnLPct').textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
             document.getElementById('totalPnLPct').className = 'summary-sub ' + (pnlPct >= 0 ? 'positive' : 'negative');
             document.getElementById('cashValue').textContent = '$' + cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            // Save snapshot if logged in
+            if (token && currentPortfolio && totalValue > 0) {
+                savePortfolioSnapshot(totalValue + cash, cash, totalValue);
+            }
+        }
+
+        // ============ PORTFOLIO PERFORMANCE ============
+        let performanceChart = null;
+        let performanceSeries = null;
+        let performanceRange = 30;
+        
+        async function savePortfolioSnapshot(totalValue, cash, positionsValue) {
+            try {
+                await api(`/portfolios/${currentPortfolio.id}/snapshot`, {
+                    method: 'POST',
+                    body: JSON.stringify({ total_value: totalValue, cash, positions_value: positionsValue })
+                });
+            } catch (e) {
+                console.warn('Failed to save snapshot:', e);
+            }
+        }
+        
+        async function loadPerformance() {
+            if (!token || !currentPortfolio) {
+                document.getElementById('performanceCard').style.display = 'none';
+                return;
+            }
+            
+            try {
+                const days = performanceRange || '';
+                const data = await api(`/portfolios/${currentPortfolio.id}/performance${days ? '?days=' + days : ''}`);
+                
+                if (data.snapshots.length < 2) {
+                    document.getElementById('performanceCard').style.display = 'none';
+                    return;
+                }
+                
+                document.getElementById('performanceCard').style.display = 'block';
+                renderPerformanceChart(data.snapshots);
+                
+                // Update summary
+                document.getElementById('perfStart').textContent = '$' + data.summary.start_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('perfCurrent').textContent = '$' + data.summary.current_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                const returnEl = document.getElementById('perfReturn');
+                returnEl.textContent = (data.summary.total_return >= 0 ? '+' : '') + '$' + data.summary.total_return.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + data.summary.total_return_pct.toFixed(2) + '%)';
+                returnEl.className = data.summary.total_return >= 0 ? 'positive' : 'negative';
+            } catch (e) {
+                console.warn('Failed to load performance:', e);
+                document.getElementById('performanceCard').style.display = 'none';
+            }
+        }
+        
+        function renderPerformanceChart(snapshots) {
+            const el = document.getElementById('performanceChartContainer');
+            
+            if (!performanceChart) {
+                performanceChart = LightweightCharts.createChart(el, {
+                    width: el.clientWidth || 300,
+                    height: 200,
+                    layout: { background: { type: 'solid', color: '#1e222d' }, textColor: '#d1d4dc' },
+                    grid: { vertLines: { color: '#2a2e39' }, horzLines: { color: '#2a2e39' } },
+                    rightPriceScale: { borderColor: '#363a45' },
+                    timeScale: { borderColor: '#363a45' }
+                });
+                performanceSeries = performanceChart.addAreaSeries({ 
+                    topColor: 'rgba(38,166,154,0.4)', 
+                    bottomColor: 'rgba(38,166,154,0)', 
+                    lineColor: '#26a69a', 
+                    lineWidth: 2 
+                });
+            }
+            
+            const chartData = snapshots.map(s => ({
+                time: s.date,
+                value: s.total_value
+            }));
+            
+            performanceSeries.setData(chartData);
+            performanceChart.timeScale().fitContent();
+        }
+        
+        function setPerformanceRange(days) {
+            performanceRange = days;
+            document.querySelectorAll('#performanceCard .chart-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            loadPerformance();
         }
 
         // ============ CHART ============
@@ -2934,6 +3051,9 @@
             
             // Fetch fresh market data
             renderMarkets();
+            
+            // Load portfolio performance chart
+            loadPerformance();
             
             // Background: refresh prices for positions/watchlist
             setTimeout(async () => {

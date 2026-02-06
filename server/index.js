@@ -140,6 +140,22 @@ async function initDatabase() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS portfolio_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      portfolio_id INTEGER NOT NULL,
+      date TEXT NOT NULL,
+      total_value REAL NOT NULL,
+      cash REAL NOT NULL,
+      positions_value REAL NOT NULL,
+      daily_change REAL DEFAULT 0,
+      daily_change_pct REAL DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (portfolio_id) REFERENCES portfolios(id),
+      UNIQUE(portfolio_id, date)
+    )
+  `);
+
   saveDatabase();
   console.log('📦 Database initialized');
 }
@@ -809,6 +825,90 @@ app.get('/api/transactions', authenticateToken, (req, res) => {
   
   const transactions = dbAll(sql, params);
   res.json(transactions);
+});
+
+// ============ PORTFOLIO SNAPSHOTS ============
+
+// Record a portfolio snapshot (called from frontend or cron)
+app.post('/api/portfolios/:id/snapshot', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { total_value, cash, positions_value } = req.body;
+  
+  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  if (!portfolio) {
+    return res.status(404).json({ error: 'Portfolio not found' });
+  }
+  
+  const today = new Date().toISOString().split('T')[0];
+  
+  // Get yesterday's snapshot for daily change calculation
+  const yesterday = dbGet(
+    'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
+    [id, today]
+  );
+  
+  const dailyChange = yesterday ? total_value - yesterday.total_value : 0;
+  const dailyChangePct = yesterday && yesterday.total_value > 0 
+    ? ((total_value - yesterday.total_value) / yesterday.total_value) * 100 
+    : 0;
+  
+  // Upsert snapshot (update if exists for today)
+  const existing = dbGet('SELECT id FROM portfolio_snapshots WHERE portfolio_id = ? AND date = ?', [id, today]);
+  
+  if (existing) {
+    dbRun(
+      'UPDATE portfolio_snapshots SET total_value = ?, cash = ?, positions_value = ?, daily_change = ?, daily_change_pct = ? WHERE id = ?',
+      [total_value, cash, positions_value, dailyChange, dailyChangePct, existing.id]
+    );
+  } else {
+    dbRun(
+      'INSERT INTO portfolio_snapshots (portfolio_id, date, total_value, cash, positions_value, daily_change, daily_change_pct) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, today, total_value, cash, positions_value, dailyChange, dailyChangePct]
+    );
+  }
+  
+  res.json({ message: 'Snapshot recorded', date: today, total_value, daily_change: dailyChange });
+});
+
+// Get portfolio performance history
+app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { days } = req.query;
+  
+  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  if (!portfolio) {
+    return res.status(404).json({ error: 'Portfolio not found' });
+  }
+  
+  let sql = 'SELECT * FROM portfolio_snapshots WHERE portfolio_id = ? ORDER BY date DESC';
+  const params = [id];
+  
+  if (days) {
+    sql = 'SELECT * FROM portfolio_snapshots WHERE portfolio_id = ? AND date >= date(?, ?) ORDER BY date ASC';
+    params.push('now', `-${parseInt(days)} days`);
+  }
+  
+  const snapshots = dbAll(sql, params);
+  
+  // Calculate overall performance
+  const first = snapshots[0];
+  const last = snapshots[snapshots.length - 1];
+  
+  const totalReturn = first && last ? last.total_value - first.total_value : 0;
+  const totalReturnPct = first && first.total_value > 0 
+    ? ((last.total_value - first.total_value) / first.total_value) * 100 
+    : 0;
+  
+  res.json({
+    snapshots: snapshots.reverse(), // Oldest first for charts
+    summary: {
+      total_return: totalReturn,
+      total_return_pct: totalReturnPct,
+      start_value: first?.total_value || 0,
+      current_value: last?.total_value || 0,
+      days: snapshots.length
+    }
+  });
 });
 
 // ============ TICKER SEARCH ============
