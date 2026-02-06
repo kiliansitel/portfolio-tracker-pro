@@ -1,241 +1,66 @@
-# Portfolio Tracker Pro 📊
+# Portfolio Tracker Pro
 
-A sleek, self-hosted portfolio tracking app with TradingView-style charts. Built for investors who want full control of their data.
+A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 
-[![Version](https://img.shields.io/badge/version-0.8.0_Detail-blue?style=flat-square)](VERSIONS.md)
-[![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
-[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen?style=flat-square)](https://nodejs.org)
+![Version](https://img.shields.io/badge/version-0.8.0-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
 
-## ✨ Features
+## Features
 
-### Portfolio Management
-- 💼 **Track positions** — Stocks, options, crypto, ETFs
-- 📊 **Real-time P&L** — Automatic calculation with live prices
-- 💰 **Cash tracking** — Monitor your dry powder
-- 📝 **Notes & metadata** — Strike prices, expiry dates for options
+- 📊 **Interactive Charts** — Area/candlestick views with MA20/50/200 overlays
+- 💼 **Portfolio Management** — Track positions, options, and cash
+- 👀 **Watchlists** — Customizable with categories and price alerts
+- 🔔 **Alerts** — Set price targets with notifications
+- 📱 **Mobile-First** — Swipe actions, collapsible sections, responsive design
+- 👥 **Multi-User** — JWT auth with per-user portfolios
+- ⚡ **Fast** — LocalStorage caching, multi-source price fallback
 
-### Watchlists
-- 👁️ **Organized categories** — Tech, Crypto, Safe Haven, Robotics, General
-- 📂 **Collapsible sections** — Clean, organized view
-- 🎯 **Price targets** — Set buy/sell alert levels
-- 👆 **Swipe actions** — Edit/delete with a swipe (mobile-friendly)
+## Tech Stack
 
-### Charts
-- 📈 **TradingView-style** — Powered by Lightweight Charts
-- 🕯️ **Candle & Area views** — Toggle between styles
-- 📉 **Moving averages** — MA20, MA50, MA200 with toggles
-- ⏱️ **Multiple timeframes** — 1D, 5D, 1M, 3M, 1Y
-- 🔍 **Detail view** — Full-screen chart modal
+- **Frontend:** Vanilla JS, Chart.js, CSS3
+- **Backend:** Node.js, Express
+- **Database:** SQLite (sql.js)
+- **Auth:** JWT + bcrypt
 
-### Price Alerts
-- 🔔 **Visual triggers** — See when prices hit targets
-- 🟢 **Buy alerts** — "Price below $X"
-- 🔴 **Sell alerts** — "Price above $X"
-
-### Markets Overview
-- 🌍 **Key indices** — S&P 500, Nasdaq, Dow, VIX, Bitcoin
-- 📌 **Pin custom tickers** — Add your favorites to the dashboard
-- ⚡ **Fast updates** — Cached for instant loading
-
-### Technical
-- 🔐 **Multi-user auth** — JWT-based, secure
-- 💾 **SQLite database** — Simple, no external DB needed
-- 🚀 **Fast caching** — LocalStorage for instant loads
-- 📱 **Mobile-first** — Responsive design with swipe gestures
-
-## 🚀 Quick Start
-
-### Prerequisites
-- Node.js 18+
-- npm
-
-### Installation
+## Quick Start
 
 ```bash
-# Clone the repo
-git clone https://github.com/kiliansitel/portfolio-tracker-pro.git
-cd portfolio-tracker-pro
-
 # Install dependencies
-cd server
-npm install
+cd server && npm install
 
 # Start the server
+npm start
+# or
 node index.js
+
+# Open in browser
+http://localhost:8080
 ```
 
-Open http://localhost:8080 in your browser.
+## API Endpoints
 
-### First Run
-1. Click **Register** to create an account
-2. Add your first position in **Portfolio**
-3. Build your **Watchlist** with categories
-4. Set **Price Alerts** on tickers you're watching
-
-## 📁 Project Structure
-
-```
-portfolio-tracker-pro/
-├── public/
-│   └── index.html          # Frontend (single-file app)
-├── server/
-│   ├── index.js            # Express API server
-│   ├── package.json        # Dependencies
-│   ├── portfolio.db        # SQLite database (auto-created)
-│   └── portfolio-tracker.service  # Systemd service file
-├── VERSIONS.md             # Detailed changelog
-├── README.md
-└── .gitignore
-```
-
-## 🔌 API Reference
-
-### Authentication
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| POST | `/api/auth/register` | Create new account |
-| POST | `/api/auth/login` | Login, returns JWT |
-| GET | `/api/auth/me` | Get current user |
-| PUT | `/api/auth/settings` | Update user settings |
-
-### Portfolios
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/portfolios` | List user's portfolios |
-| POST | `/api/portfolios` | Create portfolio |
-| PUT | `/api/portfolios/:id` | Update portfolio |
-| DELETE | `/api/portfolios/:id` | Delete portfolio |
-
-### Positions
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/portfolios/:id/positions` | List positions |
+| POST | `/api/auth/register` | Create account |
+| POST | `/api/auth/login` | Get JWT token |
+| GET | `/api/portfolios` | List portfolios |
 | POST | `/api/portfolios/:id/positions` | Add position |
-| PUT | `/api/positions/:id` | Update position |
-| DELETE | `/api/positions/:id` | Delete position |
+| GET | `/api/watchlists` | List watchlists |
+| GET | `/api/alerts` | List alerts |
 
-### Watchlists
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/watchlists` | List watchlists with items |
-| POST | `/api/watchlists` | Create watchlist |
-| POST | `/api/watchlists/:id/items` | Add item to watchlist |
-| PUT | `/api/watchlist-items/:id` | Update watchlist item |
-| DELETE | `/api/watchlist-items/:id` | Remove from watchlist |
+## Screenshots
 
-## 🖥️ Deployment
+*Coming soon*
 
-### Systemd Service (Linux)
+## Version History
 
-```bash
-# Copy service file
-sudo cp server/portfolio-tracker.service /etc/systemd/system/
+See [VERSIONS.md](VERSIONS.md) for full changelog.
 
-# Edit paths if needed
-sudo nano /etc/systemd/system/portfolio-tracker.service
+- **v0.8.0 "Detail"** — Full-screen charts, MA toggles, pin to Markets
+- **v0.7.0 "Turbo"** — Chart caching, instant display
+- **v0.6.0 "Swipe"** — TradingView-style swipe actions
+- **v0.5.0 "Velocity"** — Price caching, multi-source fallback
 
-# Enable and start
-sudo systemctl daemon-reload
-sudo systemctl enable portfolio-tracker
-sudo systemctl start portfolio-tracker
+## License
 
-# Check status
-sudo systemctl status portfolio-tracker
-```
-
-### Nginx Reverse Proxy
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name portfolio.yourdomain.com;
-
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-```
-
-### Docker
-
-```bash
-# Build and run with Docker Compose (recommended)
-docker-compose up -d
-
-# Or build manually
-docker build -t portfolio-tracker-pro .
-docker run -d -p 8080:8080 -v portfolio-data:/app/data portfolio-tracker-pro
-```
-
-**Environment variables:**
-- `JWT_SECRET` - Secret key for JWT tokens (required for production)
-- `PORT` - Server port (default: 8080)
-- `DATA_DIR` - Database directory (default: /app/data in Docker)
-
-**Volumes:**
-- `/app/data` - Persists the SQLite database
-
-## 🔒 Security Notes
-
-- JWT tokens expire in 30 days
-- Passwords hashed with bcrypt (10 rounds)
-- Database is local SQLite (no external connections)
-- Recommended: Run behind reverse proxy with HTTPS
-- Recommended: Firewall to limit access to trusted networks
-
-## 📊 Data Sources
-
-- **Price data:** Yahoo Finance (via CORS proxies)
-- **Proxies used:** corsproxy.io, allorigins.win
-- **Update frequency:** 60 seconds auto-refresh
-- **Caching:** LocalStorage (5 min for prices, 5 min for charts)
-
-## 🛣️ Roadmap
-
-- [x] Docker container
-- [ ] Push notifications for alerts
-- [ ] Portfolio performance history
-- [ ] Export to CSV/PDF
-- [ ] Dark/light theme toggle
-- [ ] Options chain viewer
-- [ ] News integration
-- [ ] Multiple currency support
-
-## 📝 Changelog
-
-See [VERSIONS.md](VERSIONS.md) for detailed version history.
-
-**Latest: v0.8.0 "Detail"**
-- Full-screen chart modal with candle view
-- MA toggles (MA20, MA50, MA200)
-- Pin tickers to Markets
-- Clean + buttons
-
-## 🤝 Contributing
-
-Contributions welcome! Please:
-1. Fork the repo
-2. Create a feature branch
-3. Make your changes
-4. Submit a PR
-
-## 📄 License
-
-MIT License - feel free to use for personal or commercial projects.
-
-## 👨‍💻 Contributing
-
-Contributions welcome! Feel free to open issues or submit PRs.
-
----
-
-⭐ Star this repo if you find it useful!
+MIT
