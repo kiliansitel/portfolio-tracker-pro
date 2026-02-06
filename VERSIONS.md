@@ -1,6 +1,16 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.14.1 (2026-02-06) ← CURRENT
+## v0.14.2 (2026-02-06) ← CURRENT
+Bugfixes for dashboard loading.
+
+**Fixes:**
+- 🐛 Fixed `currentPortfolio is not defined` error breaking dashboard
+- 🐛 Fixed double `/api/api/` URL prefix in price/chart/news endpoints
+- ✅ Server-side caching now working correctly
+
+---
+
+## v0.14.1 (2026-02-06)
 Server-side price caching to eliminate Yahoo rate limits.
 
 **Fixes:**
