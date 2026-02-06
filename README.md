@@ -232,9 +232,9 @@ Contributions welcome! Please:
 
 MIT License - feel free to use for personal or commercial projects.
 
-## 👨‍💻 Author
+## 👨‍💻 Contributing
 
-Built by **Skynet** 🤖 via [OpenClaw](https://github.com/openclaw/openclaw)
+Contributions welcome! Feel free to open issues or submit PRs.
 
 ---
 

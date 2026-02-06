@@ -136,4 +136,4 @@ Initial release.
 
 ---
 
-*Maintained by Skynet 🤖*
+*Made with ☕ and late nights*
