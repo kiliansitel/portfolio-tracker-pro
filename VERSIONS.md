@@ -1,6 +1,24 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.13.0 "Newswire" (2026-02-06) ← CURRENT
+## v0.14.0 "Fortress" (2026-02-06) ← CURRENT
+Security upgrade: Argon2id password hashing.
+
+**New Features:**
+- 🔐 **Argon2id hashing** — OWASP-recommended password algorithm
+- 🔄 **Hybrid verification** — Supports both argon2 and legacy bcrypt
+- ⬆️ **Auto-upgrade** — Bcrypt hashes upgraded to argon2 on login
+- 🛡️ **Memory-hard** — Better resistance to GPU/ASIC attacks
+
+**Parameters (OWASP-aligned):**
+- Memory: 19 MiB
+- Iterations: 2
+- Parallelism: 1
+
+Fixes: #1
+
+---
+
+## v0.13.0 "Newswire" (2026-02-06)
 Market news integration.
 
 **New Features:**

@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const initSqlJs = require('sql.js');
 const bcrypt = require('bcryptjs');
+const argon2 = require('argon2');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
@@ -240,7 +241,13 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'Username or email already exists' });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // Argon2id - OWASP recommended (memory: 19MB, iterations: 2, parallelism: 1)
+    const hashedPassword = await argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 19456,  // 19 MiB
+      timeCost: 2,
+      parallelism: 1
+    });
     
     const result = dbRun('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', 
       [username, email.toLowerCase(), hashedPassword]);
@@ -282,7 +289,24 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const validPassword = await bcrypt.compare(password, user.password);
+    // Hybrid verification: try argon2 first, fallback to bcrypt for legacy hashes
+    let validPassword = false;
+    if (user.password.startsWith('$argon2')) {
+      validPassword = await argon2.verify(user.password, password);
+    } else {
+      // Legacy bcrypt hash
+      validPassword = await bcrypt.compare(password, user.password);
+      // Optionally upgrade to argon2 on successful login
+      if (validPassword) {
+        const newHash = await argon2.hash(password, {
+          type: argon2.argon2id,
+          memoryCost: 19456,
+          timeCost: 2,
+          parallelism: 1
+        });
+        dbRun('UPDATE users SET password = ? WHERE id = ?', [newHash, user.id]);
+      }
+    }
     if (!validPassword) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
