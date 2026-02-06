@@ -56,6 +56,9 @@ http://localhost:8080
 ### Watchlist
 ![Watchlist](screenshots/watchlist.jpg)
 
+### Alerts
+![Alerts](screenshots/alerts.jpg)
+
 ### Chart Detail
 ![Chart Detail](screenshots/chart-detail.jpg)
 
