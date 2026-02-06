@@ -102,6 +102,9 @@ Open http://localhost:8080
 ### Chart Detail
 ![Chart Detail](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/chart-detail.jpg)
 
+### Options Chain
+![Options Chain](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/options-chain.jpg)
+
 ### Settings
 ![Settings](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/settings.jpg)
 
