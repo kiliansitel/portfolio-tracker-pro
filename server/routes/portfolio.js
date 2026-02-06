@@ -85,9 +85,9 @@ router.post('/:id/positions', positionValidation, (req, res) => {
   if (existingPosition) {
     // Update existing position
     const newQuantity = existingPosition.quantity + quantity;
-    const newAvgCost = ((existingPosition.quantity * existingPosition.avg_cost) + (quantity * price)) / newQuantity;
+    const newAvgCost = ((existingPosition.quantity * existingPosition.entry_price) + (quantity * price)) / newQuantity;
     
-    dbRun('UPDATE positions SET quantity = ?, avg_cost = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
+    dbRun('UPDATE positions SET quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
       [newQuantity, newAvgCost, existingPosition.id]);
     
     res.json({
@@ -95,11 +95,11 @@ router.post('/:id/positions', positionValidation, (req, res) => {
       portfolio_id: parseInt(id),
       symbol: symbol.toUpperCase(),
       quantity: newQuantity,
-      avg_cost: newAvgCost
+      entry_price: newAvgCost
     });
   } else {
     // Create new position
-    const result = dbRun('INSERT INTO positions (portfolio_id, symbol, quantity, avg_cost) VALUES (?, ?, ?, ?)', 
+    const result = dbRun('INSERT INTO positions (portfolio_id, symbol, quantity, entry_price) VALUES (?, ?, ?, ?)', 
       [id, symbol.toUpperCase(), quantity, price]);
     
     res.json({
@@ -107,7 +107,7 @@ router.post('/:id/positions', positionValidation, (req, res) => {
       portfolio_id: parseInt(id),
       symbol: symbol.toUpperCase(),
       quantity,
-      avg_cost: price
+      entry_price: price
     });
   }
 });
@@ -115,7 +115,7 @@ router.post('/:id/positions', positionValidation, (req, res) => {
 // Update position
 router.put('/positions/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
-  const { symbol, quantity, avg_cost } = req.body;
+  const { symbol, quantity, avg_cost, entry_price } = req.body;
   
   const position = dbGet(`
     SELECT p.* FROM positions p 
@@ -127,8 +127,9 @@ router.put('/positions/:id', idParamValidation, (req, res) => {
     return res.status(404).json({ error: 'Position not found' });
   }
   
-  dbRun('UPDATE positions SET symbol = ?, quantity = ?, avg_cost = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
-    [symbol?.toUpperCase() || position.symbol, quantity ?? position.quantity, avg_cost ?? position.avg_cost, id]);
+  const price = entry_price || avg_cost || position.entry_price;
+  dbRun('UPDATE positions SET symbol = ?, quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
+    [symbol?.toUpperCase() || position.symbol, quantity ?? position.quantity, price, id]);
   
   res.json({ message: 'Position updated' });
 });

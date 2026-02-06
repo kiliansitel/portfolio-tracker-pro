@@ -73,7 +73,7 @@ router.get('/portfolios/:id/performance', (req, res) => {
   let costBasis = 0;
   for (const pos of positions) {
     const mult = pos.multiplier || 1;
-    costBasis += pos.avg_cost * pos.quantity * mult;
+    costBasis += (pos.entry_price || 0) * pos.quantity * mult;
   }
   costBasis += portfolio.cash || 0;
   
@@ -267,10 +267,10 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
           
           if (date === today) {
             const current = await fetchYahooPrice(pos.symbol);
-            price = current?.price || pos.avg_cost;
+            price = current?.price || pos.entry_price;
           } else {
             price = await fetchHistoricalPrice(pos.symbol, date);
-            if (!price) price = pos.avg_cost;
+            if (!price) price = pos.entry_price;
           }
           
           positionsValue += pos.quantity * price * mult;

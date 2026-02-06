@@ -113,7 +113,7 @@ async function initDatabase() {
       portfolio_id INTEGER NOT NULL,
       symbol TEXT NOT NULL,
       quantity REAL NOT NULL,
-      avg_cost REAL NOT NULL,
+      entry_price REAL NOT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (portfolio_id) REFERENCES portfolios(id),
