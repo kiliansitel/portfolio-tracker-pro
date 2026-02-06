@@ -1,6 +1,39 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.18.1 "Forge" (2026-02-06) ← CURRENT
+## v0.18.2 "Vault" (2026-02-06) ← CURRENT
+Historical data infrastructure + CI fixes.
+
+**New Features:**
+- 📊 **Daily OHLCV Storage** — Stores daily open/high/low/close/volume for all positions + watchlist (12,547 data points across 49 symbols, back to 1984)
+- 📸 **Automated Portfolio Snapshots** — Daily value calculation with upsert (replaces manual snapshots)
+- 🔧 **Data Collection Script** — Standalone `server/scripts/collect-data.js` with `--prices-only` / `--snapshots-only` flags
+- ⏰ **Daily Cron** — Automatic OHLCV + snapshot collection at 10 PM ET Mon-Fri (after market close)
+
+**API:**
+- `GET /api/history/:symbol` — Query stored OHLCV data with date range (`from`, `to`, `limit`)
+- `GET /api/history/status` — Collection stats (total rows, symbols, date range)
+- `POST /api/history/collect` — Trigger OHLCV backfill from Yahoo Finance
+- `POST /api/portfolios/:id/snapshot/auto` — Trigger automated snapshot
+
+**Fixes:**
+- 🐳 **Docker build fixed** — Was broken since v0.18.1 (missing `db.js`, `routes/`, `scripts/` in Dockerfile)
+- 💱 **Performance chart currency** — Chart line now converts to user currency (was showing raw USD)
+- ⏱️ **CI Jest timeout** — Added `--forceExit` to prevent `setInterval` handle from hanging CI
+- 🔑 **CI Docker test** — Added `load: true` for Buildx so built image is available to `docker run`
+
+**CI Pipeline Optimization:**
+- 🚀 **Playwright browser caching** — Saves ~2min Chromium download on subsequent runs
+- ⚡ **Parallel E2E** — E2E tests run alongside other jobs instead of waiting
+- 🎯 **Smart waits** — Replaced `waitForTimeout()` with `waitForSelector`/`waitForResponse` in E2E tests
+- 🧹 **Trimmed E2E** — Removed redundant tests, -113 lines
+
+**Database:**
+- New `price_history` table with `UNIQUE(symbol, date)` + composite index
+- `*.db.backup*` added to `.gitignore`
+
+---
+
+## v0.18.1 "Forge" (2026-02-06)
 Code modularization + multi-currency + push notifications.
 
 **Architecture:**

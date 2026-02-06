@@ -8,7 +8,7 @@
   A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.18.1-blue)
+![Version](https://img.shields.io/badge/version-0.18.2-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -21,7 +21,8 @@
 - ⛓️ **Options Chain** — View calls/puts with strikes and expiry dates
 - 📰 **News Feed** — Real-time market news with stock-specific filtering
 - 🥧 **Allocation Chart** — Visual donut chart showing portfolio breakdown
-- 📈 **Performance Chart** — Historical portfolio value with weekly snapshots
+- 📈 **Performance Chart** — Historical portfolio value with daily snapshots
+- 📊 **OHLCV History** — Stored daily candles for all tracked symbols (back to 1984)
 - 💱 **Multi-Currency** — EUR, USD, GBP, CHF with live exchange rates
 - 🔔 **Push Notifications** — Browser push via service worker (HTTPS required)
 - 📱 **Mobile-First** — Swipe actions, collapsible sections, responsive design
@@ -81,6 +82,10 @@ Open http://localhost:8080
 | POST | `/api/push/subscribe` | Subscribe to push notifications |
 | POST | `/api/push/unsubscribe` | Unsubscribe from push |
 | POST | `/api/push/test` | Send test push notification |
+| GET | `/api/history/:symbol` | Get stored OHLCV data |
+| GET | `/api/history/status` | Collection stats |
+| POST | `/api/history/collect` | Trigger OHLCV backfill |
+| POST | `/api/portfolios/:id/snapshot/auto` | Auto portfolio snapshot |
 
 ## Screenshots
 
@@ -121,6 +126,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.18.2 "Vault"** — Historical OHLCV storage, auto-snapshots, Docker/CI fixes, Playwright caching
 - **v0.18.1 "Forge"** — Code modularization, multi-currency (EUR/USD/GBP/CHF), push notifications
 - **v0.18.0 "Chain"** — Options chain viewer + security hardening (CSP, CORS, validators, debounced writes)
 - **v0.17.5** — Logo in app header, CI fix
@@ -159,6 +165,8 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Multi-currency support (EUR/USD/GBP/CHF) with live exchange rates
 - [x] Push notifications (browser, VAPID-based)
 - [x] Modular architecture (8 route modules, utility services)
+- [x] Historical OHLCV price storage with daily collection
+- [x] Automated daily portfolio snapshots
 
 ### 🚧 In Progress
 
