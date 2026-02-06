@@ -56,6 +56,9 @@ http://localhost:8080
 ### Watchlist
 ![Watchlist](screenshots/watchlist.jpg)
 
+### Chart Detail
+![Chart Detail](screenshots/chart-detail.jpg)
+
 ## Version History
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
