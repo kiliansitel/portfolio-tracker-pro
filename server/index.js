@@ -1017,6 +1017,269 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
   });
 });
 
+// Fetch historical price for a date (up to 5 years back)
+async function fetchHistoricalPrice(symbol, dateStr) {
+  const cacheKey = `hist_${symbol}_${dateStr}`;
+  const cached = priceCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < 3600000) { // 1 hour cache for historical
+    return cached.data;
+  }
+  
+  return new Promise((resolve) => {
+    // Fetch 5d range around the date to ensure we get a trading day
+    const targetDate = new Date(dateStr);
+    const startDate = new Date(targetDate);
+    startDate.setDate(startDate.getDate() - 5);
+    const endDate = new Date(targetDate);
+    endDate.setDate(endDate.getDate() + 1);
+    
+    const period1 = Math.floor(startDate.getTime() / 1000);
+    const period2 = Math.floor(endDate.getTime() / 1000);
+    
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
+    
+    https.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const result = json.chart?.result?.[0];
+          if (result && result.timestamp && result.indicators?.quote?.[0]?.close) {
+            const timestamps = result.timestamp;
+            const closes = result.indicators.quote[0].close;
+            
+            // Find the closest date to target
+            const targetTs = targetDate.getTime() / 1000;
+            let bestIdx = 0;
+            let bestDiff = Math.abs(timestamps[0] - targetTs);
+            for (let i = 1; i < timestamps.length; i++) {
+              const diff = Math.abs(timestamps[i] - targetTs);
+              if (diff < bestDiff) {
+                bestDiff = diff;
+                bestIdx = i;
+              }
+            }
+            
+            const price = closes[bestIdx];
+            if (price) {
+              priceCache.set(cacheKey, { data: price, timestamp: Date.now() });
+              resolve(price);
+            } else {
+              resolve(null);
+            }
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+// Reconstruct historical portfolio value from transactions
+app.post('/api/portfolios/:id/reconstruct', authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  
+  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  if (!portfolio) {
+    return res.status(404).json({ error: 'Portfolio not found' });
+  }
+  
+  // Get all transactions ordered by date
+  const transactions = dbAll(
+    'SELECT * FROM transactions WHERE portfolio_id = ? ORDER BY executed_at ASC',
+    [id]
+  );
+  
+  // Get current positions as fallback
+  const currentPositions = dbAll(
+    'SELECT * FROM positions WHERE portfolio_id = ?',
+    [id]
+  );
+  
+  if (transactions.length === 0 && currentPositions.length === 0) {
+    return res.json({ message: 'No transactions or positions to reconstruct from', snapshots: 0 });
+  }
+  
+  // If no transactions but have positions, create snapshots from position entry dates
+  if (transactions.length === 0) {
+    // Use entry_date from positions, or created_at, or today
+    const positionDates = new Set();
+    for (const pos of currentPositions) {
+      const date = pos.entry_date || pos.created_at?.split('T')[0] || new Date().toISOString().split('T')[0];
+      positionDates.add(date);
+    }
+    positionDates.add(new Date().toISOString().split('T')[0]); // Add today
+    
+    const sortedDates = Array.from(positionDates).sort();
+    let snapshotsCreated = 0;
+    const cash = portfolio.cash || 0;
+    
+    for (const date of sortedDates) {
+      let positionsValue = 0;
+      const today = new Date().toISOString().split('T')[0];
+      
+      for (const pos of currentPositions) {
+        const posDate = pos.entry_date || pos.created_at?.split('T')[0] || today;
+        // Only include positions that existed by this date
+        if (posDate <= date) {
+          let price;
+          const mult = pos.multiplier || 1;
+          
+          if (pos.type === 'option') {
+            price = pos.current_price || pos.entry_price;
+          } else if (date === today) {
+            const current = await fetchYahooPrice(pos.symbol);
+            price = current?.price || pos.entry_price;
+          } else {
+            price = await fetchHistoricalPrice(pos.symbol, date);
+            if (!price) price = pos.entry_price;
+          }
+          
+          positionsValue += pos.quantity * price * mult;
+        }
+      }
+      
+      const totalValue = cash + positionsValue;
+      
+      // Check if snapshot exists
+      const existing = dbGet('SELECT id FROM portfolio_snapshots WHERE portfolio_id = ? AND date = ?', [id, date]);
+      
+      if (!existing && totalValue > 0) {
+        const prev = dbGet(
+          'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
+          [id, date]
+        );
+        
+        const dailyChange = prev ? totalValue - prev.total_value : 0;
+        const dailyChangePct = prev && prev.total_value > 0 
+          ? ((totalValue - prev.total_value) / prev.total_value) * 100 
+          : 0;
+        
+        dbRun(
+          'INSERT INTO portfolio_snapshots (portfolio_id, date, total_value, cash, positions_value, daily_change, daily_change_pct) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [id, date, totalValue, cash, positionsValue, dailyChange, dailyChangePct]
+        );
+        snapshotsCreated++;
+      }
+    }
+    
+    return res.json({ message: `Reconstructed ${snapshotsCreated} snapshots from positions`, snapshots: snapshotsCreated });
+  }
+  
+  // Build position state over time
+  const positions = {}; // symbol -> { quantity, avgPrice }
+  let cash = portfolio.cash || 0;
+  
+  // Group transactions by date
+  const txByDate = {};
+  transactions.forEach(tx => {
+    const date = tx.executed_at.split('T')[0];
+    if (!txByDate[date]) txByDate[date] = [];
+    txByDate[date].push(tx);
+  });
+  
+  // Get unique dates and create weekly samples between them
+  const dates = Object.keys(txByDate).sort();
+  const startDate = new Date(dates[0]);
+  const endDate = new Date();
+  const sampleDates = new Set(dates);
+  
+  // Add weekly samples
+  let current = new Date(startDate);
+  while (current <= endDate) {
+    sampleDates.add(current.toISOString().split('T')[0]);
+    current.setDate(current.getDate() + 7);
+  }
+  // Add today
+  sampleDates.add(endDate.toISOString().split('T')[0]);
+  
+  const sortedDates = Array.from(sampleDates).sort();
+  let snapshotsCreated = 0;
+  
+  // For each sample date, calculate portfolio value
+  for (const date of sortedDates) {
+    // Apply all transactions up to and including this date
+    for (const d of dates) {
+      if (d > date) break;
+      if (!txByDate[d]) continue;
+      
+      for (const tx of txByDate[d]) {
+        const sym = tx.symbol;
+        if (!positions[sym]) positions[sym] = { quantity: 0, totalCost: 0 };
+        
+        if (tx.action === 'buy') {
+          positions[sym].quantity += tx.quantity;
+          positions[sym].totalCost += tx.quantity * tx.price;
+        } else if (tx.action === 'sell') {
+          positions[sym].quantity -= tx.quantity;
+          if (positions[sym].quantity <= 0) {
+            positions[sym] = { quantity: 0, totalCost: 0 };
+          }
+        }
+      }
+      // Mark as processed so we don't double-count
+      delete txByDate[d];
+    }
+    
+    // Calculate portfolio value for this date
+    let positionsValue = 0;
+    const symbols = Object.keys(positions).filter(s => positions[s].quantity > 0);
+    
+    // Fetch historical prices for all symbols on this date
+    for (const sym of symbols) {
+      const pos = positions[sym];
+      let price;
+      
+      // For today, use current price
+      if (date === endDate.toISOString().split('T')[0]) {
+        const current = await fetchYahooPrice(sym);
+        price = current?.price;
+      } else {
+        price = await fetchHistoricalPrice(sym, date);
+      }
+      
+      if (price) {
+        positionsValue += pos.quantity * price;
+      } else {
+        // Fallback to average cost
+        positionsValue += pos.quantity * (pos.totalCost / pos.quantity);
+      }
+    }
+    
+    const totalValue = cash + positionsValue;
+    
+    // Check if snapshot exists
+    const existing = dbGet('SELECT id FROM portfolio_snapshots WHERE portfolio_id = ? AND date = ?', [id, date]);
+    
+    if (!existing && totalValue > 0) {
+      // Get previous snapshot for daily change
+      const prev = dbGet(
+        'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
+        [id, date]
+      );
+      
+      const dailyChange = prev ? totalValue - prev.total_value : 0;
+      const dailyChangePct = prev && prev.total_value > 0 
+        ? ((totalValue - prev.total_value) / prev.total_value) * 100 
+        : 0;
+      
+      dbRun(
+        'INSERT INTO portfolio_snapshots (portfolio_id, date, total_value, cash, positions_value, daily_change, daily_change_pct) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [id, date, totalValue, cash, positionsValue, dailyChange, dailyChangePct]
+      );
+      snapshotsCreated++;
+    }
+  }
+  
+  res.json({ message: `Reconstructed ${snapshotsCreated} snapshots`, snapshots: snapshotsCreated });
+});
+
 // ============ PRICE API (Server-side cached) ============
 
 // Get single price

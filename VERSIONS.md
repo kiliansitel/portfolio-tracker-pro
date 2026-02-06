@@ -1,6 +1,19 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.16.0 "Slice" (2026-02-06) ← CURRENT
+## v0.17.0 "Horizon" (2026-02-06) ← CURRENT
+Portfolio performance chart with historical reconstruction.
+
+**Features:**
+- 📈 **Performance chart** — Line chart showing portfolio value over time
+- 🔄 **Auto-reconstruction** — Rebuilds history from transactions and positions
+- 📊 **Timeframe controls** — 1W, 1M, 3M, 1Y, All views
+- 💰 **Summary stats** — Start value, current value, total return
+- 📅 **Daily snapshots** — Automatically saved on each visit
+- ⏪ **Historical prices** — Fetches past prices from Yahoo Finance
+
+---
+
+## v0.16.0 "Slice" (2026-02-06)
 Portfolio allocation donut chart.
 
 **Features:**

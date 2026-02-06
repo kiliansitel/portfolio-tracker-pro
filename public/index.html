@@ -1065,9 +1065,11 @@
                     </div>
                 </div>
 
-                <div class="card" id="performanceCard" style="display:none;">
+                <!-- Allocation + Performance side by side on desktop -->
+                <div id="chartsRow" style="display:flex;gap:16px;flex-wrap:wrap;">
+                <div class="card" id="performanceCard" style="display:none;flex:1;min-width:300px;">
                     <div class="card-header">
-                        <span>📈 Portfolio Performance</span>
+                        <span>📈 Performance</span>
                         <div class="chart-controls">
                             <button class="chart-btn" onclick="setPerformanceRange(7)">1W</button>
                             <button class="chart-btn active" onclick="setPerformanceRange(30)">1M</button>
@@ -1095,17 +1097,21 @@
                     </div>
                 </div>
 
-                <div class="card" id="allocationCard" style="display:none;">
+                <div class="card" id="allocationCard" style="display:none;flex:1;min-width:280px;max-width:400px;">
                     <div class="card-header">
                         <span>🥧 Allocation</span>
                     </div>
                     <div class="card-body">
-                        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
-                            <canvas id="allocationChart" width="180" height="180" style="max-width:180px;"></canvas>
-                            <div id="allocationLegend" style="flex:1;min-width:150px;font-size:0.85rem;"></div>
+                        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;position:relative;">
+                            <div style="position:relative;">
+                                <canvas id="allocationChart" width="160" height="160" style="max-width:160px;cursor:pointer;"></canvas>
+                                <div id="allocationTooltip" style="display:none;position:absolute;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;font-size:0.85rem;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;"></div>
+                            </div>
+                            <div id="allocationLegend" style="flex:1;min-width:120px;font-size:0.85rem;"></div>
                         </div>
                     </div>
                 </div>
+                </div><!-- End chartsRow -->
 
                 <div class="card">
                     <div class="card-header">
@@ -1279,6 +1285,29 @@
                                     <div class="setting-desc">Portfolio summary as PDF</div>
                                 </div>
                                 <button class="btn btn-secondary" onclick="exportPDF()">📑 PDF</button>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <h3>Import Data</h3>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Portfolio CSV</div>
+                                    <div class="setting-desc">Import positions from CSV file</div>
+                                </div>
+                                <label class="btn btn-secondary" style="cursor:pointer;">
+                                    📥 Import
+                                    <input type="file" accept=".csv" onchange="importPositionsCSV(this)" style="display:none;">
+                                </label>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Watchlist CSV</div>
+                                    <div class="setting-desc">Import watchlist from CSV file</div>
+                                </div>
+                                <label class="btn btn-secondary" style="cursor:pointer;">
+                                    📥 Import
+                                    <input type="file" accept=".csv" onchange="importWatchlistCSV(this)" style="display:none;">
+                                </label>
                             </div>
                         </div>
                         <div class="settings-section">
@@ -2579,16 +2608,20 @@
         }
 
         // ============ ALLOCATION CHART ============
+        let allocationSlices = []; // Store slices for hover detection
+        
         function renderAllocation(positionsValue, cash) {
             const card = document.getElementById('allocationCard');
             const canvas = document.getElementById('allocationChart');
             const legend = document.getElementById('allocationLegend');
+            const tooltip = document.getElementById('allocationTooltip');
             
             if (positions.length === 0 && cash === 0) {
                 card.style.display = 'none';
                 return;
             }
             card.style.display = 'block';
+            allocationSlices = []; // Reset slices
             
             // Calculate allocations
             const allocations = [];
@@ -2626,9 +2659,14 @@
             
             // Draw donut chart
             const ctx = canvas.getContext('2d');
+            // Responsive canvas size
+            const size = Math.min(160, canvas.parentElement?.offsetWidth || 160);
+            canvas.width = size;
+            canvas.height = size;
+            
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
-            const radius = Math.min(centerX, centerY) - 10;
+            const radius = Math.min(centerX, centerY) - 5;
             const innerRadius = radius * 0.6;
             
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2640,6 +2678,14 @@
                 const color = alloc.type === 'cash' ? '#95a5a6' : colors[i % colors.length];
                 alloc.color = color;
                 
+                // Store slice data for hover detection
+                allocationSlices.push({
+                    ...alloc,
+                    startAngle,
+                    endAngle: startAngle + sliceAngle,
+                    pct: (alloc.value / total) * 100
+                });
+                
                 ctx.beginPath();
                 ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
                 ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
@@ -2649,6 +2695,10 @@
                 
                 startAngle += sliceAngle;
             });
+            
+            // Add hover listener
+            canvas.onmousemove = (e) => handleAllocationHover(e, canvas, tooltip, centerX, centerY, radius, innerRadius);
+            canvas.onmouseleave = () => { tooltip.style.display = 'none'; };
             
             // Draw center text
             ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#fff';
@@ -2670,7 +2720,51 @@
                 </div>`;
             }).join('') + (allocations.length > 8 ? `<div style="color:var(--text-secondary);font-size:0.8rem;">+${allocations.length - 8} more</div>` : '');
         }
-
+        
+        function handleAllocationHover(e, canvas, tooltip, centerX, centerY, radius, innerRadius) {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Check if mouse is in donut area
+            const dx = x - centerX;
+            const dy = y - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < innerRadius || dist > radius) {
+                tooltip.style.display = 'none';
+                return;
+            }
+            
+            // Get angle
+            let angle = Math.atan2(dy, dx);
+            if (angle < -Math.PI / 2) angle += 2 * Math.PI; // Adjust for starting at top
+            angle += Math.PI / 2; // Offset since we start at top
+            if (angle > 2 * Math.PI) angle -= 2 * Math.PI;
+            
+            // Find which slice
+            for (const slice of allocationSlices) {
+                let start = slice.startAngle + Math.PI / 2;
+                let end = slice.endAngle + Math.PI / 2;
+                if (start < 0) start += 2 * Math.PI;
+                if (end < 0) end += 2 * Math.PI;
+                
+                if (angle >= start && angle < end) {
+                    tooltip.innerHTML = `
+                        <div style="font-weight:600;color:${slice.color};">${slice.label}</div>
+                        <div>$${slice.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        <div style="color:var(--text-secondary);">${slice.pct.toFixed(1)}%</div>
+                    `;
+                    tooltip.style.display = 'block';
+                    tooltip.style.left = (x + 15) + 'px';
+                    tooltip.style.top = (y - 10) + 'px';
+                    return;
+                }
+            }
+            
+            tooltip.style.display = 'none';
+        }
+        
         // ============ PORTFOLIO PERFORMANCE ============
         let performanceChart = null;
         let performanceSeries = null;
@@ -2687,6 +2781,31 @@
             }
         }
         
+        let reconstructing = false;
+        
+        async function reconstructHistory() {
+            if (!token || !currentPortfolio || reconstructing) return;
+            reconstructing = true;
+            
+            try {
+                showToast('Reconstructing portfolio history...', 'info');
+                const result = await api(`/portfolios/${currentPortfolio.id}/reconstruct`, {
+                    method: 'POST'
+                });
+                if (result.snapshots > 0) {
+                    showToast(`Created ${result.snapshots} historical snapshots`, 'success');
+                    await loadPerformance();
+                } else {
+                    showToast('No historical data to reconstruct', 'info');
+                }
+            } catch (e) {
+                console.warn('Failed to reconstruct:', e);
+                showToast('Failed to reconstruct history', 'error');
+            } finally {
+                reconstructing = false;
+            }
+        }
+        
         async function loadPerformance() {
             if (!token || !currentPortfolio) {
                 document.getElementById('performanceCard').style.display = 'none';
@@ -2698,6 +2817,10 @@
                 const data = await api(`/portfolios/${currentPortfolio.id}/performance${days ? '?days=' + days : ''}`);
                 
                 if (data.snapshots.length < 2) {
+                    // No snapshots - try to reconstruct from transaction history
+                    if (!reconstructing) {
+                        reconstructHistory();
+                    }
                     document.getElementById('performanceCard').style.display = 'none';
                     return;
                 }
@@ -3338,6 +3461,165 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // ============ IMPORT ============
+        async function importPositionsCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            if (!token || !portfolioId) {
+                alert('Please login first');
+                return;
+            }
+            
+            try {
+                const text = await file.text();
+                const lines = text.trim().split('\n');
+                const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+                
+                // Find column indices
+                const symbolIdx = headers.findIndex(h => h.includes('symbol'));
+                const nameIdx = headers.findIndex(h => h.includes('name'));
+                const typeIdx = headers.findIndex(h => h.includes('type'));
+                const qtyIdx = headers.findIndex(h => h.includes('quantity') || h.includes('qty'));
+                const priceIdx = headers.findIndex(h => h.includes('entry') || h.includes('price') || h.includes('cost'));
+                const notesIdx = headers.findIndex(h => h.includes('notes'));
+                
+                if (symbolIdx === -1 || qtyIdx === -1 || priceIdx === -1) {
+                    alert('CSV must have Symbol, Quantity, and Entry Price columns');
+                    return;
+                }
+                
+                let imported = 0;
+                let failed = 0;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const cols = parseCSVLine(lines[i]);
+                    if (cols.length < 3) continue;
+                    
+                    const symbol = cols[symbolIdx]?.trim().toUpperCase();
+                    const quantity = parseFloat(cols[qtyIdx]);
+                    const entry_price = parseFloat(cols[priceIdx]?.replace(/[$,]/g, ''));
+                    
+                    if (!symbol || isNaN(quantity) || isNaN(entry_price)) {
+                        failed++;
+                        continue;
+                    }
+                    
+                    try {
+                        await api(`/portfolios/${portfolioId}/positions`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                symbol,
+                                name: nameIdx >= 0 ? cols[nameIdx] : '',
+                                type: typeIdx >= 0 ? cols[typeIdx]?.toLowerCase() || 'stock' : 'stock',
+                                quantity,
+                                entry_price,
+                                notes: notesIdx >= 0 ? cols[notesIdx] : ''
+                            })
+                        });
+                        imported++;
+                    } catch (e) {
+                        failed++;
+                    }
+                }
+                
+                alert(`Imported ${imported} positions` + (failed > 0 ? `, ${failed} failed` : ''));
+                await loadPortfolio();
+                renderPositions();
+                updateSummary();
+            } catch (e) {
+                alert('Failed to import: ' + e.message);
+            }
+            
+            input.value = ''; // Reset file input
+        }
+        
+        async function importWatchlistCSV(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            if (!token || !watchlistId) {
+                alert('Please login first');
+                return;
+            }
+            
+            try {
+                const text = await file.text();
+                const lines = text.trim().split('\n');
+                const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+                
+                const symbolIdx = headers.findIndex(h => h.includes('symbol'));
+                const nameIdx = headers.findIndex(h => h.includes('name'));
+                const catIdx = headers.findIndex(h => h.includes('category') || h.includes('cat'));
+                const belowIdx = headers.findIndex(h => h.includes('below') || h.includes('buy'));
+                const aboveIdx = headers.findIndex(h => h.includes('above') || h.includes('sell'));
+                
+                if (symbolIdx === -1) {
+                    alert('CSV must have a Symbol column');
+                    return;
+                }
+                
+                let imported = 0;
+                let failed = 0;
+                
+                for (let i = 1; i < lines.length; i++) {
+                    const cols = parseCSVLine(lines[i]);
+                    const symbol = cols[symbolIdx]?.trim().toUpperCase();
+                    
+                    if (!symbol) {
+                        failed++;
+                        continue;
+                    }
+                    
+                    try {
+                        await api(`/watchlists/${watchlistId}/items`, {
+                            method: 'POST',
+                            body: JSON.stringify({
+                                symbol,
+                                name: nameIdx >= 0 ? cols[nameIdx] : '',
+                                category: catIdx >= 0 ? cols[catIdx] || 'general' : 'general',
+                                alert_below: belowIdx >= 0 ? parseFloat(cols[belowIdx]) || null : null,
+                                alert_above: aboveIdx >= 0 ? parseFloat(cols[aboveIdx]) || null : null
+                            })
+                        });
+                        imported++;
+                    } catch (e) {
+                        failed++;
+                    }
+                }
+                
+                alert(`Imported ${imported} watchlist items` + (failed > 0 ? `, ${failed} failed` : ''));
+                await loadWatchlists();
+                renderWatchlist();
+                renderAlerts();
+            } catch (e) {
+                alert('Failed to import: ' + e.message);
+            }
+            
+            input.value = '';
+        }
+        
+        // Parse CSV line handling quoted values
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current.trim());
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result;
         }
 
         // ============ THEME ============

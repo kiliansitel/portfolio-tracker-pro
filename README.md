@@ -2,7 +2,7 @@
 
 A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 
-![Version](https://img.shields.io/badge/version-0.16.0-blue)
+![Version](https://img.shields.io/badge/version-0.17.0-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -82,6 +82,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.17.0 "Horizon"** — Portfolio performance chart with historical reconstruction
 - **v0.16.0 "Slice"** — Portfolio allocation donut chart
 - **v0.15.0 "Ironclad"** — Security hardening, CI pipeline, tests
 - **v0.14.0 "Fortress"** — Argon2id password hashing (fixes #1)
