@@ -146,6 +146,14 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [ ] Push notifications (browser/mobile)
 - [ ] Multiple currency support
 - [ ] Google Cloud Run demo instance
+- [ ] 🧠 **AI Intelligence Layer ("Oracle")**:
+  - [ ] Multi-LLM support (OpenAI, Anthropic, Google, Ollama, OpenClaw)
+  - [ ] Portfolio review & rebalancing suggestions
+  - [ ] Watchlist scanner with entry/exit signals
+  - [ ] Strategy advisor (options, DCA, hedging)
+  - [ ] Risk & correlation analysis
+  - [ ] AI news digest for holdings
+  - [ ] Chat interface for follow-up questions
 - [ ] Blockchain wallet tracking:
   - [ ] Connect BTC/ETH public addresses
   - [ ] Auto-sync balances from on-chain data
