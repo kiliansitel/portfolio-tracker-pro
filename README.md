@@ -72,6 +72,9 @@ Open http://localhost:8080
 ### Watchlist
 ![Watchlist](screenshots/watchlist.jpg)
 
+### Add to Watchlist
+![Add Watchlist](screenshots/add-watchlist.jpg)
+
 ### Alerts
 ![Alerts](screenshots/alerts.jpg)
 
