@@ -3192,7 +3192,8 @@
                 });
                 performanceSeries = performanceChart.addAreaSeries({ 
                     topColor: 'rgba(38,166,154,0.4)', bottomColor: 'rgba(38,166,154,0)', 
-                    lineColor: '#26a69a', lineWidth: 2 
+                    lineColor: '#26a69a', lineWidth: 2,
+                    priceFormat: { type: 'custom', formatter: (price) => cs() + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
                 });
                 new ResizeObserver(entries => {
                     const r = entries[0].contentRect;
@@ -3200,7 +3201,7 @@
                 }).observe(el);
             }
             
-            const chartData = snapshots.map(s => ({ time: s.date, value: s.total_value }));
+            const chartData = snapshots.map(s => ({ time: s.date, value: convertPrice(s.total_value, userCurrency) }));
             performanceSeries.setData(chartData);
             performanceChart.timeScale().fitContent();
         }
