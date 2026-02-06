@@ -498,7 +498,7 @@ app.get('/api/portfolios/:id/positions', authenticateToken, (req, res) => {
 });
 
 // Add position
-app.post('/api/portfolios/:id/positions', authenticateToken, (req, res) => {
+app.post('/api/portfolios/:id/positions', authenticateToken, positionValidation, (req, res) => {
   const { id } = req.params;
   const { symbol, name, type, quantity, entry_price, entry_date, notes, strike_price, expiry_date, multiplier } = req.body;
   
@@ -1233,7 +1233,7 @@ async function start() {
 }
 
 // Export for testing
-module.exports = { app, start };
+module.exports = { app, start, initDatabase };
 
 // Start if run directly
 if (require.main === module) {
