@@ -69,6 +69,9 @@ Open http://localhost:8080
 ### Positions
 ![Positions](screenshots/positions.jpg)
 
+### Add/Edit Position
+![Add Position](screenshots/add-position.jpg)
+
 ### Watchlist
 ![Watchlist](screenshots/watchlist.jpg)
 
