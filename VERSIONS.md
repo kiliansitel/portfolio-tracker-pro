@@ -1,6 +1,33 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.18.0 "Chain" (2026-02-06) ← CURRENT
+## v0.18.1 "Forge" (2026-02-06) ← CURRENT
+Code modularization + multi-currency + push notifications.
+
+**Architecture:**
+- 🏗️ **Modularized codebase** — `index.js` from 1,700 → 135 lines, 8 route modules
+- 📁 **Route modules** — auth, portfolio, watchlist, alerts, market, transactions, data, push
+- 🔧 **Utility services** — Currency exchange rate service (`utils/currency.js`)
+
+**Features:**
+- 💱 **Multi-currency** — EUR, USD, GBP, CHF with live exchange rates
+- 🔄 **Currency selector** — Settings page, syncs across devices (localStorage + server)
+- 🔔 **Push notifications** — VAPID-based web push via service worker
+- 📲 **Push settings** — Subscribe/unsubscribe toggle in Settings
+- 🔒 **HTTPS detection** — Shows "Requires HTTPS" instead of confusing error on HTTP
+
+**Fixes:**
+- 💲 **Currency display** — All 30+ price display points now use `fc()`/`cs()` helpers (was hardcoded `$`)
+- 📱 **Push UX** — Graceful degradation on HTTP connections
+
+**API:**
+- `GET /api/exchange-rates` — Get currency exchange rates
+- `POST /api/push/subscribe` — Subscribe to push notifications
+- `POST /api/push/unsubscribe` — Unsubscribe from push
+- `POST /api/push/test` — Send test push notification
+
+---
+
+## v0.18.0 "Chain" (2026-02-06)
 Options chain viewer + major security hardening.
 
 **Features:**
