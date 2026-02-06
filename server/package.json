@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "jest --coverage --detectOpenHandles",
+    "test": "jest --coverage --detectOpenHandles --forceExit",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
     "lint": "eslint .",
