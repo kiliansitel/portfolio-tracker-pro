@@ -1515,8 +1515,8 @@
 
     <!-- Chart Detail Modal -->
     <div class="modal-overlay" id="chartDetailModal">
-        <div class="modal modal-fullscreen">
-            <div class="modal-header">
+        <div class="modal modal-fullscreen" style="display:flex;flex-direction:column;max-height:100vh;">
+            <div class="modal-header" style="flex-shrink:0;">
                 <div class="chart-detail-header">
                     <h2 id="chartDetailTitle">AAPL</h2>
                     <div class="chart-detail-price">
@@ -1526,7 +1526,7 @@
                 </div>
                 <button class="modal-close" onclick="closeChartDetail()">&times;</button>
             </div>
-            <div class="modal-body" style="padding:0;flex:1;display:flex;flex-direction:column;">
+            <div class="modal-body" style="padding:0;flex:1;display:flex;flex-direction:column;overflow-y:auto;">
                 <div class="chart-detail-controls">
                     <div class="chart-type-btns">
                         <button class="chart-btn active" onclick="setDetailChartType('area')">Area</button>
@@ -1545,10 +1545,28 @@
                     <label><input type="checkbox" id="maToggle50" checked onchange="toggleDetailMA(50)"> MA50</label>
                     <label><input type="checkbox" id="maToggle200" onchange="toggleDetailMA(200)"> MA200</label>
                 </div>
-                <div id="chartDetailContainer" style="flex:1;min-height:300px;"></div>
+                <div id="chartDetailContainer" style="flex:1;min-height:250px;"></div>
+                <!-- Options Chain Section (hidden by default) -->
+                <div id="optionsChainSection" style="display:none;padding:12px;border-top:1px solid var(--border-color);flex-shrink:0;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <span style="font-weight:600;">📊 Options Chain</span>
+                        <select id="optionsExpirySelect" onchange="loadOptionsForExpiry()" style="background:var(--bg-tertiary);color:var(--text-primary);border:1px solid var(--border-color);border-radius:4px;padding:4px 8px;font-size:0.85rem;"></select>
+                    </div>
+                    <div style="display:flex;gap:12px;">
+                        <div style="flex:1;">
+                            <div style="font-size:0.75rem;color:var(--accent-green);margin-bottom:6px;font-weight:600;">CALLS</div>
+                            <div id="optionsCallsList" style="font-size:0.8rem;max-height:200px;overflow-y:auto;"></div>
+                        </div>
+                        <div style="flex:1;">
+                            <div style="font-size:0.75rem;color:var(--accent-red);margin-bottom:6px;font-weight:600;">PUTS</div>
+                            <div id="optionsPutsList" style="font-size:0.8rem;max-height:200px;overflow-y:auto;"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="modal-footer" style="justify-content:space-around;">
+            <div class="modal-footer" style="justify-content:space-around;flex-shrink:0;">
                 <button class="btn btn-secondary" onclick="addToMarkets()" id="addToMarketsBtn">📌 Pin to Markets</button>
+                <button class="btn btn-secondary" onclick="toggleOptionsChain()" id="optionsChainBtn">⛓️ Options</button>
                 <button class="btn btn-primary" onclick="closeChartDetail()">Close</button>
             </div>
         </div>
@@ -3038,12 +3056,117 @@
             }, 100);
         }
         
+        // ============ OPTIONS CHAIN ============
+        let optionsData = null;
+        let optionsSymbol = null;
+        
+        async function toggleOptionsChain() {
+            const section = document.getElementById('optionsChainSection');
+            const btn = document.getElementById('optionsChainBtn');
+            
+            if (section.style.display === 'none') {
+                section.style.display = 'block';
+                btn.textContent = '⛓️ Hide Options';
+                await loadOptionsChain();
+            } else {
+                section.style.display = 'none';
+                btn.textContent = '⛓️ Options';
+            }
+        }
+        
+        async function loadOptionsChain() {
+            const symbol = detailSymbol;
+            if (!symbol) return;
+            
+            optionsSymbol = symbol;
+            document.getElementById('optionsCallsList').innerHTML = '<div style="color:var(--text-secondary);">Loading...</div>';
+            document.getElementById('optionsPutsList').innerHTML = '<div style="color:var(--text-secondary);">Loading...</div>';
+            
+            try {
+                const data = await fetch(`/api/options/${symbol}`).then(r => r.json());
+                if (data.error) throw new Error(data.error);
+                
+                optionsData = data;
+                
+                // Populate expiry dropdown
+                const select = document.getElementById('optionsExpirySelect');
+                select.innerHTML = data.expirationDates.slice(0, 12).map((date, i) => 
+                    `<option value="${date}" ${i === 0 ? 'selected' : ''}>${date}</option>`
+                ).join('');
+                
+                // Render options
+                renderOptionsChain(data.calls, data.puts, data.quote?.regularMarketPrice);
+            } catch (e) {
+                document.getElementById('optionsCallsList').innerHTML = '<div style="color:var(--accent-red);">Not available</div>';
+                document.getElementById('optionsPutsList').innerHTML = '<div style="color:var(--accent-red);">Not available</div>';
+            }
+        }
+        
+        async function loadOptionsForExpiry() {
+            const expiry = document.getElementById('optionsExpirySelect').value;
+            if (!expiry || !optionsSymbol) return;
+            
+            document.getElementById('optionsCallsList').innerHTML = '<div style="color:var(--text-secondary);">Loading...</div>';
+            document.getElementById('optionsPutsList').innerHTML = '<div style="color:var(--text-secondary);">Loading...</div>';
+            
+            try {
+                const data = await fetch(`/api/options/${optionsSymbol}/${expiry}`).then(r => r.json());
+                if (data.error) throw new Error(data.error);
+                
+                const currentPrice = optionsData?.quote?.regularMarketPrice || 0;
+                renderOptionsChain(data.calls, data.puts, currentPrice);
+            } catch (e) {
+                document.getElementById('optionsCallsList').innerHTML = '<div style="color:var(--accent-red);">Failed to load</div>';
+                document.getElementById('optionsPutsList').innerHTML = '<div style="color:var(--accent-red);">Failed to load</div>';
+            }
+        }
+        
+        function renderOptionsChain(calls, puts, currentPrice) {
+            const formatOption = (opt, type) => {
+                const strike = opt.strike;
+                const itm = type === 'call' ? strike < currentPrice : strike > currentPrice;
+                const itmClass = itm ? 'color:var(--accent-green);font-weight:600;' : '';
+                const price = opt.lastPrice?.toFixed(2) || '-';
+                const change = opt.change ? (opt.change >= 0 ? '+' : '') + opt.change.toFixed(2) : '';
+                const changeColor = opt.change >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                const vol = opt.volume || 0;
+                const oi = opt.openInterest || 0;
+                
+                return `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid var(--border-color);${itmClass}">
+                    <span>$${strike}</span>
+                    <span>$${price} <span style="color:${changeColor};font-size:0.7rem;">${change}</span></span>
+                </div>`;
+            };
+            
+            // Filter to show strikes near current price
+            const nearStrikes = (opts) => {
+                if (!currentPrice) return opts.slice(0, 10);
+                return opts.filter(o => Math.abs(o.strike - currentPrice) / currentPrice < 0.15).slice(0, 10);
+            };
+            
+            const filteredCalls = nearStrikes(calls);
+            const filteredPuts = nearStrikes(puts);
+            
+            document.getElementById('optionsCallsList').innerHTML = filteredCalls.length 
+                ? filteredCalls.map(c => formatOption(c, 'call')).join('')
+                : '<div style="color:var(--text-secondary);">No calls</div>';
+            
+            document.getElementById('optionsPutsList').innerHTML = filteredPuts.length
+                ? filteredPuts.map(p => formatOption(p, 'put')).join('')
+                : '<div style="color:var(--text-secondary);">No puts</div>';
+        }
+        
         function closeChartDetail() {
             closeModal('chartDetailModal');
             if (detailChart) {
                 detailChart.remove();
                 detailChart = null;
             }
+            // Reset options section
+            document.getElementById('optionsChainSection').style.display = 'none';
+            document.getElementById('optionsChainBtn').textContent = '⛓️ Options';
+            optionsData = null;
+            optionsSymbol = null;
         }
         
         function initDetailChart() {

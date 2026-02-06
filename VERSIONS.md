@@ -1,6 +1,22 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.17.5 (2026-02-06) ← CURRENT
+## v0.18.0 "Chain" (2026-02-06) ← CURRENT
+Options chain viewer.
+
+**Features:**
+- ⛓️ **Options chain** — View calls/puts for any stock/ETF
+- 📅 **Expiry selector** — Choose from 12 nearest expiration dates
+- 💰 **Strike prices** — Filtered to ±15% of current price
+- 🟢 **ITM highlighting** — In-the-money options highlighted
+- 📱 **Mobile friendly** — Scrollable modal on mobile
+
+**API:**
+- `GET /api/options/:symbol` — Get options chain
+- `GET /api/options/:symbol/:expiry` — Get options for specific expiry
+
+---
+
+## v0.17.5 (2026-02-06)
 Logo in app header + CI fix.
 
 **Features:**

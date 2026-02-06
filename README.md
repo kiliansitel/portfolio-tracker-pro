@@ -8,7 +8,7 @@
   A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.17.5-blue)
+![Version](https://img.shields.io/badge/version-0.18.0-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -18,6 +18,7 @@
 - 💼 **Portfolio Management** — Track positions, options, and cash
 - 👀 **Watchlists** — Customizable with categories and price alerts
 - 🔔 **Alerts** — Set price targets with notifications
+- ⛓️ **Options Chain** — View calls/puts with strikes and expiry dates
 - 📰 **News Feed** — Real-time market news with stock-specific filtering
 - 🥧 **Allocation Chart** — Visual donut chart showing portfolio breakdown
 - 📱 **Mobile-First** — Swipe actions, collapsible sections, responsive design
@@ -68,6 +69,8 @@ Open http://localhost:8080
 | POST | `/api/portfolios/:id/positions` | Add position |
 | GET | `/api/watchlists` | List watchlists |
 | GET | `/api/alerts` | List alerts |
+| GET | `/api/options/:symbol` | Get options chain |
+| GET | `/api/options/:symbol/:expiry` | Get options for expiry |
 
 ## Screenshots
 
@@ -105,6 +108,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.18.0 "Chain"** — Options chain viewer
 - **v0.17.5** — Logo in app header, CI fix
 - **v0.17.4** — Project logo and favicon
 - **v0.17.3** — Performance chart uses cost basis (matches P&L)
@@ -134,7 +138,7 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Cross-device sync (pinned markets)
 - [x] Portfolio performance over time
 - [x] News integration
-- [ ] Options chain viewer
+- [x] Options chain viewer
 - [ ] Push notifications (browser/mobile)
 - [ ] Multiple currency support
 - [ ] Google Cloud Run demo instance

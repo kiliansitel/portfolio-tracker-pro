@@ -92,6 +92,128 @@ async function fetchYahooChart(symbol, range = '1mo', interval = '1d') {
     }).on('error', () => resolve(null));
   });
 }
+// Yahoo crumb for authenticated endpoints (options chain)
+let yahooCrumb = null;
+let yahooCookies = null;
+let crumbTimestamp = 0;
+const CRUMB_TTL = 3600000; // 1 hour
+
+async function getYahooCrumb() {
+  if (yahooCrumb && Date.now() - crumbTimestamp < CRUMB_TTL) {
+    return { crumb: yahooCrumb, cookies: yahooCookies };
+  }
+  
+  return new Promise((resolve) => {
+    // First get cookies
+    https.get('https://fc.yahoo.com', {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    }, (res) => {
+      const cookies = res.headers['set-cookie']?.map(c => c.split(';')[0]).join('; ') || '';
+      
+      // Then get crumb
+      https.get('https://query1.finance.yahoo.com/v1/test/getcrumb', {
+        headers: { 
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Cookie': cookies
+        }
+      }, (crumbRes) => {
+        let crumb = '';
+        crumbRes.on('data', chunk => crumb += chunk);
+        crumbRes.on('end', () => {
+          yahooCrumb = crumb;
+          yahooCookies = cookies;
+          crumbTimestamp = Date.now();
+          resolve({ crumb, cookies });
+        });
+      }).on('error', () => resolve({ crumb: null, cookies: null }));
+    }).on('error', () => resolve({ crumb: null, cookies: null }));
+  });
+}
+
+async function fetchOptionsChain(symbol) {
+  const cacheKey = `options_${symbol}`;
+  const cached = priceCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  const { crumb, cookies } = await getYahooCrumb();
+  if (!crumb) return null;
+  
+  return new Promise((resolve) => {
+    const url = `https://query1.finance.yahoo.com/v7/finance/options/${encodeURIComponent(symbol)}?crumb=${encodeURIComponent(crumb)}`;
+    
+    https.get(url, {
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Cookie': cookies
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const result = json.optionChain?.result?.[0];
+          if (result) {
+            const optionsData = {
+              symbol: result.underlyingSymbol,
+              quote: result.quote,
+              expirationDates: result.expirationDates?.map(ts => new Date(ts * 1000).toISOString().split('T')[0]) || [],
+              strikes: result.strikes || [],
+              calls: result.options?.[0]?.calls || [],
+              puts: result.options?.[0]?.puts || [],
+              timestamp: Date.now()
+            };
+            priceCache.set(cacheKey, { data: optionsData, timestamp: Date.now() });
+            resolve(optionsData);
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          console.error('Options fetch error:', e);
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+async function fetchOptionsForExpiry(symbol, expiryTimestamp) {
+  const { crumb, cookies } = await getYahooCrumb();
+  if (!crumb) return null;
+  
+  return new Promise((resolve) => {
+    const url = `https://query1.finance.yahoo.com/v7/finance/options/${encodeURIComponent(symbol)}?date=${expiryTimestamp}&crumb=${encodeURIComponent(crumb)}`;
+    
+    https.get(url, {
+      headers: { 
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Cookie': cookies
+      }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const result = json.optionChain?.result?.[0];
+          if (result) {
+            resolve({
+              calls: result.options?.[0]?.calls || [],
+              puts: result.options?.[0]?.puts || []
+            });
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
 const JWT_SECRET = process.env.JWT_SECRET || 'portfolio-tracker-secret-key-change-in-production';
 // Use /app/data in Docker, or local directory otherwise
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/app/data') ? '/app/data' : __dirname);
@@ -1359,6 +1481,32 @@ app.get('/api/chart/:symbol', async (req, res) => {
     res.json(data);
   } else {
     res.status(404).json({ error: 'Chart data not found' });
+  }
+});
+
+// ============ OPTIONS CHAIN ============
+
+// Get options chain for a symbol
+app.get('/api/options/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  const data = await fetchOptionsChain(symbol);
+  if (data) {
+    res.json(data);
+  } else {
+    res.status(404).json({ error: 'Options data not found' });
+  }
+});
+
+// Get options for a specific expiry date
+app.get('/api/options/:symbol/:expiry', async (req, res) => {
+  const { symbol, expiry } = req.params;
+  // Convert date string (YYYY-MM-DD) to Unix timestamp
+  const expiryTs = Math.floor(new Date(expiry).getTime() / 1000);
+  const data = await fetchOptionsForExpiry(symbol, expiryTs);
+  if (data) {
+    res.json(data);
+  } else {
+    res.status(404).json({ error: 'Options data not found for this expiry' });
   }
 });
 
