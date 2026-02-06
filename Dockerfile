@@ -29,10 +29,13 @@ COPY --from=builder /app/node_modules ./node_modules
 
 # Copy application files
 COPY server/index.js ./
+COPY server/db.js ./
 COPY server/package.json ./
 COPY server/middleware ./middleware
 COPY server/validators ./validators
 COPY server/utils ./utils
+COPY server/routes ./routes
+COPY server/scripts ./scripts
 COPY public ./public
 
 # Create data directory for database

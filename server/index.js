@@ -15,7 +15,7 @@ const path = require('path');
 
 // Database and utilities
 const { initDatabase } = require('./db');
-const { authLimiter, apiLimiter, sanitizeInput, helmetConfig, hpp } = require('./middleware/security');
+const { authLimiter, apiLimiter, strictLimiter, sanitizeInput, helmetConfig, hpp } = require('./middleware/security');
 const { logger, requestLogger } = require('./utils/logger');
 
 // Route modules
@@ -26,6 +26,7 @@ const alertsRouter = require('./routes/alerts');
 const marketRouter = require('./routes/market');
 const transactionsRouter = require('./routes/transactions');
 const dataRouter = require('./routes/data');
+const historyRouter = require('./routes/history');
 const { router: pushRouter } = require('./routes/push');
 
 // Currency utilities
@@ -96,6 +97,8 @@ app.use('/api/transactions', authenticateToken, transactionsRouter);
 app.use('/api', authenticateToken, transactionsRouter); // Also mount for /api/portfolios/:id/transactions
 app.use('/api', authenticateToken, dataRouter); // Data routes (snapshots, performance, reconstruct)
 app.use('/api/push', authenticateToken, pushRouter);
+app.use('/api/history/collect', authenticateToken, strictLimiter); // Stricter rate limit for collection
+app.use('/api/history', authenticateToken, historyRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {

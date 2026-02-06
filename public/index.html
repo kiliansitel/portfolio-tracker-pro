@@ -1130,11 +1130,26 @@
                         </div>
                     </div>
                     <div class="card-body">
-                        <div class="chart-header">
+                        <div class="chart-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
                             <div class="chart-title" id="chartTitle">S&P 500</div>
+                            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                                <div style="display:flex;gap:4px;">
+                                    <button class="chart-btn active" id="mainTypeArea" onclick="setMainChartType('area')">Area</button>
+                                    <button class="chart-btn" id="mainTypeCandle" onclick="setMainChartType('candle')">Candle</button>
+                                </div>
+                                <div style="display:flex;gap:8px;font-size:0.8rem;">
+                                    <label style="display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="mainMA20" checked onchange="toggleMainMA(20)" style="cursor:pointer;accent-color:#f7931a;"> <span style="color:#f7931a;">MA20</span></label>
+                                    <label style="display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="mainMA50" checked onchange="toggleMainMA(50)" style="cursor:pointer;accent-color:#627eea;"> <span style="color:#627eea;">MA50</span></label>
+                                    <label style="display:flex;align-items:center;gap:3px;cursor:pointer;"><input type="checkbox" id="mainMA200" onchange="toggleMainMA(200)" style="cursor:pointer;accent-color:#e91e63;"> <span style="color:#e91e63;">MA200</span></label>
+                                </div>
+                            </div>
                         </div>
                         <div class="chart-wrapper">
                             <div id="chartContainer"></div>
+                        </div>
+                        <div style="position:relative;">
+                            <div style="position:absolute;top:4px;left:8px;font-size:0.7rem;color:#ab47bc;z-index:2;pointer-events:none;font-weight:600;">RSI (14)</div>
+                            <div id="mainRSIContainer" style="height:80px;margin-top:2px;"></div>
                         </div>
                     </div>
                 </div>
@@ -1629,6 +1644,11 @@
         let mainSeries = null;
         let ma20Series = null;
         let ma50Series = null;
+        let ma200Series = null;
+        let mainChartType = 'area';
+        let mainMA20On = true, mainMA50On = true, mainMA200On = false;
+        let mainRSIChart = null, mainRSISeries = null;
+        let lastChartRawData = null;
         let selectedSymbol = '^GSPC';
         let currentTimeframe = '1mo';
         
@@ -1915,12 +1935,18 @@
                     const r = data.chart?.result?.[0];
                     if (!r || !r.timestamp) continue;
                     
+                    const q = r.indicators.quote[0];
                     const chartData = r.timestamp
-                        .map((t, i) => r.indicators.quote[0].close[i] != null ? { time: t, value: r.indicators.quote[0].close[i] } : null)
+                        .map((t, i) => q.close[i] != null ? { time: t, value: q.close[i] } : null)
+                        .filter(Boolean);
+                    const ohlcData = r.timestamp
+                        .map((t, i) => (q.open[i] != null && q.close[i] != null) ? { 
+                            time: t, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] 
+                        } : null)
                         .filter(Boolean);
                     
                     // Cache it
-                    chartCache[cacheKey] = { data: chartData, _ts: now };
+                    chartCache[cacheKey] = { data: chartData, ohlc: ohlcData, _ts: now };
                     saveChartCache();
                     return chartData;
                 } catch (e) {
@@ -3165,20 +3191,42 @@
                     timeScale: { borderColor: '#363a45' }
                 });
                 performanceSeries = performanceChart.addAreaSeries({ 
-                    topColor: 'rgba(38,166,154,0.4)', 
-                    bottomColor: 'rgba(38,166,154,0)', 
-                    lineColor: '#26a69a', 
-                    lineWidth: 2 
+                    topColor: 'rgba(38,166,154,0.4)', bottomColor: 'rgba(38,166,154,0)', 
+                    lineColor: '#26a69a', lineWidth: 2 
                 });
+                new ResizeObserver(entries => {
+                    const r = entries[0].contentRect;
+                    if (performanceChart && r.width > 0) performanceChart.applyOptions({ width: r.width });
+                }).observe(el);
             }
             
-            const chartData = snapshots.map(s => ({
-                time: s.date,
-                value: s.total_value
-            }));
-            
+            const chartData = snapshots.map(s => ({ time: s.date, value: s.total_value }));
             performanceSeries.setData(chartData);
             performanceChart.timeScale().fitContent();
+        }
+        
+        function calcRSI(data, period = 14) {
+            const result = [];
+            if (data.length < period + 1) return result;
+            let gainSum = 0, lossSum = 0;
+            for (let i = 1; i <= period; i++) {
+                const diff = data[i].value - data[i-1].value;
+                if (diff >= 0) gainSum += diff; else lossSum -= diff;
+            }
+            let avgGain = gainSum / period;
+            let avgLoss = lossSum / period;
+            const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            result.push({ time: data[period].time, value: Math.round((100 - 100 / (1 + rs)) * 100) / 100 });
+            for (let i = period + 1; i < data.length; i++) {
+                const diff = data[i].value - data[i-1].value;
+                const gain = diff >= 0 ? diff : 0;
+                const loss = diff < 0 ? -diff : 0;
+                avgGain = (avgGain * (period - 1) + gain) / period;
+                avgLoss = (avgLoss * (period - 1) + loss) / period;
+                const r = avgLoss === 0 ? 100 : avgGain / avgLoss;
+                result.push({ time: data[i].time, value: Math.round((100 - 100 / (1 + r)) * 100) / 100 });
+            }
+            return result;
         }
         
         function setPerformanceRange(days) {
@@ -3192,7 +3240,6 @@
         function initChart() {
             const el = document.getElementById('chartContainer');
             const wrapper = el.parentElement;
-            // Use wrapper dimensions or fallback to reasonable defaults
             const width = wrapper.clientWidth || el.clientWidth || 300;
             const height = wrapper.clientHeight || 350;
             
@@ -3204,11 +3251,8 @@
                 rightPriceScale: { borderColor: '#363a45' },
                 timeScale: { borderColor: '#363a45', timeVisible: true }
             });
-            mainSeries = chart.addAreaSeries({ topColor: 'rgba(41,98,255,0.4)', bottomColor: 'rgba(41,98,255,0)', lineColor: '#2962ff', lineWidth: 2 });
             
-            // Moving averages
-            ma20Series = chart.addLineSeries({ color: '#f7931a', lineWidth: 1, title: 'MA20' });
-            ma50Series = chart.addLineSeries({ color: '#627eea', lineWidth: 1, title: 'MA50' });
+            createMainSeries();
             
             // Handle resize
             new ResizeObserver((entries) => {
@@ -3217,6 +3261,49 @@
                     chart.applyOptions({ width: rect.width, height: rect.height || 350 });
                 }
             }).observe(wrapper);
+            
+            // RSI chart
+            const rsiEl = document.getElementById('mainRSIContainer');
+            mainRSIChart = LightweightCharts.createChart(rsiEl, {
+                width: rsiEl.clientWidth || 300,
+                height: 80,
+                layout: { background: { type: 'solid', color: '#1e222d' }, textColor: '#787b86', fontSize: 10 },
+                grid: { vertLines: { color: '#2a2e39' }, horzLines: { color: '#2a2e39' } },
+                rightPriceScale: { borderColor: '#363a45' },
+                timeScale: { visible: false },
+                crosshair: { mode: 0 }
+            });
+            new ResizeObserver(entries => {
+                const r = entries[0].contentRect;
+                if (mainRSIChart && r.width > 0) mainRSIChart.applyOptions({ width: r.width });
+            }).observe(rsiEl);
+            
+            // Sync time scales
+            chart.timeScale().subscribeVisibleLogicalRangeChange(range => {
+                if (range && mainRSIChart) mainRSIChart.timeScale().setVisibleLogicalRange(range);
+            });
+        }
+        
+        function createMainSeries() {
+            // Remove existing series
+            if (mainSeries) { try { chart.removeSeries(mainSeries); } catch(e){} mainSeries = null; }
+            if (ma20Series) { try { chart.removeSeries(ma20Series); } catch(e){} ma20Series = null; }
+            if (ma50Series) { try { chart.removeSeries(ma50Series); } catch(e){} ma50Series = null; }
+            if (ma200Series) { try { chart.removeSeries(ma200Series); } catch(e){} ma200Series = null; }
+            
+            if (mainChartType === 'candle') {
+                mainSeries = chart.addCandlestickSeries({
+                    upColor: '#26a69a', downColor: '#ef5350',
+                    borderUpColor: '#26a69a', borderDownColor: '#ef5350',
+                    wickUpColor: '#26a69a', wickDownColor: '#ef5350'
+                });
+            } else {
+                mainSeries = chart.addAreaSeries({ topColor: 'rgba(41,98,255,0.4)', bottomColor: 'rgba(41,98,255,0)', lineColor: '#2962ff', lineWidth: 2 });
+            }
+            
+            if (mainMA20On) { ma20Series = chart.addLineSeries({ color: '#f7931a', lineWidth: 1 }); }
+            if (mainMA50On) { ma50Series = chart.addLineSeries({ color: '#627eea', lineWidth: 1 }); }
+            if (mainMA200On) { ma200Series = chart.addLineSeries({ color: '#e91e63', lineWidth: 1 }); }
         }
         
         // Calculate moving average
@@ -3234,29 +3321,77 @@
 
         function renderChartData(data) {
             if (!data.length || !mainSeries) return;
+            lastChartRawData = data;
             
-            mainSeries.setData(data);
-            
-            // Calculate and display moving averages (only for longer timeframes)
-            if (data.length >= 20 && ['1mo', '3mo', '1y'].includes(currentTimeframe)) {
-                ma20Series.setData(calcMA(data, 20));
-                ma50Series.setData(data.length >= 50 ? calcMA(data, 50) : []);
+            if (mainChartType === 'candle') {
+                // Use cached OHLC data from Yahoo API
+                const cacheKey = `${selectedSymbol}_${currentTimeframe}`;
+                const cached = chartCache[cacheKey];
+                const ohlc = cached?.ohlc;
+                if (ohlc && ohlc.length > 0) {
+                    mainSeries.setData(ohlc);
+                } else {
+                    // Fallback: use line data as single-value candles
+                    mainSeries.setData(data.map(d => ({ time: d.time, open: d.value, high: d.value, low: d.value, close: d.value })));
+                }
             } else {
-                ma20Series.setData([]);
-                ma50Series.setData([]);
+                mainSeries.setData(data);
+                const q = priceCache[selectedSymbol];
+                if (q) {
+                    const color = q.change >= 0 ? '#26a69a' : '#ef5350';
+                    mainSeries.applyOptions({ 
+                        topColor: q.change >= 0 ? 'rgba(38,166,154,0.4)' : 'rgba(239,83,80,0.4)', 
+                        lineColor: color 
+                    });
+                }
             }
+            
+            // Moving averages
+            const showMA = data.length >= 20 && ['1mo', '3mo', '1y'].includes(currentTimeframe);
+            if (ma20Series) ma20Series.setData(showMA && mainMA20On ? calcMA(data, 20) : []);
+            if (ma50Series) ma50Series.setData(showMA && mainMA50On && data.length >= 50 ? calcMA(data, 50) : []);
+            if (ma200Series) ma200Series.setData(showMA && mainMA200On && data.length >= 200 ? calcMA(data, 200) : []);
             
             chart.timeScale().fitContent();
             
-            // Set color based on price change
-            const q = priceCache[selectedSymbol];
-            if (q) {
-                const color = q.change >= 0 ? '#26a69a' : '#ef5350';
-                mainSeries.applyOptions({ 
-                    topColor: q.change >= 0 ? 'rgba(38,166,154,0.4)' : 'rgba(239,83,80,0.4)', 
-                    lineColor: color 
-                });
+            // RSI
+            renderMainRSI(data);
+        }
+        
+        function renderMainRSI(data) {
+            const rsiEl = document.getElementById('mainRSIContainer');
+            if (!mainRSIChart || data.length < 15) {
+                if (rsiEl) rsiEl.style.display = data.length < 15 ? 'none' : 'block';
+                return;
             }
+            rsiEl.style.display = 'block';
+            if (mainRSISeries) { try { mainRSIChart.removeSeries(mainRSISeries); } catch(e){} }
+            mainRSISeries = mainRSIChart.addLineSeries({
+                color: '#ab47bc', lineWidth: 1.5, 
+                priceFormat: { type: 'custom', formatter: v => v.toFixed(0) }
+            });
+            const rsiData = calcRSI(data, 14);
+            mainRSISeries.setData(rsiData);
+            if (rsiData.length > 0) {
+                mainRSISeries.applyOptions({ autoscaleInfoProvider: () => ({ priceRange: { minValue: 0, maxValue: 100 } }) });
+            }
+            mainRSIChart.timeScale().fitContent();
+        }
+        
+        function setMainChartType(type) {
+            mainChartType = type;
+            document.getElementById('mainTypeArea').classList.toggle('active', type === 'area');
+            document.getElementById('mainTypeCandle').classList.toggle('active', type === 'candle');
+            createMainSeries();
+            if (lastChartRawData) renderChartData(lastChartRawData);
+        }
+        
+        function toggleMainMA(period) {
+            if (period === 20) mainMA20On = document.getElementById('mainMA20').checked;
+            if (period === 50) mainMA50On = document.getElementById('mainMA50').checked;
+            if (period === 200) mainMA200On = document.getElementById('mainMA200').checked;
+            createMainSeries();
+            if (lastChartRawData) renderChartData(lastChartRawData);
         }
 
         async function updateChart() {

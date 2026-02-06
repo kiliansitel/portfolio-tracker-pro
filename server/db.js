@@ -221,7 +221,23 @@ async function initDatabase() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS price_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      symbol TEXT NOT NULL,
+      date TEXT NOT NULL,
+      open REAL,
+      high REAL,
+      low REAL,
+      close REAL NOT NULL,
+      volume REAL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(symbol, date)
+    )
+  `);
+
   // Create indexes for performance
+  db.run('CREATE INDEX IF NOT EXISTS idx_price_history_symbol_date ON price_history(symbol, date)');
   db.run('CREATE INDEX IF NOT EXISTS idx_positions_portfolio ON positions(portfolio_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_positions_symbol ON positions(symbol)');
   db.run('CREATE INDEX IF NOT EXISTS idx_watchlist_items_watchlist ON watchlist_items(watchlist_id)');

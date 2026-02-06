@@ -1,6 +1,7 @@
 const express = require('express');
 const { dbRun, dbGet, dbAll } = require('../db');
 const { fetchYahooPrice, fetchHistoricalPrice } = require('../utils/yahoo');
+const { collectDailySnapshot } = require('../utils/snapshots');
 
 const router = express.Router();
 
@@ -293,6 +294,24 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
   }
   
   res.json({ message: `Reconstructed ${snapshotsCreated} snapshots`, snapshots: snapshotsCreated });
+});
+
+// Automatic daily snapshot collection (for cron/scripts)
+router.post('/portfolios/:id/snapshot/auto', async (req, res) => {
+  const { id } = req.params;
+
+  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  if (!portfolio) {
+    return res.status(404).json({ error: 'Portfolio not found' });
+  }
+
+  try {
+    const snapshot = await collectDailySnapshot(parseInt(id));
+    res.json({ message: 'Snapshot collected', snapshot });
+  } catch (error) {
+    console.error('Error collecting auto snapshot:', error);
+    res.status(500).json({ error: 'Failed to collect snapshot', details: error.message });
+  }
 });
 
 module.exports = router;
