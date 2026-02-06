@@ -2882,20 +2882,20 @@
                 totalCost += pos.entry_price * pos.quantity * mult;
             }
             
-            const cash = parseFloat(document.getElementById('settingsCash').value) || 0;
+            const cashUsd = currentPortfolio?.cash || 0; // Raw USD from server, fc() will convert
             const pnl = totalValue - totalCost;
             const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
             
-            document.getElementById('totalValue').textContent = fc(totalValue + cash);
+            document.getElementById('totalValue').textContent = fc(totalValue + cashUsd);
             document.getElementById('totalPnL').textContent = (pnl >= 0 ? '+' : '') + fc(pnl);
             document.getElementById('totalPnL').className = 'summary-value ' + (pnl >= 0 ? 'positive' : 'negative');
             document.getElementById('totalPnLPct').textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
             document.getElementById('totalPnLPct').className = 'summary-sub ' + (pnlPct >= 0 ? 'positive' : 'negative');
-            document.getElementById('cashValue').textContent = fc(cash);
+            document.getElementById('cashValue').textContent = fc(cashUsd);
             
             // Save snapshot if logged in
             if (token && currentPortfolio && totalValue > 0) {
-                savePortfolioSnapshot(totalValue + cash, cash, totalValue);
+                savePortfolioSnapshot(totalValue + cashUsd, cashUsd, totalValue);
             }
             
             // Render allocation chart
@@ -3640,7 +3640,7 @@
         
         function exportPDF() {
             // Create a printable HTML report
-            const cash = parseFloat(document.getElementById('settingsCash').value) || 0;
+            const cash = currentPortfolio?.cash || 0; // Raw USD
             let totalValue = 0;
             let totalCost = 0;
             
