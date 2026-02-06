@@ -1592,8 +1592,18 @@
             } catch (e) {}
         }
         
-        // Data sources with fallback
+        // Data sources with fallback - Server API is primary (cached, no rate limits)
         const dataSources = [
+            {
+                name: 'Server API',
+                fetch: async (symbol) => {
+                    const res = await fetch(`${API_BASE}/api/price/${encodeURIComponent(symbol)}`, { signal: AbortSignal.timeout(5000) });
+                    if (!res.ok) throw new Error('API error');
+                    const data = await res.json();
+                    if (!data.price) throw new Error('No data');
+                    return { price: data.price, prev: data.previousClose || data.price };
+                }
+            },
             {
                 name: 'Yahoo (corsproxy)',
                 fetch: async (symbol) => {
@@ -1610,17 +1620,6 @@
                 fetch: async (symbol) => {
                     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
                     const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(5000) });
-                    const data = await res.json();
-                    const meta = data.chart?.result?.[0]?.meta;
-                    if (!meta?.regularMarketPrice) throw new Error('No data');
-                    return { price: meta.regularMarketPrice, prev: meta.previousClose || meta.chartPreviousClose };
-                }
-            },
-            {
-                name: 'Yahoo (direct)',
-                fetch: async (symbol) => {
-                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-                    const res = await fetch(url, { signal: AbortSignal.timeout(4000), mode: 'cors' });
                     const data = await res.json();
                     const meta = data.chart?.result?.[0]?.meta;
                     if (!meta?.regularMarketPrice) throw new Error('No data');
@@ -1729,17 +1728,17 @@
             chartAbortController = new AbortController();
             
             const intervals = { '1d': '5m', '5d': '15m', '1mo': '1h', '3mo': '1d', '1y': '1d' };
-            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`;
             
-            // Try multiple proxies for speed
-            const proxies = [
-                `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
-                `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`
+            // Try server API first (cached), then fallback to CORS proxies
+            const sources = [
+                { name: 'Server API', url: `${API_BASE}/api/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${intervals[range]}` },
+                { name: 'corsproxy', url: `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`)}` },
+                { name: 'allorigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`)}` }
             ];
             
-            for (const proxyUrl of proxies) {
+            for (const source of sources) {
                 try {
-                    const res = await fetch(proxyUrl, { 
+                    const res = await fetch(source.url, { 
                         signal: chartAbortController.signal,
                         cache: 'no-store'
                     });
@@ -2842,21 +2841,30 @@
         }
         
         async function fetchOHLCData(symbol, range) {
-            try {
-                const intervals = { '1d': '5m', '5d': '15m', '1mo': '1h', '3mo': '1d', '1y': '1d' };
-                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`;
-                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
-                const data = await res.json();
-                const r = data.chart?.result?.[0];
-                if (!r || !r.timestamp) return [];
-                const q = r.indicators.quote[0];
-                return r.timestamp.map((t, i) => {
-                    if (q.open[i] == null) return null;
-                    return { time: t, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] };
-                }).filter(Boolean);
-            } catch (e) {
-                return [];
+            const intervals = { '1d': '5m', '5d': '15m', '1mo': '1h', '3mo': '1d', '1y': '1d' };
+            
+            // Try server API first, then fallback
+            const sources = [
+                `${API_BASE}/api/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${intervals[range]}`,
+                `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`)}`
+            ];
+            
+            for (const url of sources) {
+                try {
+                    const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
+                    const data = await res.json();
+                    const r = data.chart?.result?.[0];
+                    if (!r || !r.timestamp) continue;
+                    const q = r.indicators.quote[0];
+                    return r.timestamp.map((t, i) => {
+                        if (q.open[i] == null) return null;
+                        return { time: t, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] };
+                    }).filter(Boolean);
+                } catch (e) {
+                    continue;
+                }
             }
+            return [];
         }
         
         function setDetailChartType(type) {

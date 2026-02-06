@@ -1,6 +1,24 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.14.0 "Fortress" (2026-02-06) ← CURRENT
+## v0.14.1 (2026-02-06) ← CURRENT
+Server-side price caching to eliminate Yahoo rate limits.
+
+**Fixes:**
+- 🚀 **Server-side price cache** — Server fetches from Yahoo, caches 2 min
+- 📈 **Server-side chart cache** — No more CORS proxy failures
+- 🔄 **Smart fallback** — Server API → corsproxy → allorigins
+- ⚡ **Faster loads** — Cached responses served instantly
+
+**New API Endpoints:**
+```
+GET /api/price/:symbol     — Single price (cached)
+GET /api/prices?symbols=   — Multiple prices (cached)
+GET /api/chart/:symbol     — Chart data (cached)
+```
+
+---
+
+## v0.14.0 "Fortress" (2026-02-06)
 Security upgrade: Argon2id password hashing.
 
 **New Features:**

@@ -10,6 +10,82 @@ const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
+const https = require('https');
+
+// ============ PRICE CACHE ============
+const priceCache = new Map();
+const CACHE_TTL = 120000; // 2 minutes
+
+async function fetchYahooPrice(symbol) {
+  const cached = priceCache.get(symbol);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  return new Promise((resolve) => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+    
+    https.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          const result = json.chart?.result?.[0];
+          if (result) {
+            const meta = result.meta;
+            const price = meta.regularMarketPrice;
+            const prev = meta.previousClose || meta.chartPreviousClose || price;
+            const priceData = {
+              symbol: meta.symbol,
+              price: price,
+              previousClose: prev,
+              change: price - prev,
+              changePercent: prev ? ((price - prev) / prev) * 100 : 0,
+              timestamp: Date.now()
+            };
+            priceCache.set(symbol, { data: priceData, timestamp: Date.now() });
+            resolve(priceData);
+          } else {
+            resolve(null);
+          }
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
+
+async function fetchYahooChart(symbol, range = '1mo', interval = '1d') {
+  const cacheKey = `chart_${symbol}_${range}_${interval}`;
+  const cached = priceCache.get(cacheKey);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  
+  return new Promise((resolve) => {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
+    
+    https.get(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          priceCache.set(cacheKey, { data: json, timestamp: Date.now() });
+          resolve(json);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    }).on('error', () => resolve(null));
+  });
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'portfolio-tracker-secret-key-change-in-production';
 // Use /app/data in Docker, or local directory otherwise
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/app/data') ? '/app/data' : __dirname);
@@ -933,6 +1009,57 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
       days: snapshots.length
     }
   });
+});
+
+// ============ PRICE API (Server-side cached) ============
+
+// Get single price
+app.get('/api/price/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  const data = await fetchYahooPrice(symbol);
+  if (data) {
+    res.json(data);
+  } else {
+    res.status(404).json({ error: 'Price not found' });
+  }
+});
+
+// Get multiple prices
+app.get('/api/prices', async (req, res) => {
+  const { symbols } = req.query;
+  if (!symbols) {
+    return res.json({});
+  }
+  
+  const symbolList = symbols.split(',').slice(0, 50); // Max 50 symbols
+  const results = {};
+  
+  // Fetch in parallel with small batches to avoid overwhelming
+  const batchSize = 10;
+  for (let i = 0; i < symbolList.length; i += batchSize) {
+    const batch = symbolList.slice(i, i + batchSize);
+    const promises = batch.map(s => fetchYahooPrice(s.trim()));
+    const batchResults = await Promise.all(promises);
+    batch.forEach((symbol, idx) => {
+      if (batchResults[idx]) {
+        results[symbol.trim()] = batchResults[idx];
+      }
+    });
+  }
+  
+  res.json(results);
+});
+
+// Get chart data
+app.get('/api/chart/:symbol', async (req, res) => {
+  const { symbol } = req.params;
+  const { range = '1mo', interval = '1d' } = req.query;
+  const data = await fetchYahooChart(symbol, range, interval);
+  if (data) {
+    res.json(data);
+  } else {
+    res.status(404).json({ error: 'Chart data not found' });
+  }
 });
 
 // ============ NEWS FEED ============
