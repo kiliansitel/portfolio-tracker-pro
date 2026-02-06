@@ -24,18 +24,28 @@ A TradingView-inspired portfolio tracker with real-time prices, interactive char
 
 ## Quick Start
 
+### Docker (Recommended)
 ```bash
-# Install dependencies
-cd server && npm install
-
-# Start the server
-npm start
-# or
-node index.js
-
-# Open in browser
-http://localhost:8080
+docker run -d -p 8080:8080 -v portfolio-data:/app/data kiliansitel/portfolio-tracker-pro:latest
 ```
+
+### Docker Compose
+```bash
+git clone https://github.com/kiliansitel/portfolio-tracker-pro.git
+cd portfolio-tracker-pro
+docker-compose up -d
+```
+
+### Node.js
+```bash
+git clone https://github.com/kiliansitel/portfolio-tracker-pro.git
+cd portfolio-tracker-pro/server
+npm install && npm start
+```
+
+Open http://localhost:8080
+
+📖 **[Full Installation Guide](docs/INSTALL.md)** — Docker, reverse proxy, environment variables, backups
 
 ## API Endpoints
 
