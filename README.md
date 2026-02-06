@@ -126,6 +126,10 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [ ] Options chain viewer
 - [ ] Push notifications (browser/mobile)
 - [ ] Multiple currency support
+- [ ] Google Cloud Run demo instance
+- [ ] Broker API integrations:
+  - [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)
+  - [ ] More brokers TBD
 
 ## License
 
