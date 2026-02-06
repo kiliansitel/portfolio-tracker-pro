@@ -1635,14 +1635,17 @@
             // Return cached if fresh
             const cached = priceCache[symbol];
             if (cached && cached._fetchedAt && Date.now() - cached._fetchedAt < FRESH_AGE) {
+                console.log('[fetchQuote] Cache hit:', symbol);
                 return cached;
             }
+            console.log('[fetchQuote] Fetching:', symbol);
             
             // Try each source
             for (let i = 0; i < dataSources.length; i++) {
                 const srcIdx = (activeSource + i) % dataSources.length;
                 const source = dataSources[srcIdx];
                 try {
+                    console.log('[fetchQuote] Trying', source.name, 'for', symbol);
                     const result = await source.fetch(symbol);
                     const price = result.price;
                     const prev = result.prev || price;
@@ -2471,7 +2474,9 @@
             const allSymbols = [...new Set([...defaultSymbols, ...pinnedMarkets])];
             const names = { '^GSPC': 'S&P 500', '^IXIC': 'Nasdaq', '^DJI': 'Dow', '^VIX': 'VIX', 'BTC-USD': 'Bitcoin' };
             
+            console.log('[Markets] Fetching:', allSymbols);
             const quotes = await Promise.all(allSymbols.map(fetchQuote));
+            console.log('[Markets] Results:', quotes);
             quotes.forEach(q => { if (q) priceCache[q.symbol] = q; });
             
             const el = document.getElementById('marketsGrid');
