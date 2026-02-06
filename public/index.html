@@ -1401,7 +1401,15 @@
                     </div>
                     <div class="form-group">
                         <label>Entry Price *</label>
-                        <input type="number" name="entry_price" step="any" required>
+                        <div style="display:flex;gap:8px;">
+                            <input type="number" name="entry_price" step="any" required style="flex:1;">
+                            <select name="entry_currency" style="width:90px; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                                <option value="USD">USD $</option>
+                                <option value="EUR">EUR €</option>
+                                <option value="GBP">GBP £</option>
+                                <option value="CHF">CHF</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Entry Date</label>
@@ -2052,6 +2060,9 @@
         function showAddPositionModal() {
             editingPositionId = null;
             document.getElementById('positionForm').reset();
+            // Default entry currency to user's display currency
+            const curSel = document.querySelector('#positionForm [name="entry_currency"]');
+            if (curSel) curSel.value = userCurrency;
             const title = document.getElementById('addPositionTitle');
             if (title) title.textContent = 'Add Position';
             showModal('addPositionModal');
@@ -2108,14 +2119,24 @@
                 return;
             }
             const form = e.target;
+            // Convert entry price to USD if entered in another currency
+            let entryPrice = parseFloat(form.entry_price.value);
+            const entryCurrency = form.entry_currency?.value || 'USD';
+            if (entryCurrency !== 'USD' && exchangeRates) {
+                const rate = exchangeRates[entryCurrency]?.['USD'];
+                if (rate) {
+                    entryPrice = entryPrice * rate;
+                }
+            }
+            
             const data = {
                 symbol: form.symbol.value.toUpperCase(),
                 name: form.name.value,
                 type: form.type.value,
                 quantity: parseFloat(form.quantity.value),
-                entry_price: parseFloat(form.entry_price.value),
+                entry_price: entryPrice,
                 entry_date: form.entry_date.value || null,
-                notes: form.notes.value,
+                notes: form.notes.value + (entryCurrency !== 'USD' ? ` [bought in ${entryCurrency}]` : ''),
                 strike_price: form.strike_price.value ? parseFloat(form.strike_price.value) : null,
                 expiry_date: form.expiry_date.value || null,
                 current_price: form.current_price?.value ? parseFloat(form.current_price.value) : null,
@@ -2403,6 +2424,12 @@
             if (!toCurrency || toCurrency === 'USD' || !exchangeRates) return usdPrice;
             const rate = exchangeRates?.USD?.[toCurrency];
             return rate ? usdPrice * rate : usdPrice;
+        }
+        
+        function convertToUsd(price, fromCurrency) {
+            if (!fromCurrency || fromCurrency === 'USD' || !exchangeRates) return price;
+            const rate = exchangeRates?.[fromCurrency]?.['USD'];
+            return rate ? price * rate : price;
         }
         
         function formatCurrency(amount, currency) {
