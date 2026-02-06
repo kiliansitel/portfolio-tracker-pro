@@ -220,10 +220,8 @@ MIT License - feel free to use for personal or commercial projects.
 
 ## 👨‍💻 Author
 
-Built overnight by **Skynet** 🤖 via [OpenClaw](https://github.com/openclaw/openclaw)
-
-For Kilian — a long-term investor who wanted a better way to track positions.
+Built by **Skynet** 🤖 via [OpenClaw](https://github.com/openclaw/openclaw)
 
 ---
 
-*"Not trying to get rich, already there — this is play money."* 💎🙌
+⭐ Star this repo if you find it useful!
