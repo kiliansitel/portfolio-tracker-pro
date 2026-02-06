@@ -1,6 +1,15 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.15.1 (2026-02-06) ← CURRENT
+## v0.15.2 (2026-02-06) ← CURRENT
+Price alert proximity bars.
+
+**Features:**
+- 📊 Progress bars showing how close price is to alert target
+- 🟢 Green (80%+), 🟠 Orange (50%+), 🔵 Blue (waiting)
+
+---
+
+## v0.15.1 (2026-02-06)
 Bugfixes and CI improvements.
 
 **Fixes:**
