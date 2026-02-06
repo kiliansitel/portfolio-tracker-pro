@@ -2,7 +2,7 @@
 
 A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 
-![Version](https://img.shields.io/badge/version-0.8.0-blue)
+![Version](https://img.shields.io/badge/version-0.12.1-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -69,10 +69,28 @@ http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
-- **v0.8.0 "Detail"** — Full-screen charts, MA toggles, pin to Markets
-- **v0.7.0 "Turbo"** — Chart caching, instant display
-- **v0.6.0 "Swipe"** — TradingView-style swipe actions
-- **v0.5.0 "Velocity"** — Price caching, multi-source fallback
+- **v0.12.0 "Chronicle"** — Transaction history, alert notifications
+- **v0.11.0 "Container"** — Docker support
+- **v0.10.0 "Export"** — CSV/PDF export
+- **v0.9.0 "Theme"** — Dark/light mode
+- **v0.8.0 "Detail"** — Full-screen charts, MA toggles
+
+## Roadmap
+
+- [x] User authentication (JWT)
+- [x] Portfolio & position tracking
+- [x] Watchlist with categories
+- [x] Price alerts with Telegram notifications
+- [x] Transaction history
+- [x] Interactive charts (area/candle, MA overlays)
+- [x] Export to CSV/PDF
+- [x] Docker support
+- [x] Cross-device sync (pinned markets)
+- [ ] Portfolio performance over time
+- [ ] News integration
+- [ ] Options chain viewer
+- [ ] Push notifications (browser/mobile)
+- [ ] Multiple currency support
 
 ## License
 
