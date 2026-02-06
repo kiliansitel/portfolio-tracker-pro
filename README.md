@@ -50,7 +50,8 @@ http://localhost:8080
 
 ## Screenshots
 
-*Coming soon*
+### Dashboard
+![Dashboard](screenshots/dashboard.jpg)
 
 ## Version History
 
