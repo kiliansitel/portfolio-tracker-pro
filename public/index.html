@@ -1513,6 +1513,7 @@
         let token = localStorage.getItem('token');
         let user = JSON.parse(localStorage.getItem('user') || 'null');
         let portfolioId = null;
+        let currentPortfolio = null;
         let watchlistId = null;
         let positions = [];
         let watchlist = [];
@@ -1635,17 +1636,14 @@
             // Return cached if fresh
             const cached = priceCache[symbol];
             if (cached && cached._fetchedAt && Date.now() - cached._fetchedAt < FRESH_AGE) {
-                console.log('[fetchQuote] Cache hit:', symbol);
                 return cached;
             }
-            console.log('[fetchQuote] Fetching:', symbol);
             
             // Try each source
             for (let i = 0; i < dataSources.length; i++) {
                 const srcIdx = (activeSource + i) % dataSources.length;
                 const source = dataSources[srcIdx];
                 try {
-                    console.log('[fetchQuote] Trying', source.name, 'for', symbol);
                     const result = await source.fetch(symbol);
                     const price = result.price;
                     const prev = result.prev || price;
@@ -1919,8 +1917,9 @@
             try {
                 const portfolios = await api('/portfolios');
                 if (portfolios.length > 0) {
-                    portfolioId = portfolios[0].id;
-                    document.getElementById('settingsCash').value = portfolios[0].cash || 0;
+                    currentPortfolio = portfolios[0];
+                    portfolioId = currentPortfolio.id;
+                    document.getElementById('settingsCash').value = currentPortfolio.cash || 0;
                     positions = await api(`/portfolios/${portfolioId}/positions`);
                     renderPositions();
                 }
@@ -2474,9 +2473,7 @@
             const allSymbols = [...new Set([...defaultSymbols, ...pinnedMarkets])];
             const names = { '^GSPC': 'S&P 500', '^IXIC': 'Nasdaq', '^DJI': 'Dow', '^VIX': 'VIX', 'BTC-USD': 'Bitcoin' };
             
-            console.log('[Markets] Fetching:', allSymbols);
             const quotes = await Promise.all(allSymbols.map(fetchQuote));
-            console.log('[Markets] Results:', quotes);
             quotes.forEach(q => { if (q) priceCache[q.symbol] = q; });
             
             const el = document.getElementById('marketsGrid');
