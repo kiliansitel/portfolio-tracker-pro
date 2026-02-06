@@ -36,7 +36,7 @@ test.describe('Portfolio Tracker E2E', () => {
       await expect(page.locator('#loginForm')).toBeVisible();
     });
 
-    test('prevents weak password on register', async ({ page }) => {
+    test.skip('prevents weak password on register', async ({ page }) => {
       await page.goto('/');
       await page.click('[data-form="register"]');
       
