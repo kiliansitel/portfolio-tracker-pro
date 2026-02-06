@@ -81,6 +81,9 @@ Open http://localhost:8080
 ### Transactions
 ![Transactions](screenshots/transactions.jpg)
 
+### Chart Detail
+![Chart Detail](screenshots/chart-detail.jpg)
+
 ### Settings
 ![Settings](screenshots/settings.jpg)
 
