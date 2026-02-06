@@ -131,37 +131,55 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 
 ## Roadmap
 
-- [x] User authentication (JWT)
-- [x] Portfolio & position tracking
-- [x] Watchlist with categories
-- [x] Price alerts with Telegram notifications
-- [x] Transaction history
-- [x] Interactive charts (area/candle, MA overlays)
+### ✅ Completed
+- [x] User authentication (JWT + Argon2id)
+- [x] Portfolio & position tracking (stocks, options, crypto)
+- [x] Watchlist with 12+ categories and price alerts
+- [x] Telegram alert notifications
+- [x] Transaction history with realized P&L
+- [x] Interactive charts (area/candle, MA20/50/200)
+- [x] Options chain viewer (calls/puts, expiry selector, ITM highlighting)
+- [x] Portfolio performance chart
+- [x] Allocation donut chart
+- [x] News integration (Google News RSS)
 - [x] Export to CSV/PDF
-- [x] Docker support
-- [x] Cross-device sync (pinned markets)
-- [x] Portfolio performance over time
-- [x] News integration
-- [x] Options chain viewer
+- [x] Docker + CI/CD pipeline
+- [x] Security hardening (CSP, CORS, rate limiting, input validation, audit logging)
+- [x] SVG ticker icons for crypto, commodities, indices, forex
+
+### 🚧 In Progress
+- [ ] Multiple currency support (EUR/USD/GBP)
 - [ ] Push notifications (browser/mobile)
-- [ ] Multiple currency support
+
+### 🧠 v0.19.0 "Oracle" — AI Intelligence Layer
+The killer feature: connect any LLM to analyze your portfolio.
+- [ ] Multi-provider support (OpenAI, Anthropic, Google, Ollama, OpenClaw)
+- [ ] API key management with encryption
+- [ ] Portfolio review & rebalancing suggestions
+- [ ] Watchlist scanner with entry/exit signals
+- [ ] Strategy advisor (options plays, DCA plans, hedging)
+- [ ] Risk & correlation analysis
+- [ ] AI-powered news digest for your holdings
+- [ ] Chat interface for follow-up questions
+- [ ] Scheduled auto-reports (daily/weekly AI briefings)
+
+### 🔗 Blockchain Integration
+- [ ] Connect BTC/ETH/SOL public addresses
+- [ ] Auto-sync balances from on-chain data
+- [ ] Transaction history from block explorers
+- [ ] Multi-wallet aggregation
+- [ ] DeFi position tracking
+
+### 🏦 Broker Integrations
+- [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)
+- [ ] Interactive Brokers
+- [ ] More brokers TBD
+
+### 🌐 Platform
 - [ ] Google Cloud Run demo instance
-- [ ] 🧠 **AI Intelligence Layer ("Oracle")**:
-  - [ ] Multi-LLM support (OpenAI, Anthropic, Google, Ollama, OpenClaw)
-  - [ ] Portfolio review & rebalancing suggestions
-  - [ ] Watchlist scanner with entry/exit signals
-  - [ ] Strategy advisor (options, DCA, hedging)
-  - [ ] Risk & correlation analysis
-  - [ ] AI news digest for holdings
-  - [ ] Chat interface for follow-up questions
-- [ ] Blockchain wallet tracking:
-  - [ ] Connect BTC/ETH public addresses
-  - [ ] Auto-sync balances from on-chain data
-  - [ ] Transaction history from block explorers
-  - [ ] Multi-wallet aggregation
-- [ ] Broker API integrations:
-  - [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)
-  - [ ] More brokers TBD
+- [ ] PWA with offline support
+- [ ] Mobile app (React Native or Capacitor)
+- [ ] Multi-user sharing (read-only portfolio links)
 
 ## License
 
