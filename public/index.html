@@ -2665,7 +2665,7 @@
             updateDetailChart();
         }
         
-        function addToMarkets() {
+        async function addToMarkets() {
             const idx = pinnedMarkets.indexOf(detailSymbol);
             if (idx >= 0) {
                 pinnedMarkets.splice(idx, 1);
@@ -2675,6 +2675,15 @@
                 document.getElementById('addToMarketsBtn').textContent = '📌 Unpin';
             }
             localStorage.setItem('pinnedMarkets', JSON.stringify(pinnedMarkets));
+            // Sync to server if logged in
+            if (token) {
+                try {
+                    const me = await api('/auth/me');
+                    const settings = me.settings || {};
+                    settings.pinnedMarkets = pinnedMarkets;
+                    await api('/auth/settings', { method: 'PUT', body: JSON.stringify({ settings }) });
+                } catch (e) { console.warn('Failed to sync pinned markets:', e); }
+            }
             renderMarkets();
         }
 
@@ -2898,6 +2907,17 @@
             
             updateUserUI();
             initChart();
+            
+            // Sync pinned markets from server if logged in
+            if (token) {
+                try {
+                    const me = await api('/auth/me');
+                    if (me.settings?.pinnedMarkets) {
+                        pinnedMarkets = me.settings.pinnedMarkets;
+                        localStorage.setItem('pinnedMarkets', JSON.stringify(pinnedMarkets));
+                    }
+                } catch (e) { console.warn('Failed to load settings:', e); }
+            }
             
             // Load user data
             await Promise.all([loadPortfolio(), loadWatchlists()]);
