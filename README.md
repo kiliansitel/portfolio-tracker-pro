@@ -16,24 +16,29 @@
 
 - 📊 **Interactive Charts** — Area/candlestick views with MA20/50/200 overlays
 - 💼 **Portfolio Management** — Track positions, options, and cash
-- 👀 **Watchlists** — Customizable with categories and price alerts
-- 🔔 **Alerts** — Set price targets with notifications
+- 👀 **Watchlists** — Customizable with 12+ categories and price alerts
+- 🔔 **Alerts** — Set price targets with Telegram & push notifications
 - ⛓️ **Options Chain** — View calls/puts with strikes and expiry dates
 - 📰 **News Feed** — Real-time market news with stock-specific filtering
 - 🥧 **Allocation Chart** — Visual donut chart showing portfolio breakdown
+- 📈 **Performance Chart** — Historical portfolio value with weekly snapshots
+- 💱 **Multi-Currency** — EUR, USD, GBP, CHF with live exchange rates
+- 🔔 **Push Notifications** — Browser push via service worker (HTTPS required)
 - 📱 **Mobile-First** — Swipe actions, collapsible sections, responsive design
 - 👥 **Multi-User** — JWT auth with per-user portfolios
 - 🔒 **Security Hardened** — CSP, CORS lockdown, input validation, audit logging
 - ⚡ **Fast** — LocalStorage caching, debounced DB writes, indexed queries
+- 🏗️ **Modular Architecture** — Clean route modules, utility services, middleware layers
 
 ## Tech Stack
 
 - **Frontend:** Vanilla JS, [LightweightCharts](https://tradingview.github.io/lightweight-charts/), CSS3
 - **Backend:** Node.js, Express, Helmet
-- **Database:** SQLite (sql.js)
+- **Database:** SQLite (sql.js) with indexed queries
 - **Auth:** JWT + Argon2id (OWASP recommended)
-- **CI/CD:** GitHub Actions, Docker
-- **Security:** Rate limiting, input validation, audit logging
+- **Notifications:** Web Push (VAPID), Telegram Bot API
+- **CI/CD:** GitHub Actions, Docker (multi-arch amd64/arm64)
+- **Security:** Rate limiting, input validation, CSP, audit logging
 
 ## Quick Start
 
@@ -72,6 +77,10 @@ Open http://localhost:8080
 | GET | `/api/alerts` | List alerts |
 | GET | `/api/options/:symbol` | Get options chain |
 | GET | `/api/options/:symbol/:expiry` | Get options for expiry |
+| GET | `/api/exchange-rates` | Get currency exchange rates |
+| POST | `/api/push/subscribe` | Subscribe to push notifications |
+| POST | `/api/push/unsubscribe` | Unsubscribe from push |
+| POST | `/api/push/test` | Send test push notification |
 
 ## Screenshots
 
@@ -146,10 +155,11 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Docker + CI/CD pipeline
 - [x] Security hardening (CSP, CORS, rate limiting, input validation, audit logging)
 - [x] SVG ticker icons for crypto, commodities, indices, forex
+- [x] Multi-currency support (EUR/USD/GBP/CHF) with live exchange rates
+- [x] Push notifications (browser, VAPID-based)
+- [x] Modular architecture (8 route modules, utility services)
 
 ### 🚧 In Progress
-- [ ] Multiple currency support (EUR/USD/GBP)
-- [ ] Push notifications (browser/mobile)
 
 ### 🧠 v0.19.0 "Oracle" — AI Intelligence Layer
 The killer feature: connect any LLM to analyze your portfolio.
