@@ -1,6 +1,17 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.17.1 (2026-02-06) ← CURRENT
+## v0.17.2 (2026-02-06) ← CURRENT
+Performance chart and allocation fixes.
+
+**Fixes:**
+- 🐛 Performance chart now renders correctly (fixed sort order bug)
+- 🐛 Allocation chart uses live option prices from Yahoo (not just entry price)
+- 🐛 All option price lookups now consistent across positions, allocation, summary, exports
+- 🚫 Added no-cache headers for HTML to prevent stale JS
+
+---
+
+## v0.17.1 (2026-02-06)
 Bugfixes for options multiplier and rate limiting.
 
 **Fixes:**

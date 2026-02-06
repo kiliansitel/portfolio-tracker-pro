@@ -2572,12 +2572,13 @@
             let totalCost = 0;
             
             for (const pos of positions) {
-                // For options: use entry price as current (can't fetch option prices)
+                // For options: try Yahoo option symbol, then manual current_price, then entry
                 // For stocks/crypto: use live price or entry price as fallback
                 let currentPrice;
                 if (pos.type === 'option') {
-                    // Options: use manual current_price if set, otherwise entry_price
-                    currentPrice = pos.current_price || pos.entry_price;
+                    const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
+                    const optQuote = optSym ? priceCache[optSym] : null;
+                    currentPrice = optQuote?.price || pos.current_price || pos.entry_price;
                 } else {
                     const q = priceCache[pos.symbol];
                     currentPrice = q?.price || pos.entry_price;
@@ -2637,7 +2638,10 @@
             for (const pos of positions) {
                 let currentPrice;
                 if (pos.type === 'option') {
-                    currentPrice = pos.current_price || pos.entry_price;
+                    // Try to get option price from cache (using constructed symbol) - same as positions display
+                    const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
+                    const optQuote = optSym ? priceCache[optSym] : null;
+                    currentPrice = optQuote?.price || pos.current_price || pos.entry_price;
                 } else {
                     const q = priceCache[pos.symbol];
                     currentPrice = q?.price || pos.entry_price;
@@ -3181,7 +3185,9 @@
             const headers = ['Symbol', 'Name', 'Type', 'Quantity', 'Entry Price', 'Current Price', 'P&L', 'P&L %', 'Notes'];
             const rows = positions.map(pos => {
                 const q = priceCache[pos.symbol];
-                const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
+                const optSym = pos.type === 'option' ? buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price) : null;
+                const optQuote = optSym ? priceCache[optSym] : null;
+                const currentPrice = pos.type === 'option' ? (optQuote?.price || pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 const cost = pos.entry_price * pos.quantity * mult;
                 const value = currentPrice * pos.quantity * mult;
@@ -3243,7 +3249,9 @@
             
             positions.forEach(pos => {
                 const q = priceCache[pos.symbol];
-                const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
+                const optSym = pos.type === 'option' ? buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price) : null;
+                const optQuote = optSym ? priceCache[optSym] : null;
+                const currentPrice = pos.type === 'option' ? (optQuote?.price || pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 totalValue += currentPrice * pos.quantity * mult;
                 totalCost += pos.entry_price * pos.quantity * mult;
@@ -3304,7 +3312,9 @@
         <tbody>
             ${positions.map(pos => {
                 const q = priceCache[pos.symbol];
-                const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
+                const optSym = pos.type === 'option' ? buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price) : null;
+                const optQuote = optSym ? priceCache[optSym] : null;
+                const currentPrice = pos.type === 'option' ? (optQuote?.price || pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 const cost = pos.entry_price * pos.quantity * mult;
                 const value = currentPrice * pos.quantity * mult;

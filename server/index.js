@@ -112,6 +112,16 @@ app.use(hpp()); // Prevent HTTP Parameter Pollution
 app.use(sanitizeInput); // Sanitize all inputs
 app.use(requestLogger); // Log all requests
 
+// No-cache for HTML to ensure latest JS
+app.use((req, res, next) => {
+  if (req.path === '/' || req.path.endsWith('.html')) {
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+  }
+  next();
+});
+
 // Apply rate limiting
 app.use('/api/auth', authLimiter);
 app.use('/api', apiLimiter);
@@ -986,7 +996,7 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
     return res.status(404).json({ error: 'Portfolio not found' });
   }
   
-  let sql = 'SELECT * FROM portfolio_snapshots WHERE portfolio_id = ? ORDER BY date DESC';
+  let sql = 'SELECT * FROM portfolio_snapshots WHERE portfolio_id = ? ORDER BY date ASC';
   const params = [id];
   
   if (days) {
@@ -996,7 +1006,7 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
   
   const snapshots = dbAll(sql, params);
   
-  // Calculate overall performance
+  // Calculate overall performance (first = oldest, last = newest)
   const first = snapshots[0];
   const last = snapshots[snapshots.length - 1];
   
@@ -1006,7 +1016,7 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
     : 0;
   
   res.json({
-    snapshots: snapshots.reverse(), // Oldest first for charts
+    snapshots: snapshots, // Already oldest first (ASC)
     summary: {
       total_return: totalReturn,
       total_return_pct: totalReturnPct,
