@@ -93,6 +93,7 @@ app.get('/api/push/vapid-public-key', (req, res) => {
 });
 
 app.use('/api/transactions', authenticateToken, transactionsRouter);
+app.use('/api', authenticateToken, transactionsRouter); // Also mount for /api/portfolios/:id/transactions
 app.use('/api', authenticateToken, dataRouter); // Data routes (snapshots, performance, reconstruct)
 app.use('/api/push', authenticateToken, pushRouter);
 

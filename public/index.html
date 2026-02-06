@@ -2899,7 +2899,7 @@
             }
             
             // Render allocation chart
-            renderAllocation(totalValue, cash);
+            renderAllocation(totalValue, cashUsd);
         }
 
         // ============ ALLOCATION CHART ============
@@ -3297,7 +3297,7 @@
             const q = priceCache[symbol];
             document.getElementById('chartDetailTitle').textContent = symbol.replace('-USD', '').replace('^', '');
             if (q) {
-                document.getElementById('chartDetailPrice').textContent = '$' + fc(q.price);
+                document.getElementById('chartDetailPrice').textContent = fc(q.price);
                 const changeEl = document.getElementById('chartDetailChange');
                 changeEl.textContent = (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%';
                 changeEl.className = q.changePercent >= 0 ? 'positive' : 'negative';
@@ -3739,7 +3739,7 @@
                 return `<tr>
                     <td><strong>${item.symbol}</strong></td>
                     <td>${item.category || 'general'}</td>
-                    <td>${q?.price ? '$' + fc(q.price) : '--'}</td>
+                    <td>${q?.price ? fc(q.price) : '--'}</td>
                     <td class="${(q?.changePercent || 0) >= 0 ? 'positive' : 'negative'}">${q?.changePercent ? (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%' : '--'}</td>
                     <td>${item.alert_below ? '$' + item.alert_below : '--'}</td>
                 </tr>`;
