@@ -6,11 +6,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Install build dependencies for native modules (argon2)
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY server/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install dependencies (including devDependencies for build)
+RUN npm ci
 
 # Production stage
 FROM node:20-alpine
@@ -27,6 +30,9 @@ COPY --from=builder /app/node_modules ./node_modules
 # Copy application files
 COPY server/index.js ./
 COPY server/package.json ./
+COPY server/middleware ./middleware
+COPY server/validators ./validators
+COPY server/utils ./utils
 COPY public ./public
 
 # Create data directory for database

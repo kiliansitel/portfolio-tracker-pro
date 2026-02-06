@@ -82,6 +82,8 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.17.2** — Fix performance chart rendering, allocation option prices
+- **v0.17.1** — Fix options multiplier, rate limiting
 - **v0.17.0 "Horizon"** — Portfolio performance chart with historical reconstruction
 - **v0.16.0 "Slice"** — Portfolio allocation donut chart
 - **v0.15.0 "Ironclad"** — Security hardening, CI pipeline, tests
