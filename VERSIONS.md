@@ -167,10 +167,10 @@ Initial release.
 - [x] Dark/light theme toggle
 - [x] Export to CSV/PDF
 - [x] Docker container
-- [ ] Portfolio performance history
-- [ ] Push notifications for alerts
+- [x] Portfolio performance history
+- [x] News integration
 - [ ] Options chain viewer
-- [ ] News integration
+- [ ] Push notifications for alerts
 - [ ] Multiple currency support
 
 ---

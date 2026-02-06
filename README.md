@@ -2,7 +2,7 @@
 
 A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 
-![Version](https://img.shields.io/badge/version-0.12.1-blue)
+![Version](https://img.shields.io/badge/version-0.13.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
@@ -97,8 +97,8 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Export to CSV/PDF
 - [x] Docker support
 - [x] Cross-device sync (pinned markets)
-- [ ] Portfolio performance over time
-- [ ] News integration
+- [x] Portfolio performance over time
+- [x] News integration
 - [ ] Options chain viewer
 - [ ] Push notifications (browser/mobile)
 - [ ] Multiple currency support
