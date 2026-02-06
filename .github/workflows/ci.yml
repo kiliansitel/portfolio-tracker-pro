@@ -74,8 +74,9 @@ jobs:
       - name: Test Docker container starts
         run: |
           docker run -d --name test-container -p 8080:8080 portfolio-tracker-pro:test
-          sleep 5
-          curl -f http://localhost:8080/api/tickers/popular || exit 1
+          sleep 10
+          # Show container logs if curl fails
+          curl -f http://localhost:8080/api/tickers/popular || (docker logs test-container && exit 1)
           docker stop test-container
 
   e2e-test:

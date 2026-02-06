@@ -1,6 +1,15 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.17.4 (2026-02-06) ← CURRENT
+## v0.17.5 (2026-02-06) ← CURRENT
+Logo in app header + CI fix.
+
+**Features:**
+- 🎨 Logo displayed in app header
+- 🔧 CI: Increased Docker startup time, better error logging
+
+---
+
+## v0.17.4 (2026-02-06)
 Added project logo and favicon.
 
 **Features:**
