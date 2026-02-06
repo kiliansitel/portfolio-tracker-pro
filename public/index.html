@@ -1597,7 +1597,7 @@
             {
                 name: 'Server API',
                 fetch: async (symbol) => {
-                    const res = await fetch(`${API_BASE}/api/price/${encodeURIComponent(symbol)}`, { signal: AbortSignal.timeout(5000) });
+                    const res = await fetch(`/api/price/${encodeURIComponent(symbol)}`, { signal: AbortSignal.timeout(5000) });
                     if (!res.ok) throw new Error('API error');
                     const data = await res.json();
                     if (!data.price) throw new Error('No data');
@@ -1731,7 +1731,7 @@
             
             // Try server API first (cached), then fallback to CORS proxies
             const sources = [
-                { name: 'Server API', url: `${API_BASE}/api/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${intervals[range]}` },
+                { name: 'Server API', url: `/api/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${intervals[range]}` },
                 { name: 'corsproxy', url: `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`)}` },
                 { name: 'allorigins', url: `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`)}` }
             ];
@@ -2845,7 +2845,7 @@
             
             // Try server API first, then fallback
             const sources = [
-                `${API_BASE}/api/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${intervals[range]}`,
+                `/api/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${intervals[range]}`,
                 `https://corsproxy.io/?${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`)}`
             ];
             
@@ -3109,7 +3109,7 @@
             newsList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading news...</div>';
             
             try {
-                let url = `${API_BASE}/api/news?limit=15`;
+                let url = `/api/news?limit=15`;
                 
                 if (query) {
                     url += `&query=${encodeURIComponent(query)}`;
