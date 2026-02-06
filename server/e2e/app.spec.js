@@ -36,7 +36,7 @@ test.describe('Portfolio Tracker E2E', () => {
       await expect(page.locator('#loginForm')).toBeVisible();
     });
 
-    test('shows error for weak password on register', async ({ page }) => {
+    test('prevents weak password on register', async ({ page }) => {
       await page.goto('/');
       await page.click('[data-form="register"]');
       
@@ -45,8 +45,10 @@ test.describe('Portfolio Tracker E2E', () => {
       await page.fill('#registerForm input[name="password"]', '123');
       await page.click('#registerForm button[type="submit"]');
       
-      // Should show auth error
-      await expect(page.locator('#authError')).not.toBeEmpty({ timeout: 5000 });
+      // HTML5 minlength validation prevents submission — auth overlay should still be visible
+      await expect(page.locator('#authOverlay')).toBeVisible();
+      // And we should NOT be logged in (no dashboard)
+      await expect(page.locator('.summary-grid')).not.toBeVisible();
     });
 
     test('can register and access dashboard', async ({ page }) => {
