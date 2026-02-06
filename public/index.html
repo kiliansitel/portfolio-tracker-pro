@@ -2094,7 +2094,9 @@
             let html = '';
             for (const tx of transactions) {
                 const date = new Date(tx.executed_at).toLocaleDateString();
-                const total = (tx.quantity * tx.price + (tx.fees || 0)).toFixed(2);
+                // Options have 100x multiplier
+                const multiplier = tx.type === 'option' ? 100 : 1;
+                const total = (tx.quantity * tx.price * multiplier + (tx.fees || 0)).toFixed(2);
                 const actionClass = tx.action === 'buy' ? 'positive' : 'negative';
                 const actionIcon = tx.action === 'buy' ? '📈' : '📉';
                 
