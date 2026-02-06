@@ -75,8 +75,11 @@ Open http://localhost:8080
 ### Alerts
 ![Alerts](screenshots/alerts.jpg)
 
-### Chart Detail
-![Chart Detail](screenshots/chart-detail.jpg)
+### News
+![News](screenshots/news.jpg)
+
+### Transactions
+![Transactions](screenshots/transactions.jpg)
 
 ## Version History
 
