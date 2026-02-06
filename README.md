@@ -80,6 +80,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.13.0 "Newswire"** — Market news integration
 - **v0.12.0 "Chronicle"** — Transaction history, alert notifications
 - **v0.11.0 "Container"** — Docker support
 - **v0.10.0 "Export"** — CSV/PDF export
