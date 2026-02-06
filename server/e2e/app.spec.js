@@ -5,6 +5,75 @@
 const { test, expect } = require('@playwright/test');
 
 test.describe('Portfolio Tracker E2E', () => {
+
+  test.describe('Critical: No CSP/JS Errors', () => {
+    test('page loads without console errors', async ({ page }) => {
+      const errors = [];
+      page.on('console', msg => {
+        if (msg.type() === 'error') errors.push(msg.text());
+      });
+      page.on('pageerror', err => errors.push(err.message));
+      
+      await page.goto('/');
+      await page.waitForTimeout(2000);
+      
+      // Filter out expected errors (like rate limit on Yahoo)
+      const criticalErrors = errors.filter(e => 
+        !e.includes('corsproxy') && 
+        !e.includes('yahoo') &&
+        !e.includes('allorigins')
+      );
+      
+      expect(criticalErrors).toHaveLength(0);
+    });
+
+    test('API calls work (no CSP blocking)', async ({ page }) => {
+      await page.goto('/');
+      
+      // Try to hit the API - this would fail if CSP blocks it
+      const response = await page.evaluate(async () => {
+        try {
+          const res = await fetch('/api/tickers/popular');
+          return { ok: res.ok, status: res.status };
+        } catch (e) {
+          return { error: e.message };
+        }
+      });
+      
+      expect(response.error).toBeUndefined();
+      expect(response.ok).toBe(true);
+    });
+
+    test('onclick handlers work (not blocked by CSP)', async ({ page }) => {
+      await page.goto('/');
+      
+      // Click on a nav item - uses onclick
+      const navItem = page.locator('[data-page="settings"]');
+      await navItem.click();
+      
+      // Should navigate to settings page
+      await expect(page.locator('#page-settings')).toHaveClass(/active/);
+    });
+
+    test('login form submits without network error', async ({ page }) => {
+      await page.goto('/');
+      await page.click('text=Login');
+      
+      // Fill and submit login form
+      await page.fill('input[name="username"], input[name="login"]', 'testuser');
+      await page.fill('input[name="password"]', 'wrongpassword');
+      
+      // Listen for network errors
+      let networkError = false;
+      page.on('requestfailed', () => { networkError = true; });
+      
+      await page.click('button:has-text("Login")');
+      await page.waitForTimeout(1000);
+      
+      // Should NOT have network error (CSP would cause this)
+      expect(networkError).toBe(false);
+    });
+  });
   
   test.describe('Homepage', () => {
     test('loads the dashboard', async ({ page }) => {
