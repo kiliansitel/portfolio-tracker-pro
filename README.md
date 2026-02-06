@@ -20,10 +20,12 @@ A TradingView-inspired portfolio tracker with real-time prices, interactive char
 
 ## Tech Stack
 
-- **Frontend:** Vanilla JS, Chart.js, CSS3
-- **Backend:** Node.js, Express
+- **Frontend:** Vanilla JS, [LightweightCharts](https://tradingview.github.io/lightweight-charts/), CSS3
+- **Backend:** Node.js, Express, Helmet
 - **Database:** SQLite (sql.js)
-- **Auth:** JWT + bcrypt
+- **Auth:** JWT + Argon2id (OWASP recommended)
+- **CI/CD:** GitHub Actions, Docker
+- **Security:** Rate limiting, input validation, audit logging
 
 ## Quick Start
 
