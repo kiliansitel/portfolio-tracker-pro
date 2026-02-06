@@ -2212,7 +2212,7 @@
                 let statusText = '⏳ Waiting';
                 
                 if (item.alert_below) {
-                    condition = `Buy below $${item.alert_below}`;
+                    condition = `Buy below ${fp(item.alert_below)}`;
                     if (price > 0 && price <= item.alert_below) {
                         status = 'triggered';
                         statusText = '🔔 TRIGGERED!';
@@ -2220,7 +2220,7 @@
                 }
                 if (item.alert_above) {
                     condition += condition ? ' / ' : '';
-                    condition += `Sell above $${item.alert_above}`;
+                    condition += `Sell above ${fp(item.alert_above)}`;
                     if (price > 0 && price >= item.alert_above) {
                         status = 'triggered';
                         statusText = '🔔 TRIGGERED!';
@@ -2262,7 +2262,7 @@
                             <div style="flex:1;">
                                 <div class="alert-symbol">${item.symbol}</div>
                                 <div class="alert-condition">${condition}</div>
-                                <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? fc(price) : 'Loading...'}</div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? fp(price) : 'Loading...'}</div>
                                 ${progressBar}
                             </div>
                         </div>
@@ -2315,12 +2315,12 @@
                             ${logoHtml(tx.symbol, 28)}
                             <div>
                                 <div style="font-weight:600;">${actionIcon} ${tx.symbol}</div>
-                                <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ ${fc(tx.price)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ ${fp(tx.price)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
                                 ${tx.notes ? `<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">${tx.notes}</div>` : ''}
                             </div>
                         </div>
                         <div style="text-align:right;">
-                            <div class="${actionClass}" style="font-weight:600;">${tx.action === 'buy' ? '-' : '+'}$${total}</div>
+                            <div class="${actionClass}" style="font-weight:600;">${tx.action === 'buy' ? '-' : '+'}${fc(total)}</div>
                             <div style="font-size:0.8rem;color:var(--text-secondary);">${date}</div>
                         </div>
                     </div>
@@ -2446,8 +2446,21 @@
             return sym + converted.toFixed(2);
         }
         
-        // Short alias for templates
+        // Format in native market currency (USD) — for individual ticker prices
+        function formatNative(amount, nativeCurrency) {
+            const cur = nativeCurrency || 'USD';
+            const sym = CURRENCY_SYMBOLS[cur] || cur + ' ';
+            if (Math.abs(amount) >= 1000) {
+                return sym + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+            return sym + amount.toFixed(2);
+        }
+        
+        // Short aliases for templates:
+        // fc(amount) = format in user's selected currency (portfolio totals, P&L, cash)
+        // fp(amount) = format as native market price (individual ticker prices, entry/current)
         function fc(amount) { return formatCurrency(amount); }
+        function fp(amount) { return formatNative(amount); }
         function cs() { return CURRENCY_SYMBOLS[userCurrency] || '$'; }
         
         async function updateCurrencySetting() {
@@ -2606,12 +2619,12 @@
                     <div class="swipe-content position-card">
                         <div class="position-header">
                             <div class="position-symbol ticker-with-logo" onclick="selectTicker('${pos.symbol}')">${logoHtml(pos.symbol, 28)}${pos.symbol}${optionInfo}<span class="type-badge ${typeClass}">${pos.type}</span></div>
-                            <div class="position-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</div>
+                            <div class="position-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}${fc(pnl)}</div>
                         </div>
                         <div class="position-details">
                             <div class="position-stat"><span class="stat-label">Qty</span><span>${pos.quantity}${pos.type === 'option' ? 'x' : ''}</span></div>
-                            <div class="position-stat"><span class="stat-label">Entry</span><span>${fc(pos.entry_price)}</span></div>
-                            <div class="position-stat"><span class="stat-label">Current</span><span>${fc(currentPrice)}</span></div>
+                            <div class="position-stat"><span class="stat-label">Entry</span><span>${fp(pos.entry_price)}</span></div>
+                            <div class="position-stat"><span class="stat-label">Current</span><span>${fp(currentPrice)}</span></div>
                             <div class="position-stat"><span class="stat-label">P&L %</span><span class="${pnlPct >= 0 ? 'positive' : 'negative'}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</span></div>
                         </div>
                         ${pos.notes ? `<div class="position-notes">${pos.notes}</div>` : ''}
@@ -2705,7 +2718,7 @@
                     } else if (item.alert_above && price > 0 && price >= item.alert_above) {
                         alertBadge = '<span class="alert-badge sell">🔔 SELL</span>';
                     }
-                    if (item.alert_below) target = `Target: $${item.alert_below}`;
+                    if (item.alert_below) target = `Target: ${fp(item.alert_below)}`;
                     
                     html += `<div class="swipe-container" data-id="${item.id}" data-type="watchlist">
                         <div class="swipe-actions">
@@ -2722,7 +2735,7 @@
                                 </div>
                             </div>
                             <div class="watch-price">
-                                <div>${price > 0 ? fc(price) : '--'}</div>
+                                <div>${price > 0 ? fp(price) : '--'}</div>
                                 <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
                             </div>
                         </div>
@@ -2840,7 +2853,7 @@
             const el = document.getElementById('marketsGrid');
             el.innerHTML = quotes.filter(Boolean).map(q => {
                 const sel = q.symbol === selectedSymbol ? 'selected' : '';
-                const price = q.symbol.includes('BTC') ? fc(q.price) : fc(q.price);
+                const price = q.symbol.includes('BTC') ? fp(q.price) : fp(q.price);
                 const isPinned = pinnedMarkets.includes(q.symbol);
                 const pinBadge = isPinned && !defaultSymbols.includes(q.symbol) ? '<span style="font-size:0.6rem;">📌</span>' : '';
                 return `<div class="market-item ${sel}" onclick="selectTickerSmall('${q.symbol}')">
@@ -3297,7 +3310,7 @@
             const q = priceCache[symbol];
             document.getElementById('chartDetailTitle').textContent = symbol.replace('-USD', '').replace('^', '');
             if (q) {
-                document.getElementById('chartDetailPrice').textContent = fc(q.price);
+                document.getElementById('chartDetailPrice').textContent = fp(q.price);
                 const changeEl = document.getElementById('chartDetailChange');
                 changeEl.textContent = (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%';
                 changeEl.className = q.changePercent >= 0 ? 'positive' : 'negative';
@@ -3685,15 +3698,15 @@
     <div class="summary">
         <div class="summary-card">
             <div class="summary-label">Portfolio Value</div>
-            <div class="summary-value">$${(totalValue + cash).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div class="summary-value">${fc(totalValue + cash)}</div>
         </div>
         <div class="summary-card">
             <div class="summary-label">Total P&L</div>
-            <div class="summary-value ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString(undefined, {minimumFractionDigits: 2})} (${pnlPct.toFixed(2)}%)</div>
+            <div class="summary-value ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}${fc(pnl)} (${pnlPct.toFixed(2)}%)</div>
         </div>
         <div class="summary-card">
             <div class="summary-label">Cash</div>
-            <div class="summary-value">$${cash.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+            <div class="summary-value">${fc(cash)}</div>
         </div>
         <div class="summary-card">
             <div class="summary-label">Positions</div>
@@ -3720,9 +3733,9 @@
                     <td><strong>${pos.symbol}</strong></td>
                     <td>${pos.type}</td>
                     <td>${pos.quantity}</td>
-                    <td>${fc(pos.entry_price)}</td>
-                    <td>${fc(currentPrice)}</td>
-                    <td class="${pl >= 0 ? 'positive' : 'negative'}">${pl >= 0 ? '+' : ''}$${pl.toFixed(2)}</td>
+                    <td>${fp(pos.entry_price)}</td>
+                    <td>${fp(currentPrice)}</td>
+                    <td class="${pl >= 0 ? 'positive' : 'negative'}">${pl >= 0 ? '+' : ''}${fc(pl)}</td>
                 </tr>`;
             }).join('')}
         </tbody>
@@ -3739,7 +3752,7 @@
                 return `<tr>
                     <td><strong>${item.symbol}</strong></td>
                     <td>${item.category || 'general'}</td>
-                    <td>${q?.price ? fc(q.price) : '--'}</td>
+                    <td>${q?.price ? fp(q.price) : '--'}</td>
                     <td class="${(q?.changePercent || 0) >= 0 ? 'positive' : 'negative'}">${q?.changePercent ? (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%' : '--'}</td>
                     <td>${item.alert_below ? '$' + item.alert_below : '--'}</td>
                 </tr>`;
