@@ -2240,7 +2240,7 @@
                             <div style="flex:1;">
                                 <div class="alert-symbol">${item.symbol}</div>
                                 <div class="alert-condition">${condition}</div>
-                                <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? '$' + price.toFixed(2) : 'Loading...'}</div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? fc(price) : 'Loading...'}</div>
                                 ${progressBar}
                             </div>
                         </div>
@@ -2293,7 +2293,7 @@
                             ${logoHtml(tx.symbol, 28)}
                             <div>
                                 <div style="font-weight:600;">${actionIcon} ${tx.symbol}</div>
-                                <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ $${tx.price.toFixed(2)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ ${fc(tx.price)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
                                 ${tx.notes ? `<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">${tx.notes}</div>` : ''}
                             </div>
                         </div>
@@ -2415,6 +2415,10 @@
             return sym + converted.toFixed(2);
         }
         
+        // Short alias for templates
+        function fc(amount) { return formatCurrency(amount); }
+        function cs() { return CURRENCY_SYMBOLS[userCurrency] || '$'; }
+        
         async function updateCurrencySetting() {
             const sel = document.getElementById('settingsCurrency');
             userCurrency = sel.value;
@@ -2495,7 +2499,9 @@
         async function initPushNotifications() {
             if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
                 const btn = document.getElementById('pushToggle');
-                if (btn) { btn.textContent = '❌ Not supported'; btn.disabled = true; }
+                if (btn) { btn.textContent = '🔒 Requires HTTPS'; btn.disabled = true; btn.style.fontSize = '0.75rem'; btn.style.opacity = '0.6'; }
+                const status = document.getElementById('pushStatus');
+                if (status) status.textContent = 'Push notifications require HTTPS. Use your SSL domain.';
                 return;
             }
             try {
@@ -2573,8 +2579,8 @@
                         </div>
                         <div class="position-details">
                             <div class="position-stat"><span class="stat-label">Qty</span><span>${pos.quantity}${pos.type === 'option' ? 'x' : ''}</span></div>
-                            <div class="position-stat"><span class="stat-label">Entry</span><span>$${pos.entry_price.toFixed(2)}</span></div>
-                            <div class="position-stat"><span class="stat-label">Current</span><span>$${currentPrice.toFixed(2)}</span></div>
+                            <div class="position-stat"><span class="stat-label">Entry</span><span>${fc(pos.entry_price)}</span></div>
+                            <div class="position-stat"><span class="stat-label">Current</span><span>${fc(currentPrice)}</span></div>
                             <div class="position-stat"><span class="stat-label">P&L %</span><span class="${pnlPct >= 0 ? 'positive' : 'negative'}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</span></div>
                         </div>
                         ${pos.notes ? `<div class="position-notes">${pos.notes}</div>` : ''}
@@ -2685,7 +2691,7 @@
                                 </div>
                             </div>
                             <div class="watch-price">
-                                <div>${price > 0 ? '$' + price.toFixed(2) : '--'}</div>
+                                <div>${price > 0 ? fc(price) : '--'}</div>
                                 <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
                             </div>
                         </div>
@@ -2803,7 +2809,7 @@
             const el = document.getElementById('marketsGrid');
             el.innerHTML = quotes.filter(Boolean).map(q => {
                 const sel = q.symbol === selectedSymbol ? 'selected' : '';
-                const price = q.symbol.includes('BTC') ? '$' + q.price.toFixed(0) : q.price.toFixed(2);
+                const price = q.symbol.includes('BTC') ? fc(q.price) : fc(q.price);
                 const isPinned = pinnedMarkets.includes(q.symbol);
                 const pinBadge = isPinned && !defaultSymbols.includes(q.symbol) ? '<span style="font-size:0.6rem;">📌</span>' : '';
                 return `<div class="market-item ${sel}" onclick="selectTickerSmall('${q.symbol}')">
@@ -2849,12 +2855,12 @@
             const pnl = totalValue - totalCost;
             const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
             
-            document.getElementById('totalValue').textContent = '$' + (totalValue + cash).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            document.getElementById('totalPnL').textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('totalValue').textContent = fc(totalValue + cash);
+            document.getElementById('totalPnL').textContent = (pnl >= 0 ? '+' : '') + fc(pnl);
             document.getElementById('totalPnL').className = 'summary-value ' + (pnl >= 0 ? 'positive' : 'negative');
             document.getElementById('totalPnLPct').textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
             document.getElementById('totalPnLPct').className = 'summary-sub ' + (pnlPct >= 0 ? 'positive' : 'negative');
-            document.getElementById('cashValue').textContent = '$' + cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('cashValue').textContent = fc(cash);
             
             // Save snapshot if logged in
             if (token && currentPortfolio && totalValue > 0) {
@@ -2967,7 +2973,7 @@
             ctx.font = 'bold 16px system-ui';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText('$' + (total/1000).toFixed(1) + 'k', centerX, centerY - 8);
+            ctx.fillText(cs() + (convertPrice(total, userCurrency)/1000).toFixed(1) + 'k', centerX, centerY - 8);
             ctx.font = '11px system-ui';
             ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
             ctx.fillText('Total', centerX, centerY + 10);
@@ -3014,7 +3020,7 @@
                 if (angle >= start && angle < end) {
                     tooltip.innerHTML = `
                         <div style="font-weight:600;color:${slice.color};">${slice.label}</div>
-                        <div>$${slice.value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        <div>${fc(slice.value)}</div>
                         <div style="color:var(--text-secondary);">${slice.pct.toFixed(1)}%</div>
                     `;
                     tooltip.style.display = 'block';
@@ -3091,10 +3097,10 @@
                 renderPerformanceChart(data.snapshots);
                 
                 // Update summary
-                document.getElementById('perfStart').textContent = '$' + data.summary.start_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                document.getElementById('perfCurrent').textContent = '$' + data.summary.current_value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('perfStart').textContent = fc(data.summary.start_value);
+                document.getElementById('perfCurrent').textContent = fc(data.summary.current_value);
                 const returnEl = document.getElementById('perfReturn');
-                returnEl.textContent = (data.summary.total_return >= 0 ? '+' : '') + '$' + data.summary.total_return.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' (' + data.summary.total_return_pct.toFixed(2) + '%)';
+                returnEl.textContent = (data.summary.total_return >= 0 ? '+' : '') + fc(data.summary.total_return) + ' (' + data.summary.total_return_pct.toFixed(2) + '%)';
                 returnEl.className = data.summary.total_return >= 0 ? 'positive' : 'negative';
             } catch (e) {
                 console.warn('Failed to load performance:', e);
@@ -3260,7 +3266,7 @@
             const q = priceCache[symbol];
             document.getElementById('chartDetailTitle').textContent = symbol.replace('-USD', '').replace('^', '');
             if (q) {
-                document.getElementById('chartDetailPrice').textContent = '$' + q.price.toFixed(2);
+                document.getElementById('chartDetailPrice').textContent = '$' + fc(q.price);
                 const changeEl = document.getElementById('chartDetailChange');
                 changeEl.textContent = (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%';
                 changeEl.className = q.changePercent >= 0 ? 'positive' : 'negative';
@@ -3683,8 +3689,8 @@
                     <td><strong>${pos.symbol}</strong></td>
                     <td>${pos.type}</td>
                     <td>${pos.quantity}</td>
-                    <td>$${pos.entry_price.toFixed(2)}</td>
-                    <td>$${currentPrice.toFixed(2)}</td>
+                    <td>${fc(pos.entry_price)}</td>
+                    <td>${fc(currentPrice)}</td>
                     <td class="${pl >= 0 ? 'positive' : 'negative'}">${pl >= 0 ? '+' : ''}$${pl.toFixed(2)}</td>
                 </tr>`;
             }).join('')}
@@ -3702,7 +3708,7 @@
                 return `<tr>
                     <td><strong>${item.symbol}</strong></td>
                     <td>${item.category || 'general'}</td>
-                    <td>${q?.price ? '$' + q.price.toFixed(2) : '--'}</td>
+                    <td>${q?.price ? '$' + fc(q.price) : '--'}</td>
                     <td class="${(q?.changePercent || 0) >= 0 ? 'positive' : 'negative'}">${q?.changePercent ? (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%' : '--'}</td>
                     <td>${item.alert_below ? '$' + item.alert_below : '--'}</td>
                 </tr>`;
