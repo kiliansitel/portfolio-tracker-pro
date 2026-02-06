@@ -2089,7 +2089,8 @@
                 if (portfolios.length > 0) {
                     currentPortfolio = portfolios[0];
                     portfolioId = currentPortfolio.id;
-                    document.getElementById('settingsCash').value = currentPortfolio.cash || 0;
+                    // Display cash in user's currency
+                    document.getElementById('settingsCash').value = Math.round(convertPrice(currentPortfolio.cash || 0, userCurrency));
                     positions = await api(`/portfolios/${portfolioId}/positions`);
                     renderPositions();
                 }
@@ -2397,9 +2398,12 @@
 
         async function updateCashSetting() {
             if (!token || !portfolioId) return;
-            const cash = parseFloat(document.getElementById('settingsCash').value) || 0;
+            let cash = parseFloat(document.getElementById('settingsCash').value) || 0;
+            // Convert from user's display currency to USD for storage
+            cash = convertToUsd(cash, userCurrency);
             try {
                 await api(`/portfolios/${portfolioId}`, { method: 'PUT', body: JSON.stringify({ cash }) });
+                showToast('Cash updated: ' + fc(cash), 'success');
             } catch (e) {
                 console.error(e);
             }
