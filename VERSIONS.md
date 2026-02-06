@@ -1,6 +1,16 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.9.0 "Theme" (2026-02-06) ← CURRENT
+## v0.10.0 "Export" (2026-02-06) ← CURRENT
+Data export functionality.
+
+**New Features:**
+- 📄 **CSV Export** — Export positions and watchlist to CSV
+- 📑 **PDF Report** — Full portfolio summary (opens print dialog)
+- Settings → Export Data section
+
+---
+
+## v0.9.0 "Theme" (2026-02-06)
 Dark/light theme toggle.
 
 **New Features:**
@@ -100,7 +110,7 @@ Initial release.
 
 ## Roadmap
 - [x] Dark/light theme toggle
-- [ ] Export to CSV/PDF
+- [x] Export to CSV/PDF
 - [ ] Docker container
 - [ ] Portfolio performance history
 - [ ] Push notifications for alerts

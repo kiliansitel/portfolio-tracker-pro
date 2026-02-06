@@ -1076,11 +1076,35 @@
                             </div>
                         </div>
                         <div class="settings-section">
+                            <h3>Export Data</h3>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Portfolio</div>
+                                    <div class="setting-desc">Export positions to CSV</div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="exportPositionsCSV()">📄 CSV</button>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Watchlist</div>
+                                    <div class="setting-desc">Export watchlist to CSV</div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="exportWatchlistCSV()">📄 CSV</button>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Full Report</div>
+                                    <div class="setting-desc">Portfolio summary as PDF</div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="exportPDF()">📑 PDF</button>
+                            </div>
+                        </div>
+                        <div class="settings-section">
                             <h3>About</h3>
                             <div class="setting-item">
                                 <div>
                                     <div class="setting-label">Portfolio Tracker Pro</div>
-                                    <div class="setting-desc">v0.9.0 "Theme"</div>
+                                    <div class="setting-desc">v0.10.0 "Export"</div>
                                 </div>
                             </div>
                             <div class="setting-item">
@@ -2424,6 +2448,185 @@
             }
             localStorage.setItem('pinnedMarkets', JSON.stringify(pinnedMarkets));
             renderMarkets();
+        }
+
+        // ============ EXPORT ============
+        function exportPositionsCSV() {
+            if (!positions.length) {
+                alert('No positions to export');
+                return;
+            }
+            
+            const headers = ['Symbol', 'Name', 'Type', 'Quantity', 'Entry Price', 'Current Price', 'P&L', 'P&L %', 'Notes'];
+            const rows = positions.map(pos => {
+                const q = priceCache[pos.symbol];
+                const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
+                const cost = pos.entry_price * pos.quantity * (pos.multiplier || 1);
+                const value = currentPrice * pos.quantity * (pos.multiplier || 1);
+                const pnl = value - cost;
+                const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                return [
+                    pos.symbol,
+                    pos.name || '',
+                    pos.type,
+                    pos.quantity,
+                    pos.entry_price.toFixed(2),
+                    currentPrice.toFixed(2),
+                    pnl.toFixed(2),
+                    pnlPct.toFixed(2) + '%',
+                    (pos.notes || '').replace(/,/g, ';')
+                ];
+            });
+            
+            downloadCSV([headers, ...rows], 'portfolio-positions.csv');
+        }
+        
+        function exportWatchlistCSV() {
+            if (!watchlist.length) {
+                alert('No watchlist items to export');
+                return;
+            }
+            
+            const headers = ['Symbol', 'Name', 'Category', 'Current Price', 'Change %', 'Alert Below', 'Alert Above'];
+            const rows = watchlist.map(item => {
+                const q = priceCache[item.symbol];
+                return [
+                    item.symbol,
+                    item.name || '',
+                    item.category || 'general',
+                    q?.price?.toFixed(2) || '--',
+                    q?.changePercent?.toFixed(2) + '%' || '--',
+                    item.alert_below || '',
+                    item.alert_above || ''
+                ];
+            });
+            
+            downloadCSV([headers, ...rows], 'watchlist.csv');
+        }
+        
+        function downloadCSV(data, filename) {
+            const csv = data.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+        
+        function exportPDF() {
+            // Create a printable HTML report
+            const cash = parseFloat(document.getElementById('settingsCash').value) || 0;
+            let totalValue = 0;
+            let totalCost = 0;
+            
+            positions.forEach(pos => {
+                const q = priceCache[pos.symbol];
+                const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
+                const mult = pos.multiplier || 1;
+                totalValue += currentPrice * pos.quantity * mult;
+                totalCost += pos.entry_price * pos.quantity * mult;
+            });
+            
+            const pnl = totalValue - totalCost;
+            const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+            
+            const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Portfolio Report - ${new Date().toLocaleDateString()}</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        h1 { color: #2962ff; }
+        .summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin: 20px 0; }
+        .summary-card { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+        .summary-label { color: #666; font-size: 0.9rem; }
+        .summary-value { font-size: 1.5rem; font-weight: bold; }
+        .positive { color: #26a69a; }
+        .negative { color: #ef5350; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        th { background: #f5f5f5; }
+        .section-title { margin-top: 30px; border-bottom: 2px solid #2962ff; padding-bottom: 5px; }
+        @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+    </style>
+</head>
+<body>
+    <h1>📊 Portfolio Report</h1>
+    <p>Generated: ${new Date().toLocaleString()}</p>
+    
+    <div class="summary">
+        <div class="summary-card">
+            <div class="summary-label">Portfolio Value</div>
+            <div class="summary-value">$${(totalValue + cash).toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Total P&L</div>
+            <div class="summary-value ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}$${pnl.toLocaleString(undefined, {minimumFractionDigits: 2})} (${pnlPct.toFixed(2)}%)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Cash</div>
+            <div class="summary-value">$${cash.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-label">Positions</div>
+            <div class="summary-value">${positions.length}</div>
+        </div>
+    </div>
+    
+    <h2 class="section-title">💼 Positions</h2>
+    <table>
+        <thead>
+            <tr><th>Symbol</th><th>Type</th><th>Qty</th><th>Entry</th><th>Current</th><th>P&L</th></tr>
+        </thead>
+        <tbody>
+            ${positions.map(pos => {
+                const q = priceCache[pos.symbol];
+                const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
+                const cost = pos.entry_price * pos.quantity * (pos.multiplier || 1);
+                const value = currentPrice * pos.quantity * (pos.multiplier || 1);
+                const pl = value - cost;
+                return `<tr>
+                    <td><strong>${pos.symbol}</strong></td>
+                    <td>${pos.type}</td>
+                    <td>${pos.quantity}</td>
+                    <td>$${pos.entry_price.toFixed(2)}</td>
+                    <td>$${currentPrice.toFixed(2)}</td>
+                    <td class="${pl >= 0 ? 'positive' : 'negative'}">${pl >= 0 ? '+' : ''}$${pl.toFixed(2)}</td>
+                </tr>`;
+            }).join('')}
+        </tbody>
+    </table>
+    
+    <h2 class="section-title">👁️ Watchlist</h2>
+    <table>
+        <thead>
+            <tr><th>Symbol</th><th>Category</th><th>Price</th><th>Change</th><th>Target</th></tr>
+        </thead>
+        <tbody>
+            ${watchlist.map(item => {
+                const q = priceCache[item.symbol];
+                return `<tr>
+                    <td><strong>${item.symbol}</strong></td>
+                    <td>${item.category || 'general'}</td>
+                    <td>${q?.price ? '$' + q.price.toFixed(2) : '--'}</td>
+                    <td class="${(q?.changePercent || 0) >= 0 ? 'positive' : 'negative'}">${q?.changePercent ? (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%' : '--'}</td>
+                    <td>${item.alert_below ? '$' + item.alert_below : '--'}</td>
+                </tr>`;
+            }).join('')}
+        </tbody>
+    </table>
+    
+    <p style="color: #666; margin-top: 40px; font-size: 0.9rem;">
+        Generated by Portfolio Tracker Pro | Data from Yahoo Finance
+    </p>
+</body>
+</html>`;
+            
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            setTimeout(() => printWindow.print(), 500);
         }
 
         // ============ THEME ============
