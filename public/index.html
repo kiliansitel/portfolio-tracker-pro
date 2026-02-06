@@ -775,6 +775,37 @@
         .swipe-action.edit { background: var(--accent-blue); }
         .swipe-action.alert { background: var(--accent-orange); }
         .swipe-action.delete { background: var(--accent-red); }
+        
+        /* Ticker logos */
+        .ticker-logo {
+            border-radius: 50%;
+            object-fit: contain;
+            background: #fff;
+            vertical-align: middle;
+            margin-right: 8px;
+            flex-shrink: 0;
+        }
+        .ticker-with-logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        /* Desktop: hover to reveal actions */
+        @media (pointer: fine) {
+            .swipe-actions {
+                opacity: 0;
+                transition: opacity 0.2s ease;
+            }
+            .swipe-container:hover .swipe-actions {
+                opacity: 1;
+            }
+            .swipe-container:hover .swipe-content {
+                transform: translateX(-140px);
+            }
+            .swipe-container:has(.swipe-actions > .swipe-action:only-child):hover .swipe-content {
+                transform: translateX(-70px);
+            }
+        }
 
         /* Chart Detail Modal */
         .modal-fullscreen {
@@ -1395,6 +1426,24 @@
             return data;
         }
 
+        // ============ TICKER LOGOS ============
+        function getTickerLogo(symbol) {
+            // Clean symbol for logo lookup
+            const clean = symbol.replace(/[-=^]/g, '').toUpperCase();
+            // Use multiple sources with fallback
+            const sources = [
+                `https://assets.parqet.com/logos/symbol/${clean}`,
+                `https://s3-symbol-logo.tradingview.com/${clean.toLowerCase()}--big.svg`,
+                `https://logo.clearbit.com/${clean.toLowerCase()}.com`
+            ];
+            return sources[0]; // Primary source
+        }
+        
+        function logoHtml(symbol, size = 24) {
+            const logo = getTickerLogo(symbol);
+            return `<img src="${logo}" alt="" class="ticker-logo" style="width:${size}px;height:${size}px;" onerror="this.style.display='none'">`;
+        }
+
         // ============ PRICE SOURCES ============
         const CACHE_KEY = 'portfolio_price_cache';
         const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 min for stale data display
@@ -1876,10 +1925,13 @@
                         <div class="swipe-action delete" onclick="deleteWatchlistItem(${item.id})">🗑️</div>
                     </div>
                     <div class="swipe-content alert-item">
-                        <div class="alert-info" onclick="selectTicker('${item.symbol}')" style="cursor:pointer;flex:1;">
-                            <div class="alert-symbol">${item.symbol}</div>
-                            <div class="alert-condition">${condition}</div>
-                            <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? '$' + price.toFixed(2) : 'Loading...'}</div>
+                        <div class="alert-info" onclick="selectTicker('${item.symbol}')" style="cursor:pointer;flex:1;display:flex;align-items:center;gap:10px;">
+                            ${logoHtml(item.symbol, 32)}
+                            <div>
+                                <div class="alert-symbol">${item.symbol}</div>
+                                <div class="alert-condition">${condition}</div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? '$' + price.toFixed(2) : 'Loading...'}</div>
+                            </div>
                         </div>
                         <div class="alert-status ${status}">${statusText}</div>
                     </div>
@@ -1924,10 +1976,13 @@
                         <div class="swipe-action delete" onclick="deleteTransaction(${tx.id})">🗑️</div>
                     </div>
                     <div class="swipe-content" style="padding:12px;display:flex;justify-content:space-between;align-items:center;">
-                        <div onclick="selectTicker('${tx.symbol}')" style="cursor:pointer;flex:1;">
-                            <div style="font-weight:600;">${actionIcon} ${tx.symbol}</div>
-                            <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ $${tx.price.toFixed(2)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
-                            ${tx.notes ? `<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">${tx.notes}</div>` : ''}
+                        <div onclick="selectTicker('${tx.symbol}')" style="cursor:pointer;flex:1;display:flex;align-items:center;gap:10px;">
+                            ${logoHtml(tx.symbol, 28)}
+                            <div>
+                                <div style="font-weight:600;">${actionIcon} ${tx.symbol}</div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ $${tx.price.toFixed(2)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
+                                ${tx.notes ? `<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">${tx.notes}</div>` : ''}
+                            </div>
                         </div>
                         <div style="text-align:right;">
                             <div class="${actionClass}" style="font-weight:600;">${tx.action === 'buy' ? '-' : '+'}$${total}</div>
@@ -2070,7 +2125,7 @@
                     </div>
                     <div class="swipe-content position-card">
                         <div class="position-header">
-                            <div class="position-symbol" onclick="selectTicker('${pos.symbol}')">${pos.symbol}${optionInfo}<span class="type-badge ${typeClass}">${pos.type}</span></div>
+                            <div class="position-symbol ticker-with-logo" onclick="selectTicker('${pos.symbol}')">${logoHtml(pos.symbol, 28)}${pos.symbol}${optionInfo}<span class="type-badge ${typeClass}">${pos.type}</span></div>
                             <div class="position-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</div>
                         </div>
                         <div class="position-details">
@@ -2170,10 +2225,13 @@
                             <div class="swipe-action delete" onclick="deleteWatchlistItem(${item.id})">🗑️</div>
                         </div>
                         <div class="swipe-content watchlist-item">
-                            <div class="watch-info" onclick="selectTicker('${item.symbol}')">
-                                <div><span class="watch-symbol">${item.symbol}</span>${alertBadge}</div>
-                                <div class="watch-name">${item.name || ''}</div>
-                                ${target ? `<div class="watch-target">${target}</div>` : ''}
+                            <div class="watch-info" onclick="selectTicker('${item.symbol}')" style="display:flex;align-items:center;gap:10px;">
+                                ${logoHtml(item.symbol, 32)}
+                                <div>
+                                    <div><span class="watch-symbol">${item.symbol}</span>${alertBadge}</div>
+                                    <div class="watch-name">${item.name || ''}</div>
+                                    ${target ? `<div class="watch-target">${target}</div>` : ''}
+                                </div>
                             </div>
                             <div class="watch-price">
                                 <div>${price > 0 ? '$' + price.toFixed(2) : '--'}</div>
@@ -2298,7 +2356,7 @@
                 const isPinned = pinnedMarkets.includes(q.symbol);
                 const pinBadge = isPinned && !defaultSymbols.includes(q.symbol) ? '<span style="font-size:0.6rem;">📌</span>' : '';
                 return `<div class="market-item ${sel}" onclick="selectTickerSmall('${q.symbol}')">
-                    <div class="market-symbol">${names[q.symbol] || q.symbol} ${pinBadge}</div>
+                    <div class="market-symbol" style="display:flex;align-items:center;gap:4px;">${logoHtml(q.symbol, 16)}${names[q.symbol] || q.symbol} ${pinBadge}</div>
                     <div class="market-price">${price}</div>
                     <div class="market-change ${q.changePercent >= 0 ? 'positive' : 'negative'}">${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%</div>
                 </div>`;
