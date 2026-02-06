@@ -1440,9 +1440,16 @@
                         <label>Category</label>
                         <select name="category" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
                             <option value="tech">Tech</option>
-                            <option value="safe">Safe Haven</option>
                             <option value="robotics">Robotics/AI</option>
                             <option value="crypto">Crypto</option>
+                            <option value="indices">Indices</option>
+                            <option value="etf">ETFs</option>
+                            <option value="commodities">Commodities</option>
+                            <option value="forex">Forex</option>
+                            <option value="energy">Energy</option>
+                            <option value="resources">Resources</option>
+                            <option value="safe">Safe Haven</option>
+                            <option value="industrial">Industrial</option>
                             <option value="general">General</option>
                         </select>
                     </div>
@@ -1643,6 +1650,7 @@
             'GC=F':     makeSvgIcon('#D4AF37', '#fff', 'Au'),
             'SI=F':     makeSvgIcon('#C0C0C0', '#333', 'Ag'),
             'CL=F':     makeSvgIcon('#333', '#fff', 'Oil', 9),
+            'BZ=F':     makeSvgIcon('#5C4033', '#fff', 'Oil', 9),
             'NG=F':     makeSvgIcon('#4A90D9', '#fff', 'NG'),
             'PL=F':     makeSvgIcon('#E5E4E2', '#333', 'Pt'),
             'HG=F':     makeSvgIcon('#B87333', '#fff', 'Cu'),
@@ -1658,24 +1666,40 @@
             // Currency / Bond / Metal ETFs
             'DX-Y.NYB': makeSvgIcon('#2E8B57', '#fff', '$'),
             'EUR=X':    makeSvgIcon('#003399', '#FFD700', '€'),
+            'EURUSD=X': makeSvgIcon('#003399', '#FFD700', '€/$', 8),
+            'JPY=X':    makeSvgIcon('#BC002D', '#fff', '¥'),
+            'GBP=X':    makeSvgIcon('#1B365D', '#fff', '£'),
+            // BTC pairs
+            'BTC-EUR':  makeBtcIcon(),
         };
+
+        // Fallback: auto-generate icon for unknown tickers
+        function getFallbackIcon(symbol) {
+            const colors = ['#3498DB','#E74C3C','#2ECC71','#9B59B6','#E67E22','#1ABC9C','#34495E','#F39C12'];
+            let hash = 0;
+            for (let i = 0; i < symbol.length; i++) hash = symbol.charCodeAt(i) + ((hash << 5) - hash);
+            const bg = colors[Math.abs(hash) % colors.length];
+            const label = symbol.replace(/[-=^.]/g, '').substring(0, 3).toUpperCase();
+            return makeSvgIcon(bg, '#fff', label, label.length > 2 ? 8 : 10);
+        }
 
         function getTickerLogo(symbol) {
             if (TICKER_ICONS[symbol]) return TICKER_ICONS[symbol];
             // Clean symbol for logo lookup
-            const clean = symbol.replace(/[-=^]/g, '').toUpperCase();
-            // Use multiple sources with fallback
-            const sources = [
-                `https://assets.parqet.com/logos/symbol/${clean}`,
-                `https://s3-symbol-logo.tradingview.com/${clean.toLowerCase()}--big.svg`,
-                `https://logo.clearbit.com/${clean.toLowerCase()}.com`
-            ];
-            return sources[0]; // Primary source
+            const clean = symbol.replace(/[-=^.]/g, '').toUpperCase();
+            // Symbols with special chars (futures, forex, indices) won't have external logos
+            if (/[=^]/.test(symbol) || symbol.endsWith('-USD') || symbol.endsWith('-EUR')) {
+                return getFallbackIcon(symbol);
+            }
+            return `https://assets.parqet.com/logos/symbol/${clean}`;
         }
         
         function logoHtml(symbol, size = 24) {
             const logo = getTickerLogo(symbol);
-            return `<img src="${logo}" alt="" class="ticker-logo" style="width:${size}px;height:${size}px;" onerror="this.style.display='none'">`;
+            // SVG data URIs and fallbacks never fail, external URLs might
+            const isSvg = logo.startsWith('data:');
+            const errorHandler = isSvg ? '' : `onerror="this.src='${getFallbackIcon(symbol)}'"`;
+            return `<img src="${logo}" alt="" class="ticker-logo" style="width:${size}px;height:${size}px;" ${errorHandler}>`;
         }
 
         // ============ PRICE SOURCES ============
@@ -2444,7 +2468,13 @@
             
             // Group by category
             const categories = {};
-            const categoryNames = { tech: '💻 Tech', crypto: '₿ Crypto', safe: '🛡️ Safe Haven', robotics: '🤖 Robotics', general: '📈 General' };
+            const categoryNames = {
+                tech: '💻 Tech', robotics: '🤖 Robotics', crypto: '₿ Crypto',
+                indices: '📊 Indices', etf: '📦 ETFs', commodities: '⚡ Commodities',
+                forex: '💱 Forex', energy: '🛢️ Energy',
+                resources: '⛏️ Resources', safe: '🛡️ Safe Haven',
+                industrial: '🏭 Industrial', general: '📈 General'
+            };
             
             for (const item of watchlist) {
                 const cat = item.category || 'general';
@@ -2453,12 +2483,14 @@
             }
             
             let html = '';
-            const catOrder = ['tech', 'robotics', 'crypto', 'safe', 'general'];
+            const catOrder = ['tech', 'robotics', 'crypto', 'indices', 'etf', 'commodities', 'forex', 'energy', 'resources', 'safe', 'industrial', 'general'];
+            // Include any categories in data that aren't in catOrder
+            const allCats = [...catOrder, ...Object.keys(categories).filter(c => !catOrder.includes(c))];
             
             // Load collapsed state from localStorage
             const collapsedCats = JSON.parse(localStorage.getItem('collapsedCategories') || '[]');
             
-            for (const cat of catOrder) {
+            for (const cat of allCats) {
                 if (!categories[cat]) continue;
                 const isCollapsed = collapsedCats.includes(cat);
                 const count = categories[cat].length;
