@@ -1,6 +1,33 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.14.2 (2026-02-06) ← CURRENT
+## v0.15.0 "Ironclad" (2026-02-06) ← CURRENT
+Security hardening and CI/CD pipeline.
+
+**Security Improvements:**
+- 🔐 **Rate limiting** — Auth (10/15min), API (100/min), Write ops (30/min)
+- 🛡️ **Input validation** — All endpoints validated with express-validator
+- 🧹 **Input sanitization** — XSS and injection prevention
+- 🔒 **Password requirements** — 8+ chars, upper/lower/number required
+- 📝 **Audit logging** — All security events logged
+- 🪖 **Helmet CSP** — Strict Content Security Policy
+
+**Code Quality:**
+- 📁 **Modular structure** — Separated middleware, validators, utils
+- 🧪 **Unit tests** — Jest with 50%+ coverage requirement
+- 🎭 **E2E tests** — Playwright browser automation
+- 📋 **ESLint** — Code style and security linting
+- 📊 **Winston logging** — Structured file & console logging
+
+**CI/CD Pipeline (GitHub Actions):**
+- ✅ Security audit on every push
+- ✅ Unit & integration tests
+- ✅ Docker build verification
+- ✅ E2E browser tests
+- ✅ Coverage reporting
+
+---
+
+## v0.14.2 (2026-02-06)
 Bugfixes for dashboard loading.
 
 **Fixes:**

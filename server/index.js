@@ -7,10 +7,16 @@ const argon2 = require('argon2');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+
+// Security & validation imports
+const { authLimiter, apiLimiter, strictLimiter, sanitizeInput, helmetConfig, hpp } = require('./middleware/security');
+const { registerValidation, loginValidation } = require('./validators/auth');
+const { positionValidation, watchlistItemValidation, alertValidation, transactionValidation, idParamValidation } = require('./validators/portfolio');
+const { logger, requestLogger, logSecurityEvent, logAudit } = require('./utils/logger');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
-const https = require('https');
 
 // ============ PRICE CACHE ============
 const priceCache = new Map();
@@ -93,10 +99,22 @@ const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 
 let db;
 
-// Middleware
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
-app.use(express.json());
+// Middleware - Security Stack
+app.use(helmet(helmetConfig));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || true,
+  credentials: true,
+  maxAge: 86400, // 24 hours
+}));
+app.use(express.json({ limit: '1mb' })); // Limit body size
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(hpp()); // Prevent HTTP Parameter Pollution
+app.use(sanitizeInput); // Sanitize all inputs
+app.use(requestLogger); // Log all requests
+
+// Apply rate limiting
+app.use('/api/auth', authLimiter);
+app.use('/api', apiLimiter);
 
 // Initialize database
 async function initDatabase() {
@@ -299,17 +317,9 @@ function authenticateToken(req, res, next) {
 // ============ AUTH ROUTES ============
 
 // Register
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', strictLimiter, registerValidation, async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    
-    if (!username || !email || !password) {
-      return res.status(400).json({ error: 'All fields required' });
-    }
-    
-    if (password.length < 6) {
-      return res.status(400).json({ error: 'Password must be at least 6 characters' });
-    }
 
     // Check if user exists
     const existing = dbGet('SELECT id FROM users WHERE username = ? OR email = ?', [username, email.toLowerCase()]);
@@ -351,13 +361,9 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // Login
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', strictLimiter, loginValidation, async (req, res) => {
   try {
     const { login, password } = req.body;
-    
-    if (!login || !password) {
-      return res.status(400).json({ error: 'All fields required' });
-    }
     
     const user = dbGet('SELECT * FROM users WHERE username = ? OR email = ?', [login, login.toLowerCase()]);
     
@@ -1222,8 +1228,17 @@ app.get('*', (req, res) => {
 async function start() {
   await initDatabase();
   app.listen(PORT, () => {
-    console.log(`🚀 Portfolio Tracker API running on http://localhost:${PORT}`);
+    logger.info(`🚀 Portfolio Tracker API running on http://localhost:${PORT}`);
   });
 }
 
-start().catch(console.error);
+// Export for testing
+module.exports = { app, start };
+
+// Start if run directly
+if (require.main === module) {
+  start().catch(err => {
+    logger.error('Failed to start server:', err);
+    process.exit(1);
+  });
+}

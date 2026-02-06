@@ -24,3 +24,9 @@ Thumbs.db
 dist/
 build/
 *.bak
+
+# Test & Log files
+logs/
+coverage/
+playwright-report/
+test-results/
