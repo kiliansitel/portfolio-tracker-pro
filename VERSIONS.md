@@ -1,6 +1,17 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.17.0 "Horizon" (2026-02-06) ← CURRENT
+## v0.17.1 (2026-02-06) ← CURRENT
+Bugfixes for options multiplier and rate limiting.
+
+**Fixes:**
+- 🐛 Options now auto-default to 100x multiplier (even if not saved in DB)
+- 🐛 Rate limiting relaxed (20/5min, successful logins don't count)
+- 🐛 Performance chart creates baseline snapshot if only today exists
+- 📝 Added debug logging for reconstruct endpoint
+
+---
+
+## v0.17.0 "Horizon" (2026-02-06)
 Portfolio performance chart with historical reconstruction.
 
 **Features:**

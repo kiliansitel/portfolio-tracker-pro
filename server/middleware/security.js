@@ -8,12 +8,12 @@ const hpp = require('hpp');
 
 // Rate limiters for different endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per window
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 20, // 20 attempts per 5 min window
   message: { error: 'Too many authentication attempts, please try again later' },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: false,
+  skipSuccessfulRequests: true, // Don't count successful logins
 });
 
 const apiLimiter = rateLimit({

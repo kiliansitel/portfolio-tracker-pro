@@ -1110,13 +1110,25 @@ app.post('/api/portfolios/:id/reconstruct', authenticateToken, async (req, res) 
   if (transactions.length === 0) {
     // Use entry_date from positions, or created_at, or today
     const positionDates = new Set();
+    const today = new Date().toISOString().split('T')[0];
+    
     for (const pos of currentPositions) {
-      const date = pos.entry_date || pos.created_at?.split('T')[0] || new Date().toISOString().split('T')[0];
+      const date = pos.entry_date || pos.created_at?.split('T')[0] || today;
       positionDates.add(date);
     }
-    positionDates.add(new Date().toISOString().split('T')[0]); // Add today
+    
+    // Always add today
+    positionDates.add(today);
+    
+    // If only one date (today), add yesterday as a baseline
+    if (positionDates.size === 1) {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      positionDates.add(yesterday.toISOString().split('T')[0]);
+    }
     
     const sortedDates = Array.from(positionDates).sort();
+    console.log(`[Reconstruct] Portfolio ${id}: ${currentPositions.length} positions, dates: ${sortedDates.join(', ')}`);
     let snapshotsCreated = 0;
     const cash = portfolio.cash || 0;
     

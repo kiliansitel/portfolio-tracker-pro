@@ -2305,8 +2305,9 @@
                     const q = priceCache[pos.symbol];
                     currentPrice = q?.price || pos.entry_price;
                 }
-                const cost = pos.entry_price * pos.quantity * (pos.multiplier || 1);
-                const value = currentPrice * pos.quantity * (pos.multiplier || 1);
+                const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+                const cost = pos.entry_price * pos.quantity * mult;
+                const value = currentPrice * pos.quantity * mult;
                 const pnl = value - cost;
                 const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
                 
@@ -2358,7 +2359,7 @@
             form.querySelector('[name="strike_price"]').value = pos.strike_price || '';
             form.querySelector('[name="expiry_date"]').value = pos.expiry_date || '';
             form.querySelector('[name="current_price"]').value = pos.current_price || '';
-            form.querySelector('[name="multiplier"]').value = pos.multiplier || 1;
+            form.querySelector('[name="multiplier"]').value = pos.multiplier || (pos.type === 'option' ? 100 : 1);
             
             // Show option fields if editing an option
             document.getElementById('optionFields').style.display = pos.type === 'option' ? 'block' : 'none';
@@ -2582,7 +2583,8 @@
                     currentPrice = q?.price || pos.entry_price;
                 }
                 
-                const mult = pos.multiplier || 1;
+                // Options default to 100x multiplier (100 shares per contract)
+                const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 totalValue += currentPrice * pos.quantity * mult;
                 totalCost += pos.entry_price * pos.quantity * mult;
             }
@@ -2640,7 +2642,8 @@
                     const q = priceCache[pos.symbol];
                     currentPrice = q?.price || pos.entry_price;
                 }
-                const mult = pos.multiplier || 1;
+                // Options default to 100x multiplier
+                const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 const value = currentPrice * pos.quantity * mult;
                 if (value > 0) {
                     allocations.push({ label: pos.symbol, value, type: pos.type });
@@ -3179,8 +3182,9 @@
             const rows = positions.map(pos => {
                 const q = priceCache[pos.symbol];
                 const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
-                const cost = pos.entry_price * pos.quantity * (pos.multiplier || 1);
-                const value = currentPrice * pos.quantity * (pos.multiplier || 1);
+                const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+                const cost = pos.entry_price * pos.quantity * mult;
+                const value = currentPrice * pos.quantity * mult;
                 const pnl = value - cost;
                 const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
                 return [
@@ -3240,7 +3244,7 @@
             positions.forEach(pos => {
                 const q = priceCache[pos.symbol];
                 const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
-                const mult = pos.multiplier || 1;
+                const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 totalValue += currentPrice * pos.quantity * mult;
                 totalCost += pos.entry_price * pos.quantity * mult;
             });
@@ -3301,8 +3305,9 @@
             ${positions.map(pos => {
                 const q = priceCache[pos.symbol];
                 const currentPrice = pos.type === 'option' ? (pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
-                const cost = pos.entry_price * pos.quantity * (pos.multiplier || 1);
-                const value = currentPrice * pos.quantity * (pos.multiplier || 1);
+                const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+                const cost = pos.entry_price * pos.quantity * mult;
+                const value = currentPrice * pos.quantity * mult;
                 const pl = value - cost;
                 return `<tr>
                     <td><strong>${pos.symbol}</strong></td>
