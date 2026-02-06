@@ -81,6 +81,9 @@ Open http://localhost:8080
 ### Transactions
 ![Transactions](screenshots/transactions.jpg)
 
+### Settings
+![Settings](screenshots/settings.jpg)
+
 ## Version History
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
