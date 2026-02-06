@@ -1,6 +1,16 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.15.0 "Ironclad" (2026-02-06) ← CURRENT
+## v0.15.1 (2026-02-06) ← CURRENT
+Bugfixes and CI improvements.
+
+**Fixes:**
+- 🐛 CSP was blocking onclick handlers and API calls
+- 🐛 Options transactions now show correct 100x multiplier ($5000 not $50)
+- 🧪 Added E2E tests to catch CSP issues
+
+---
+
+## v0.15.0 "Ironclad" (2026-02-06)
 Security hardening and CI/CD pipeline.
 
 **Security Improvements:**

@@ -2,7 +2,7 @@
 
 A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 
-![Version](https://img.shields.io/badge/version-0.15.0-blue)
+![Version](https://img.shields.io/badge/version-0.15.1-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
