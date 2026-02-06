@@ -1617,7 +1617,51 @@
         }
 
         // ============ TICKER LOGOS ============
+        // Professional SVG icons for tickers without standard logos
+        function makeSvgIcon(bg, fg, text, fontSize) {
+            const fs = fontSize || (text.length > 2 ? 10 : 12);
+            return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="${bg}"/><text x="16" y="16" text-anchor="middle" dominant-baseline="central" font-family="-apple-system,BlinkMacSystemFont,sans-serif" font-weight="700" font-size="${fs}" fill="${fg}">${text}</text></svg>`)}`;
+        }
+        // Bitcoin SVG with proper ₿ path
+        function makeBtcIcon() {
+            return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.5 14.2c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.7 2.7c-.4-.1-.9-.2-1.3-.3l.7-2.7-1.7-.4-.6 2.7c-.3-.1-.7-.2-1-.3l-2.3-.6-.5 1.8s1.2.3 1.2.3c.7.2.8.6.8 1l-.8 3.2c0 .1.1.1.1.1l-.1 0-1.1 4.5c-.1.2-.3.5-.7.4 0 0-1.2-.3-1.2-.3l-.8 1.9 2.2.5c.4.1.8.2 1.2.3l-.7 2.8 1.6.4.7-2.7c.4.1.9.2 1.3.3l-.7 2.7 1.7.4.7-2.8c2.8.5 4.8.3 5.7-2.2.7-2-.1-3.2-1.5-3.9 1.1-.2 1.9-1.1 2.1-2.7zm-3.8 5.3c-.5 2-3.9.9-5 .6l.9-3.6c1.1.3 4.7.8 4.1 3zm.5-5.3c-.5 1.8-3.3.9-4.2.7l.8-3.2c.9.2 3.9.7 3.4 2.5z" fill="#fff"/></svg>`)}`;
+        }
+        // Ethereum SVG
+        function makeEthIcon() {
+            return `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#627EEA"/><path d="M16 4v8.9l7.5 3.3L16 4z" fill="#fff" opacity=".6"/><path d="M16 4L8.5 16.2l7.5-3.3V4z" fill="#fff"/><path d="M16 22v6l7.5-10.4L16 22z" fill="#fff" opacity=".6"/><path d="M16 28v-6l-7.5-4.4L16 28z" fill="#fff"/><path d="M16 20.6l7.5-4.4L16 12.9v7.7z" fill="#fff" opacity=".2"/><path d="M8.5 16.2l7.5 4.4v-7.7l-7.5 3.3z" fill="#fff" opacity=".6"/></svg>`)}`;
+        }
+
+        const TICKER_ICONS = {
+            // Crypto
+            'BTC-USD':  makeBtcIcon(),
+            'ETH-USD':  makeEthIcon(),
+            'SOL-USD':  makeSvgIcon('#9945FF', '#fff', 'S'),
+            'DOGE-USD': makeSvgIcon('#C2A633', '#fff', 'Ð'),
+            'XRP-USD':  makeSvgIcon('#23292F', '#fff', 'X'),
+            'ADA-USD':  makeSvgIcon('#0033AD', '#fff', 'A'),
+            // Commodities
+            'GC=F':     makeSvgIcon('#D4AF37', '#fff', 'Au'),
+            'SI=F':     makeSvgIcon('#C0C0C0', '#333', 'Ag'),
+            'CL=F':     makeSvgIcon('#333', '#fff', 'Oil', 9),
+            'NG=F':     makeSvgIcon('#4A90D9', '#fff', 'NG'),
+            'PL=F':     makeSvgIcon('#E5E4E2', '#333', 'Pt'),
+            'HG=F':     makeSvgIcon('#B87333', '#fff', 'Cu'),
+            // Indices
+            '^GSPC':    makeSvgIcon('#E74C3C', '#fff', 'SP', 10),
+            '^IXIC':    makeSvgIcon('#0096D6', '#fff', 'NQ', 10),
+            '^DJI':     makeSvgIcon('#1A3C6D', '#fff', 'DJ', 10),
+            '^VIX':     makeSvgIcon('#FF6600', '#fff', 'V'),
+            '^RUT':     makeSvgIcon('#8E44AD', '#fff', 'R'),
+            '^FTSE':    makeSvgIcon('#1B365D', '#fff', 'FT', 10),
+            '^N225':    makeSvgIcon('#BC002D', '#fff', 'NK', 10),
+            '^GDAXI':   makeSvgIcon('#FFCC00', '#333', 'DX', 10),
+            // Currency / Bond / Metal ETFs
+            'DX-Y.NYB': makeSvgIcon('#2E8B57', '#fff', '$'),
+            'EUR=X':    makeSvgIcon('#003399', '#FFD700', '€'),
+        };
+
         function getTickerLogo(symbol) {
+            if (TICKER_ICONS[symbol]) return TICKER_ICONS[symbol];
             // Clean symbol for logo lookup
             const clean = symbol.replace(/[-=^]/g, '').toUpperCase();
             // Use multiple sources with fallback
