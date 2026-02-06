@@ -582,6 +582,77 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* News Styles */
+        .news-filter {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .news-filter:hover { background: var(--bg-secondary); color: var(--text-primary); }
+        .news-filter.active { 
+            background: var(--accent-blue); 
+            color: white; 
+            border-color: var(--accent-blue);
+        }
+        
+        .news-list { display: flex; flex-direction: column; gap: 12px; }
+        
+        .news-item {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            text-decoration: none;
+            color: inherit;
+            transition: background 0.2s;
+            border: 1px solid var(--border-color);
+        }
+        .news-item:hover { background: var(--bg-tertiary); }
+        
+        .news-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple, #9b59b6));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+        
+        .news-content { flex: 1; min-width: 0; }
+        
+        .news-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 4px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .news-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .news-source { 
+            background: var(--bg-tertiary); 
+            padding: 2px 8px; 
+            border-radius: 4px;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .sidebar { width: 50px; }
@@ -965,6 +1036,7 @@
             <div class="nav-item" data-page="portfolio" title="Portfolio">💼</div>
             <div class="nav-item" data-page="watchlist" title="Watchlist">👁️</div>
             <div class="nav-item" data-page="alerts" title="Alerts">🔔</div>
+            <div class="nav-item" data-page="news" title="News">📰</div>
             <div class="nav-item" data-page="history" title="History">📜</div>
             <div class="nav-item" data-page="settings" title="Settings">⚙️</div>
         </nav>
@@ -1092,6 +1164,29 @@
             </div>
 
             <!-- History Page -->
+            <!-- News Page -->
+            <div class="page" id="page-news">
+                <div class="card">
+                    <div class="card-header">
+                        <span>📰 Market News</span>
+                        <button class="btn-add" onclick="refreshNews()" title="Refresh">🔄</button>
+                    </div>
+                    <div class="card-body">
+                        <div class="news-filters" style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+                            <button class="news-filter active" data-filter="market" onclick="setNewsFilter('market')">📊 Market</button>
+                            <button class="news-filter" data-filter="portfolio" onclick="setNewsFilter('portfolio')">💼 My Stocks</button>
+                            <button class="news-filter" data-filter="search" onclick="setNewsFilter('search')">🔍 Search</button>
+                        </div>
+                        <div id="newsSearchBox" style="display: none; margin-bottom: 16px;">
+                            <input type="text" id="newsSearchInput" placeholder="Search news (e.g., Tesla, AI, earnings)..." 
+                                   style="width: 100%; padding: 10px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 8px; color: var(--text-primary);"
+                                   onkeypress="if(event.key==='Enter') searchNews()">
+                        </div>
+                        <div id="newsList" class="news-list"></div>
+                    </div>
+                </div>
+            </div>
+
             <div class="page" id="page-history">
                 <div class="card">
                     <div class="card-header">
@@ -1781,9 +1876,10 @@
             document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
             document.getElementById(`page-${page}`)?.classList.add('active');
             document.getElementById('userDropdown').classList.remove('show');
-            // Render alerts when switching to alerts page
+            // Render content when switching pages
             if (page === 'alerts') renderAlerts();
             if (page === 'history') renderTransactions();
+            if (page === 'news') loadNews();
         }
 
         function closeModal(id) {
@@ -2981,6 +3077,122 @@
             printWindow.document.write(html);
             printWindow.document.close();
             setTimeout(() => printWindow.print(), 500);
+        }
+
+        // ============ NEWS ============
+        let currentNewsFilter = 'market';
+        
+        function setNewsFilter(filter) {
+            currentNewsFilter = filter;
+            document.querySelectorAll('.news-filter').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            
+            const searchBox = document.getElementById('newsSearchBox');
+            searchBox.style.display = filter === 'search' ? 'block' : 'none';
+            
+            if (filter !== 'search') {
+                loadNews();
+            }
+        }
+        
+        async function loadNews(query = null, symbol = null) {
+            const newsList = document.getElementById('newsList');
+            newsList.innerHTML = '<div class="loading"><div class="spinner"></div>Loading news...</div>';
+            
+            try {
+                let url = `${API_BASE}/api/news?limit=15`;
+                
+                if (query) {
+                    url += `&query=${encodeURIComponent(query)}`;
+                } else if (symbol) {
+                    url += `&symbol=${encodeURIComponent(symbol)}`;
+                } else if (currentNewsFilter === 'portfolio') {
+                    // Get symbols from positions for portfolio news
+                    const symbols = positions.map(p => p.symbol).slice(0, 3).join(' OR ');
+                    if (symbols) {
+                        url += `&query=${encodeURIComponent(symbols + ' stock')}`;
+                    }
+                }
+                
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.items && data.items.length > 0) {
+                    renderNews(data.items);
+                } else {
+                    newsList.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:20px;">No news found</div>';
+                }
+            } catch (err) {
+                console.error('News error:', err);
+                newsList.innerHTML = '<div style="text-align:center;color:var(--text-secondary);padding:20px;">Failed to load news</div>';
+            }
+        }
+        
+        function renderNews(items) {
+            const newsList = document.getElementById('newsList');
+            
+            // Map sources to icons
+            const sourceIcons = {
+                'Bloomberg': '💹',
+                'CNBC': '📺',
+                'Yahoo Finance': '💰',
+                'Reuters': '🌐',
+                'WSJ': '📰',
+                'Wall Street Journal': '📰',
+                'Barrons': '📊',
+                'MarketWatch': '📈',
+                'Forbes': '💎',
+                'Investopedia': '📚',
+                'Seeking Alpha': '🔍',
+                'TechCrunch': '💻',
+                'The Motley Fool': '🃏',
+            };
+            
+            newsList.innerHTML = items.map(item => {
+                // Find matching icon
+                let icon = '📄';
+                for (const [src, emoji] of Object.entries(sourceIcons)) {
+                    if (item.source && item.source.toLowerCase().includes(src.toLowerCase())) {
+                        icon = emoji;
+                        break;
+                    }
+                }
+                
+                return `
+                    <a href="${item.link}" target="_blank" class="news-item">
+                        <div class="news-icon">${icon}</div>
+                        <div class="news-content">
+                            <div class="news-title">${escapeHtml(item.title)}</div>
+                            <div class="news-meta">
+                                <span class="news-source">${escapeHtml(item.source || 'News')}</span>
+                                <span>${item.timeAgo}</span>
+                            </div>
+                        </div>
+                    </a>
+                `;
+            }).join('');
+        }
+        
+        function searchNews() {
+            const query = document.getElementById('newsSearchInput').value.trim();
+            if (query) {
+                loadNews(query);
+            }
+        }
+        
+        function refreshNews() {
+            if (currentNewsFilter === 'search') {
+                searchNews();
+            } else {
+                loadNews();
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // ============ THEME ============

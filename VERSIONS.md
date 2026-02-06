@@ -1,6 +1,25 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.12.0 "Chronicle" (2026-02-06) ← CURRENT
+## v0.13.0 "Newswire" (2026-02-06) ← CURRENT
+Market news integration.
+
+**New Features:**
+- 📰 **News Feed** — Real-time market news from Google News RSS
+- 🔍 **Search News** — Search any topic (earnings, AI, crypto)
+- 💼 **Portfolio News** — Filter news for your owned stocks
+- 🏷️ **Source Icons** — Visual icons for Bloomberg, CNBC, WSJ, etc.
+- 📱 **Clean UI** — TradingView-inspired news cards
+
+**API Endpoints:**
+```
+GET /api/news                — General market news
+GET /api/news?symbol=NVDA    — Stock-specific news
+GET /api/news?query=AI       — Custom search query
+```
+
+---
+
+## v0.12.0 "Chronicle" (2026-02-06)
 Transaction history and alert notifications.
 
 **New Features:**

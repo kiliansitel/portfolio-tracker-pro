@@ -911,6 +911,104 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
   });
 });
 
+// ============ NEWS FEED ============
+
+// Fetch news from Google News RSS
+app.get('/api/news', async (req, res) => {
+  const { symbol, query, limit = 10 } = req.query;
+  
+  // Build search query
+  let searchQuery = 'stock market';
+  if (symbol) {
+    // Get company name from symbol if possible
+    const symbolMap = {
+      'AAPL': 'Apple stock',
+      'MSFT': 'Microsoft stock',
+      'GOOGL': 'Alphabet Google stock',
+      'AMZN': 'Amazon stock',
+      'NVDA': 'NVIDIA stock',
+      'TSLA': 'Tesla stock',
+      'META': 'Meta Facebook stock',
+      'AMD': 'AMD stock',
+      'QQQ': 'QQQ Nasdaq ETF',
+      'SPY': 'SPY S&P 500 ETF',
+      'BTC-USD': 'Bitcoin cryptocurrency',
+      'ETH-USD': 'Ethereum cryptocurrency',
+    };
+    searchQuery = symbolMap[symbol.toUpperCase()] || `${symbol} stock`;
+  } else if (query) {
+    searchQuery = query;
+  }
+  
+  const url = `https://news.google.com/rss/search?q=${encodeURIComponent(searchQuery)}&hl=en-US&gl=US&ceid=US:en`;
+  
+  try {
+    const https = require('https');
+    
+    const fetchRSS = () => new Promise((resolve, reject) => {
+      https.get(url, (response) => {
+        let data = '';
+        response.on('data', chunk => data += chunk);
+        response.on('end', () => resolve(data));
+        response.on('error', reject);
+      }).on('error', reject);
+    });
+    
+    const xml = await fetchRSS();
+    
+    // Parse RSS XML manually (simple extraction)
+    const items = [];
+    const itemRegex = /<item>([\s\S]*?)<\/item>/g;
+    let match;
+    
+    while ((match = itemRegex.exec(xml)) !== null && items.length < parseInt(limit)) {
+      const item = match[1];
+      
+      const getTag = (tag) => {
+        const tagMatch = item.match(new RegExp(`<${tag}[^>]*><!\\[CDATA\\[(.+?)\\]\\]><\\/${tag}>|<${tag}[^>]*>([^<]+)<\\/${tag}>`));
+        return tagMatch ? (tagMatch[1] || tagMatch[2] || '').trim() : '';
+      };
+      
+      const title = getTag('title');
+      const link = getTag('link');
+      const pubDate = getTag('pubDate');
+      const source = getTag('source');
+      
+      if (title && link) {
+        items.push({
+          title,
+          link,
+          source,
+          pubDate,
+          timeAgo: getTimeAgo(new Date(pubDate))
+        });
+      }
+    }
+    
+    res.json({ 
+      query: searchQuery,
+      items 
+    });
+  } catch (error) {
+    console.error('News fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch news', details: error.message });
+  }
+});
+
+// Helper: Get relative time string
+function getTimeAgo(date) {
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString();
+}
+
 // ============ TICKER SEARCH ============
 
 // Popular tickers for suggestions

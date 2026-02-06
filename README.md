@@ -11,6 +11,7 @@ A TradingView-inspired portfolio tracker with real-time prices, interactive char
 - 💼 **Portfolio Management** — Track positions, options, and cash
 - 👀 **Watchlists** — Customizable with categories and price alerts
 - 🔔 **Alerts** — Set price targets with notifications
+- 📰 **News Feed** — Real-time market news with stock-specific filtering
 - 📱 **Mobile-First** — Swipe actions, collapsible sections, responsive design
 - 👥 **Multi-User** — JWT auth with per-user portfolios
 - ⚡ **Fast** — LocalStorage caching, multi-source price fallback
