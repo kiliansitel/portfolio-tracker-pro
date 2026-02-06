@@ -1,6 +1,18 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.15.2 (2026-02-06) ← CURRENT
+## v0.16.0 "Slice" (2026-02-06) ← CURRENT
+Portfolio allocation donut chart.
+
+**Features:**
+- 🥧 **Allocation chart** — Donut chart showing portfolio breakdown
+- 📊 **Visual percentages** — See % allocation per position
+- 💵 **Cash included** — Cash shown in gray
+- 🎨 **Color-coded** — Each position gets unique color
+- 📱 **Legend** — Top 8 positions with percentages
+
+---
+
+## v0.15.2 (2026-02-06)
 Price alert proximity bars.
 
 **Features:**

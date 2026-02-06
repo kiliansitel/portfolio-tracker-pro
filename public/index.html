@@ -1095,6 +1095,18 @@
                     </div>
                 </div>
 
+                <div class="card" id="allocationCard" style="display:none;">
+                    <div class="card-header">
+                        <span>🥧 Allocation</span>
+                    </div>
+                    <div class="card-body">
+                        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+                            <canvas id="allocationChart" width="180" height="180" style="max-width:180px;"></canvas>
+                            <div id="allocationLegend" style="flex:1;min-width:150px;font-size:0.85rem;"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
                         <span>📈 Chart</span>
@@ -2561,6 +2573,102 @@
             if (token && currentPortfolio && totalValue > 0) {
                 savePortfolioSnapshot(totalValue + cash, cash, totalValue);
             }
+            
+            // Render allocation chart
+            renderAllocation(totalValue, cash);
+        }
+
+        // ============ ALLOCATION CHART ============
+        function renderAllocation(positionsValue, cash) {
+            const card = document.getElementById('allocationCard');
+            const canvas = document.getElementById('allocationChart');
+            const legend = document.getElementById('allocationLegend');
+            
+            if (positions.length === 0 && cash === 0) {
+                card.style.display = 'none';
+                return;
+            }
+            card.style.display = 'block';
+            
+            // Calculate allocations
+            const allocations = [];
+            const colors = [
+                '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
+                '#1abc9c', '#e67e22', '#34495e', '#16a085', '#c0392b',
+                '#27ae60', '#8e44ad', '#2980b9', '#d35400', '#7f8c8d'
+            ];
+            
+            // Add positions
+            for (const pos of positions) {
+                let currentPrice;
+                if (pos.type === 'option') {
+                    currentPrice = pos.current_price || pos.entry_price;
+                } else {
+                    const q = priceCache[pos.symbol];
+                    currentPrice = q?.price || pos.entry_price;
+                }
+                const mult = pos.multiplier || 1;
+                const value = currentPrice * pos.quantity * mult;
+                if (value > 0) {
+                    allocations.push({ label: pos.symbol, value, type: pos.type });
+                }
+            }
+            
+            // Add cash
+            if (cash > 0) {
+                allocations.push({ label: 'Cash', value: cash, type: 'cash' });
+            }
+            
+            // Sort by value descending
+            allocations.sort((a, b) => b.value - a.value);
+            
+            const total = allocations.reduce((sum, a) => sum + a.value, 0);
+            
+            // Draw donut chart
+            const ctx = canvas.getContext('2d');
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = Math.min(centerX, centerY) - 10;
+            const innerRadius = radius * 0.6;
+            
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let startAngle = -Math.PI / 2; // Start at top
+            
+            allocations.forEach((alloc, i) => {
+                const sliceAngle = (alloc.value / total) * 2 * Math.PI;
+                const color = alloc.type === 'cash' ? '#95a5a6' : colors[i % colors.length];
+                alloc.color = color;
+                
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+                ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
+                ctx.closePath();
+                ctx.fillStyle = color;
+                ctx.fill();
+                
+                startAngle += sliceAngle;
+            });
+            
+            // Draw center text
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#fff';
+            ctx.font = 'bold 16px system-ui';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('$' + (total/1000).toFixed(1) + 'k', centerX, centerY - 8);
+            ctx.font = '11px system-ui';
+            ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
+            ctx.fillText('Total', centerX, centerY + 10);
+            
+            // Render legend
+            legend.innerHTML = allocations.slice(0, 8).map(alloc => {
+                const pct = ((alloc.value / total) * 100).toFixed(1);
+                return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+                    <div style="width:12px;height:12px;border-radius:3px;background:${alloc.color};flex-shrink:0;"></div>
+                    <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${alloc.label}</div>
+                    <div style="color:var(--text-secondary);font-size:0.8rem;">${pct}%</div>
+                </div>`;
+            }).join('') + (allocations.length > 8 ? `<div style="color:var(--text-secondary);font-size:0.8rem;">+${allocations.length - 8} more</div>` : '');
         }
 
         // ============ PORTFOLIO PERFORMANCE ============
