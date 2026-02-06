@@ -1,6 +1,22 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.10.0 "Export" (2026-02-06) ← CURRENT
+## v0.11.0 "Container" (2026-02-06) ← CURRENT
+Docker containerization.
+
+**New Features:**
+- 🐳 **Dockerfile** — Multi-stage build, alpine-based
+- 🐳 **docker-compose.yml** — Easy deployment with volumes
+- 📁 **Configurable data directory** — DATA_DIR environment variable
+- ❤️ **Health checks** — Built-in container health monitoring
+
+**Usage:**
+```bash
+docker-compose up -d
+```
+
+---
+
+## v0.10.0 "Export" (2026-02-06)
 Data export functionality.
 
 **New Features:**
@@ -111,7 +127,7 @@ Initial release.
 ## Roadmap
 - [x] Dark/light theme toggle
 - [x] Export to CSV/PDF
-- [ ] Docker container
+- [x] Docker container
 - [ ] Portfolio performance history
 - [ ] Push notifications for alerts
 - [ ] Options chain viewer

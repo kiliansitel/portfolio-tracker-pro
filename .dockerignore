@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Database
+*.db
+*.db.bak
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# Docs
+*.md
+LICENSE
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development
+*.log
+.env.local

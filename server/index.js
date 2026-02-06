@@ -10,7 +10,9 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 8080;
 const JWT_SECRET = process.env.JWT_SECRET || 'portfolio-tracker-secret-key-change-in-production';
-const DB_PATH = path.join(__dirname, 'portfolio.db');
+// Use /app/data in Docker, or local directory otherwise
+const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/app/data') ? '/app/data' : __dirname);
+const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 
 let db;
 

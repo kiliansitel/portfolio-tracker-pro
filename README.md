@@ -165,10 +165,24 @@ server {
 }
 ```
 
-### Docker (Coming Soon)
+### Docker
+
 ```bash
-# TODO: Dockerfile
+# Build and run with Docker Compose (recommended)
+docker-compose up -d
+
+# Or build manually
+docker build -t portfolio-tracker-pro .
+docker run -d -p 8080:8080 -v portfolio-data:/app/data portfolio-tracker-pro
 ```
+
+**Environment variables:**
+- `JWT_SECRET` - Secret key for JWT tokens (required for production)
+- `PORT` - Server port (default: 8080)
+- `DATA_DIR` - Database directory (default: /app/data in Docker)
+
+**Volumes:**
+- `/app/data` - Persists the SQLite database
 
 ## 🔒 Security Notes
 
@@ -187,7 +201,7 @@ server {
 
 ## 🛣️ Roadmap
 
-- [ ] Docker container
+- [x] Docker container
 - [ ] Push notifications for alerts
 - [ ] Portfolio performance history
 - [ ] Export to CSV/PDF
