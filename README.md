@@ -23,7 +23,8 @@
 - 🥧 **Allocation Chart** — Visual donut chart showing portfolio breakdown
 - 📱 **Mobile-First** — Swipe actions, collapsible sections, responsive design
 - 👥 **Multi-User** — JWT auth with per-user portfolios
-- ⚡ **Fast** — LocalStorage caching, multi-source price fallback
+- 🔒 **Security Hardened** — CSP, CORS lockdown, input validation, audit logging
+- ⚡ **Fast** — LocalStorage caching, debounced DB writes, indexed queries
 
 ## Tech Stack
 
@@ -108,7 +109,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
-- **v0.18.0 "Chain"** — Options chain viewer
+- **v0.18.0 "Chain"** — Options chain viewer + security hardening (CSP, CORS, validators, debounced writes)
 - **v0.17.5** — Logo in app header, CI fix
 - **v0.17.4** — Project logo and favicon
 - **v0.17.3** — Performance chart uses cost basis (matches P&L)

@@ -1,7 +1,7 @@
 # Portfolio Tracker Pro — Version History
 
 ## v0.18.0 "Chain" (2026-02-06) ← CURRENT
-Options chain viewer.
+Options chain viewer + major security hardening.
 
 **Features:**
 - ⛓️ **Options chain** — View calls/puts for any stock/ETF
@@ -10,9 +10,28 @@ Options chain viewer.
 - 🟢 **ITM highlighting** — In-the-money options highlighted
 - 📱 **Mobile friendly** — Scrollable modal on mobile
 
+**Security Hardening (12 fixes):**
+- 🔐 **JWT secret** — Now loaded from `.env` (no more hardcoded fallback)
+- 🔑 **Alert API key** — Cryptographically random, loaded from `.env`
+- 🌐 **CORS** — Locked to same-origin (was wildcard)
+- ✅ **Validators wired** — All routes now use express-validator (were written but unconnected)
+- 🛡️ **CSP enabled** — Full Content-Security-Policy with proper directives
+- ⚡ **Database writes debounced** — 1s batch instead of write-per-mutation
+- 📇 **7 database indexes** — Positions, watchlists, transactions, alerts, snapshots
+- 🚫 **Range/interval whitelist** — Chart API params validated against whitelist
+- 🗑️ **Dead dependencies removed** — express-mongo-sanitize, uuid, sanitize-html
+- 🔢 **Password mismatch fixed** — Frontend now matches server (min 8 chars)
+- 🚨 **Global error handler** — Catches unhandled errors with logging
+- 📋 **Security event logging** — Failed logins, invalid API keys logged with IP
+- 📝 **Settings validation** — Max 10KB, must be JSON object
+- 👤 **User enumeration prevented** — Generic error on duplicate registration
+
 **API:**
 - `GET /api/options/:symbol` — Get options chain
 - `GET /api/options/:symbol/:expiry` — Get options for specific expiry
+
+**Scripts:**
+- `scripts/release.sh` — Automated release pipeline
 
 ---
 

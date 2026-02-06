@@ -55,9 +55,38 @@ function sanitizeInput(req, res, next) {
 }
 
 // Security headers configuration for Helmet
-// CSP disabled for now - causing issues with same-origin requests
 const helmetConfig = {
-  contentSecurityPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "https://unpkg.com"],  // unsafe-inline for onclick handlers
+      styleSrc: ["'self'", "'unsafe-inline'"],  // inline styles used throughout
+      imgSrc: [
+        "'self'",
+        "data:",
+        "https://assets.parqet.com",
+        "https://s3-symbol-logo.tradingview.com",
+        "https://logo.clearbit.com",
+        "https://*.yahoo.com",
+      ],
+      connectSrc: [
+        "'self'",
+        "https://query1.finance.yahoo.com",
+        "https://query2.finance.yahoo.com",
+        "https://fc.yahoo.com",
+        "https://news.google.com",
+        "https://corsproxy.io",
+        "https://api.allorigins.win",
+      ],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      frameAncestors: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      scriptSrcAttr: ["'unsafe-inline'"],  // Required for onclick handlers in HTML
+      upgradeInsecureRequests: null,  // Disable — app served over HTTP internally
+    },
+  },
   crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
 };

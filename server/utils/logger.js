@@ -76,9 +76,10 @@ function requestLogger(req, res, next) {
   next();
 }
 
-// Security event logging
-function logSecurityEvent(event, data = {}) {
-  logger.warn(`SECURITY: ${event}`, data);
+// Security event logging (with optional req for IP)
+function logSecurityEvent(req, event, data = {}) {
+  const ip = req?.ip || req?.connection?.remoteAddress || 'unknown';
+  logger.warn(`SECURITY: ${event}`, { ip, ...data });
 }
 
 // Audit logging for sensitive actions

@@ -23,4 +23,6 @@ Thumbs.db
 
 # Development
 *.log
+.env
 .env.local
+.env.*

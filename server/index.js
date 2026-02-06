@@ -1,3 +1,12 @@
+// Load environment variables from .env file
+const dotenvPath = require('path').join(__dirname, '.env');
+if (require('fs').existsSync(dotenvPath)) {
+  require('fs').readFileSync(dotenvPath, 'utf8').split('\n').forEach(line => {
+    const [key, ...vals] = line.split('=');
+    if (key && vals.length) process.env[key.trim()] = vals.join('=').trim();
+  });
+}
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -12,7 +21,7 @@ const https = require('https');
 // Security & validation imports
 const { authLimiter, apiLimiter, strictLimiter, sanitizeInput, helmetConfig, hpp } = require('./middleware/security');
 const { registerValidation, loginValidation } = require('./validators/auth');
-const { positionValidation, watchlistItemValidation, alertValidation, transactionValidation, idParamValidation } = require('./validators/portfolio');
+const { createPortfolioValidation, positionValidation, watchlistItemValidation, alertValidation, transactionValidation, idParamValidation } = require('./validators/portfolio');
 const { logger, requestLogger, logSecurityEvent, logAudit } = require('./utils/logger');
 
 const app = express();
@@ -214,7 +223,24 @@ async function fetchOptionsForExpiry(symbol, expiryTimestamp) {
   });
 }
 
-const JWT_SECRET = process.env.JWT_SECRET || 'portfolio-tracker-secret-key-change-in-production';
+// ============ SECURITY CONFIG ============
+// Generate a random fallback for development only — production MUST set JWT_SECRET
+const crypto = require('crypto');
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  const generated = crypto.randomBytes(64).toString('hex');
+  logger.warn('⚠️  JWT_SECRET not set! Generated random secret. Sessions will NOT survive restarts. Set JWT_SECRET in environment for production.');
+  return generated;
+})();
+const ALERT_API_KEY = process.env.ALERT_API_KEY || (() => {
+  const generated = crypto.randomBytes(32).toString('hex');
+  logger.warn('⚠️  ALERT_API_KEY not set! Generated random key: ' + generated);
+  return generated;
+})();
+
+// Allowed chart ranges and intervals (whitelist for Yahoo API params)
+const VALID_RANGES = ['1d', '5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', '10y', 'max', 'ytd'];
+const VALID_INTERVALS = ['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d', '5d', '1wk', '1mo', '3mo'];
+
 // Use /app/data in Docker, or local directory otherwise
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/app/data') ? '/app/data' : __dirname);
 const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
@@ -224,7 +250,7 @@ let db;
 // Middleware - Security Stack
 app.use(helmet(helmetConfig));
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || true,
+  origin: process.env.CORS_ORIGIN || false, // Same-origin by default; set CORS_ORIGIN for cross-origin
   credentials: true,
   maxAge: 86400, // 24 hours
 }));
@@ -383,16 +409,39 @@ async function initDatabase() {
     )
   `);
 
-  saveDatabase();
+  // Create indexes for performance
+  db.run('CREATE INDEX IF NOT EXISTS idx_positions_portfolio ON positions(portfolio_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_positions_symbol ON positions(symbol)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_watchlist_items_watchlist ON watchlist_items(watchlist_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_portfolio ON transactions(portfolio_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_transactions_symbol ON transactions(symbol)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_snapshots_portfolio_date ON portfolio_snapshots(portfolio_id, date)');
+
+  saveDatabaseImmediate(); // Use immediate save for init
   console.log('📦 Database initialized');
 }
 
-// Save database to file
-function saveDatabase() {
+// Save database to file (debounced for performance)
+let saveTimeout = null;
+let savePending = false;
+
+function saveDatabaseImmediate() {
   const data = db.export();
   const buffer = Buffer.from(data);
   fs.writeFileSync(DB_PATH, buffer);
+  savePending = false;
 }
+
+function saveDatabase() {
+  savePending = true;
+  if (saveTimeout) clearTimeout(saveTimeout);
+  saveTimeout = setTimeout(saveDatabaseImmediate, 1000); // Batch writes within 1 second
+}
+
+// Ensure database is saved on exit
+process.on('SIGTERM', () => { if (savePending) saveDatabaseImmediate(); process.exit(0); });
+process.on('SIGINT', () => { if (savePending) saveDatabaseImmediate(); process.exit(0); });
 
 // Helper to run queries
 function dbRun(sql, params = []) {
@@ -453,10 +502,11 @@ app.post('/api/auth/register', strictLimiter, registerValidation, async (req, re
   try {
     const { username, email, password } = req.body;
 
-    // Check if user exists
+    // Check if user exists (generic message to prevent user enumeration)
     const existing = dbGet('SELECT id FROM users WHERE username = ? OR email = ?', [username, email.toLowerCase()]);
     if (existing) {
-      return res.status(400).json({ error: 'Username or email already exists' });
+      logSecurityEvent(req, 'REGISTRATION_DUPLICATE', { username });
+      return res.status(400).json({ error: 'Registration failed. Please try different credentials.' });
     }
 
     // Argon2id - OWASP recommended (memory: 19MB, iterations: 2, parallelism: 1)
@@ -522,6 +572,7 @@ app.post('/api/auth/login', strictLimiter, loginValidation, async (req, res) => 
       }
     }
     if (!validPassword) {
+      logSecurityEvent(req, 'LOGIN_FAILED', { login });
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
@@ -553,7 +604,16 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
 app.put('/api/auth/settings', authenticateToken, (req, res) => {
   const { settings } = req.body;
   
-  dbRun('UPDATE users SET settings = ? WHERE id = ?', [JSON.stringify(settings), req.user.id]);
+  if (!settings || typeof settings !== 'object') {
+    return res.status(400).json({ error: 'Settings must be a JSON object' });
+  }
+  
+  const settingsStr = JSON.stringify(settings);
+  if (settingsStr.length > 10000) {
+    return res.status(400).json({ error: 'Settings too large (max 10KB)' });
+  }
+  
+  dbRun('UPDATE users SET settings = ? WHERE id = ?', [settingsStr, req.user.id]);
   
   res.json({ message: 'Settings updated', settings });
 });
@@ -567,12 +627,8 @@ app.get('/api/portfolios', authenticateToken, (req, res) => {
 });
 
 // Create portfolio
-app.post('/api/portfolios', authenticateToken, (req, res) => {
+app.post('/api/portfolios', authenticateToken, createPortfolioValidation, (req, res) => {
   const { name, cash } = req.body;
-  
-  if (!name) {
-    return res.status(400).json({ error: 'Portfolio name required' });
-  }
   
   const result = dbRun('INSERT INTO portfolios (user_id, name, cash) VALUES (?, ?, ?)', 
     [req.user.id, name, cash || 0]);
@@ -668,7 +724,7 @@ app.post('/api/portfolios/:id/positions', authenticateToken, positionValidation,
 });
 
 // Update position
-app.put('/api/positions/:id', authenticateToken, (req, res) => {
+app.put('/api/positions/:id', authenticateToken, idParamValidation, (req, res) => {
   const { id } = req.params;
   const { symbol, name, type, quantity, entry_price, entry_date, notes, strike_price, expiry_date, current_price, multiplier } = req.body;
   
@@ -737,12 +793,8 @@ app.get('/api/watchlists', authenticateToken, (req, res) => {
 });
 
 // Create watchlist
-app.post('/api/watchlists', authenticateToken, (req, res) => {
+app.post('/api/watchlists', authenticateToken, createPortfolioValidation, (req, res) => {
   const { name } = req.body;
-  
-  if (!name) {
-    return res.status(400).json({ error: 'Watchlist name required' });
-  }
   
   const result = dbRun('INSERT INTO watchlists (user_id, name) VALUES (?, ?)', [req.user.id, name]);
   
@@ -750,7 +802,7 @@ app.post('/api/watchlists', authenticateToken, (req, res) => {
 });
 
 // Add to watchlist
-app.post('/api/watchlists/:id/items', authenticateToken, (req, res) => {
+app.post('/api/watchlists/:id/items', authenticateToken, watchlistItemValidation, (req, res) => {
   const { id } = req.params;
   const { symbol, name, alert_above, alert_below, notes, category } = req.body;
   
@@ -782,7 +834,7 @@ app.post('/api/watchlists/:id/items', authenticateToken, (req, res) => {
 });
 
 // Update watchlist item
-app.put('/api/watchlist-items/:id', authenticateToken, (req, res) => {
+app.put('/api/watchlist-items/:id', authenticateToken, idParamValidation, (req, res) => {
   const { id } = req.params;
   const { symbol, name, alert_above, alert_below, notes, category } = req.body;
   
@@ -844,16 +896,8 @@ app.get('/api/alerts', authenticateToken, (req, res) => {
 });
 
 // Create alert
-app.post('/api/alerts', authenticateToken, (req, res) => {
+app.post('/api/alerts', authenticateToken, alertValidation, (req, res) => {
   const { symbol, condition, target_price } = req.body;
-  
-  if (!symbol || !condition || !target_price) {
-    return res.status(400).json({ error: 'Symbol, condition, and target price required' });
-  }
-  
-  if (!['above', 'below'].includes(condition)) {
-    return res.status(400).json({ error: 'Condition must be "above" or "below"' });
-  }
   
   const result = dbRun('INSERT INTO alerts (user_id, symbol, condition, target_price) VALUES (?, ?, ?, ?)',
     [req.user.id, symbol.toUpperCase(), condition, target_price]);
@@ -884,7 +928,8 @@ app.delete('/api/alerts/:id', authenticateToken, (req, res) => {
 // Check alerts against current prices (internal endpoint for cron)
 app.get('/api/alerts/check', async (req, res) => {
   const apiKey = req.headers['x-api-key'];
-  if (apiKey !== 'portfolio-alert-checker-key') {
+  if (!apiKey || apiKey !== ALERT_API_KEY) {
+    logSecurityEvent(req, 'INVALID_ALERT_API_KEY', { provided: apiKey ? 'yes' : 'no' });
     return res.status(401).json({ error: 'Invalid API key' });
   }
   
@@ -973,21 +1018,13 @@ app.get('/api/portfolios/:id/transactions', authenticateToken, (req, res) => {
 });
 
 // Add transaction
-app.post('/api/portfolios/:id/transactions', authenticateToken, (req, res) => {
+app.post('/api/portfolios/:id/transactions', authenticateToken, transactionValidation, (req, res) => {
   const { id } = req.params;
   const { symbol, type, action, quantity, price, fees, notes, executed_at } = req.body;
   
   const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
   if (!portfolio) {
     return res.status(404).json({ error: 'Portfolio not found' });
-  }
-  
-  if (!symbol || !action || !quantity || !price) {
-    return res.status(400).json({ error: 'Symbol, action, quantity, and price required' });
-  }
-  
-  if (!['buy', 'sell'].includes(action.toLowerCase())) {
-    return res.status(400).json({ error: 'Action must be "buy" or "sell"' });
   }
   
   const result = dbRun(`
@@ -1476,6 +1513,15 @@ app.get('/api/prices', async (req, res) => {
 app.get('/api/chart/:symbol', async (req, res) => {
   const { symbol } = req.params;
   const { range = '1mo', interval = '1d' } = req.query;
+  
+  // Whitelist validation for Yahoo API parameters
+  if (!VALID_RANGES.includes(range)) {
+    return res.status(400).json({ error: 'Invalid range. Allowed: ' + VALID_RANGES.join(', ') });
+  }
+  if (!VALID_INTERVALS.includes(interval)) {
+    return res.status(400).json({ error: 'Invalid interval. Allowed: ' + VALID_INTERVALS.join(', ') });
+  }
+  
   const data = await fetchYahooChart(symbol, range, interval);
   if (data) {
     res.json(data);
@@ -1657,6 +1703,18 @@ app.get('/api/tickers/popular', (req, res) => {
 });
 
 // ============ STATIC FILES ============
+
+// ============ GLOBAL ERROR HANDLER ============
+app.use((err, req, res, next) => {
+  logger.error('Unhandled error:', { 
+    error: err.message, 
+    stack: err.stack, 
+    url: req.originalUrl, 
+    method: req.method,
+    ip: req.ip 
+  });
+  res.status(500).json({ error: 'Internal server error' });
+});
 
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '..', 'public')));
