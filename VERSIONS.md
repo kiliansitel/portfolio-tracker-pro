@@ -1,6 +1,16 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.17.3 (2026-02-06) ← CURRENT
+## v0.17.4 (2026-02-06) ← CURRENT
+Added project logo and favicon.
+
+**Features:**
+- 🎨 **Logo** — Rising chart with blue→teal gradient
+- 🔖 **Favicon** — SVG icon in browser tab
+- 📄 **README** — Centered logo header
+
+---
+
+## v0.17.3 (2026-02-06)
 Performance chart uses cost basis.
 
 **Fixes:**

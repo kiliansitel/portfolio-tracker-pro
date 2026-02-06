@@ -1,8 +1,14 @@
-# Portfolio Tracker Pro
+<p align="center">
+  <img src="logo.svg" alt="Portfolio Tracker Pro" width="128" height="128">
+</p>
 
-A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
+<h1 align="center">Portfolio Tracker Pro</h1>
 
-![Version](https://img.shields.io/badge/version-0.17.3-blue)
+<p align="center">
+  A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
+</p>
+
+![Version](https://img.shields.io/badge/version-0.17.4-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -99,6 +105,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.17.4** — Project logo and favicon
 - **v0.17.3** — Performance chart uses cost basis (matches P&L)
 - **v0.17.2** — Fix performance chart rendering, allocation option prices
 - **v0.17.1** — Fix options multiplier, rate limiting
