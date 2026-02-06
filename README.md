@@ -146,6 +146,11 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [ ] Push notifications (browser/mobile)
 - [ ] Multiple currency support
 - [ ] Google Cloud Run demo instance
+- [ ] Blockchain wallet tracking:
+  - [ ] Connect BTC/ETH public addresses
+  - [ ] Auto-sync balances from on-chain data
+  - [ ] Transaction history from block explorers
+  - [ ] Multi-wallet aggregation
 - [ ] Broker API integrations:
   - [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)
   - [ ] More brokers TBD
