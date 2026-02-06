@@ -162,16 +162,24 @@ async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       portfolio_id INTEGER NOT NULL,
       symbol TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('buy', 'sell')),
+      type TEXT NOT NULL DEFAULT 'stock',
+      action TEXT NOT NULL DEFAULT 'buy' CHECK (action IN ('buy', 'sell')),
       quantity REAL NOT NULL,
       price REAL NOT NULL,
-      fee REAL DEFAULT 0,
-      date TEXT NOT NULL,
+      fees REAL DEFAULT 0,
+      executed_at TEXT NOT NULL,
       notes TEXT,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)
     )
   `);
+
+  // Migrate legacy column names if needed
+  try { db.run(`ALTER TABLE transactions ADD COLUMN action TEXT NOT NULL DEFAULT 'buy'`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE transactions ADD COLUMN fees REAL DEFAULT 0`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE transactions ADD COLUMN executed_at TEXT`); } catch (e) { /* exists */ }
+  // Migrate old 'date' column data to 'executed_at' if both exist
+  try { db.run(`UPDATE transactions SET executed_at = date WHERE executed_at IS NULL AND date IS NOT NULL`); } catch (e) { /* ignore */ }
 
   db.run(`
     CREATE TABLE IF NOT EXISTS portfolio_snapshots (

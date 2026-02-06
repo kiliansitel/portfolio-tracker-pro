@@ -1,82 +1,8 @@
 const express = require('express');
 const https = require('https');
+const { fetchYahooPrice, fetchYahooChart } = require('../utils/yahoo');
 
 const router = express.Router();
-
-// Price cache
-const priceCache = new Map();
-const CACHE_TTL = 120000; // 2 minutes
-
-async function fetchYahooPrice(symbol) {
-  const cached = priceCache.get(symbol);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  
-  return new Promise((resolve) => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-    
-    https.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const result = json.chart?.result?.[0];
-          if (result) {
-            const meta = result.meta;
-            const price = meta.regularMarketPrice;
-            const prev = meta.previousClose || meta.chartPreviousClose || price;
-            const priceData = {
-              symbol: meta.symbol,
-              price: price,
-              previousClose: prev,
-              change: price - prev,
-              changePercent: prev ? ((price - prev) / prev) * 100 : 0,
-              timestamp: Date.now()
-            };
-            priceCache.set(symbol, { data: priceData, timestamp: Date.now() });
-            resolve(priceData);
-          } else {
-            resolve(null);
-          }
-        } catch (e) {
-          resolve(null);
-        }
-      });
-    }).on('error', () => resolve(null));
-  });
-}
-
-async function fetchYahooChart(symbol, range = '1mo', interval = '1d') {
-  const cacheKey = `chart_${symbol}_${range}_${interval}`;
-  const cached = priceCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-  
-  return new Promise((resolve) => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${interval}&range=${range}`;
-    
-    https.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          priceCache.set(cacheKey, { data: json, timestamp: Date.now() });
-          resolve(json);
-        } catch (e) {
-          resolve(null);
-        }
-      });
-    }).on('error', () => resolve(null));
-  });
-}
 
 // Yahoo crumb for authenticated endpoints (options chain)
 let yahooCrumb = null;

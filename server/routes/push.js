@@ -47,8 +47,8 @@ router.post('/subscribe', (req, res) => {
   }
 });
 
-// Unsubscribe from push notifications
-router.delete('/unsubscribe', (req, res) => {
+// Unsubscribe from push notifications (POST because DELETE with body is unreliable)
+router.post('/unsubscribe', (req, res) => {
   const { endpoint } = req.body;
   
   if (!endpoint) {

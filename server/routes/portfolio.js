@@ -1,6 +1,7 @@
 const express = require('express');
 const { dbRun, dbGet, dbAll } = require('../db');
 const { createPortfolioValidation, positionValidation, idParamValidation } = require('../validators/portfolio');
+const { strictLimiter } = require('../middleware/security');
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.post('/', createPortfolioValidation, (req, res) => {
 });
 
 // Update portfolio
-router.put('/:id', (req, res) => {
+router.put('/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
   const { name, cash } = req.body;
   
@@ -36,7 +37,7 @@ router.put('/:id', (req, res) => {
 });
 
 // Delete portfolio
-router.delete('/:id', (req, res) => {
+router.delete('/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
   
   const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
@@ -135,7 +136,7 @@ router.put('/positions/:id', idParamValidation, (req, res) => {
 });
 
 // Delete position
-router.delete('/positions/:id', (req, res) => {
+router.delete('/positions/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
   
   const position = dbGet(`

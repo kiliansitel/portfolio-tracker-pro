@@ -78,7 +78,7 @@ router.put('/items/:id', idParamValidation, (req, res) => {
 });
 
 // Delete watchlist item
-router.delete('/items/:id', (req, res) => {
+router.delete('/items/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
   
   const item = dbGet(`
@@ -96,7 +96,7 @@ router.delete('/items/:id', (req, res) => {
 });
 
 // Delete watchlist
-router.delete('/:id', (req, res) => {
+router.delete('/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
   
   const watchlist = dbGet('SELECT * FROM watchlists WHERE id = ? AND user_id = ?', [id, req.user.id]);

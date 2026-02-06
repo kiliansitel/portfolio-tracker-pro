@@ -1,11 +1,8 @@
 const express = require('express');
-const https = require('https');
 const { dbRun, dbGet, dbAll } = require('../db');
+const { fetchYahooPrice, fetchHistoricalPrice } = require('../utils/yahoo');
 
 const router = express.Router();
-
-// Price cache for historical data
-const priceCache = new Map();
 
 // Record a portfolio snapshot
 router.post('/portfolios/:id/snapshot', (req, res) => {
@@ -97,113 +94,6 @@ router.get('/portfolios/:id/performance', (req, res) => {
     }
   });
 });
-
-// Fetch historical price for a date (up to 5 years back)
-async function fetchHistoricalPrice(symbol, dateStr) {
-  const cacheKey = `hist_${symbol}_${dateStr}`;
-  const cached = priceCache.get(cacheKey);
-  if (cached && Date.now() - cached.timestamp < 3600000) { // 1 hour cache
-    return cached.data;
-  }
-  
-  return new Promise((resolve) => {
-    // Fetch 5d range around the date to ensure we get a trading day
-    const targetDate = new Date(dateStr);
-    const startDate = new Date(targetDate);
-    startDate.setDate(startDate.getDate() - 5);
-    const endDate = new Date(targetDate);
-    endDate.setDate(endDate.getDate() + 1);
-    
-    const period1 = Math.floor(startDate.getTime() / 1000);
-    const period2 = Math.floor(endDate.getTime() / 1000);
-    
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?period1=${period1}&period2=${period2}&interval=1d`;
-    
-    https.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const result = json.chart?.result?.[0];
-          if (result && result.timestamp && result.indicators?.quote?.[0]?.close) {
-            const timestamps = result.timestamp;
-            const closes = result.indicators.quote[0].close;
-            
-            // Find the closest date to target
-            const targetTs = targetDate.getTime() / 1000;
-            let bestIdx = 0;
-            let bestDiff = Math.abs(timestamps[0] - targetTs);
-            for (let i = 1; i < timestamps.length; i++) {
-              const diff = Math.abs(timestamps[i] - targetTs);
-              if (diff < bestDiff) {
-                bestDiff = diff;
-                bestIdx = i;
-              }
-            }
-            
-            const price = closes[bestIdx];
-            if (price) {
-              priceCache.set(cacheKey, { data: price, timestamp: Date.now() });
-              resolve(price);
-            } else {
-              resolve(null);
-            }
-          } else {
-            resolve(null);
-          }
-        } catch (e) {
-          resolve(null);
-        }
-      });
-    }).on('error', () => resolve(null));
-  });
-}
-
-async function fetchYahooPrice(symbol) {
-  const cached = priceCache.get(symbol);
-  if (cached && Date.now() - cached.timestamp < 120000) {
-    return cached.data;
-  }
-  
-  return new Promise((resolve) => {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-    
-    https.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-    }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const json = JSON.parse(data);
-          const result = json.chart?.result?.[0];
-          if (result) {
-            const meta = result.meta;
-            const price = meta.regularMarketPrice;
-            const prev = meta.previousClose || meta.chartPreviousClose || price;
-            const priceData = {
-              symbol: meta.symbol,
-              price: price,
-              previousClose: prev,
-              change: price - prev,
-              changePercent: prev ? ((price - prev) / prev) * 100 : 0,
-              timestamp: Date.now()
-            };
-            priceCache.set(symbol, { data: priceData, timestamp: Date.now() });
-            resolve(priceData);
-          } else {
-            resolve(null);
-          }
-        } catch (e) {
-          resolve(null);
-        }
-      });
-    }).on('error', () => resolve(null));
-  });
-}
 
 // Reconstruct historical portfolio value from transactions
 router.post('/portfolios/:id/reconstruct', async (req, res) => {

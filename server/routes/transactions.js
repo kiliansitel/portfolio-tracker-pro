@@ -1,5 +1,6 @@
 const express = require('express');
 const { dbRun, dbGet, dbAll } = require('../db');
+const { transactionValidation, idParamValidation } = require('../validators/portfolio');
 
 const router = express.Router();
 
@@ -60,7 +61,7 @@ router.get('/portfolios/:id/transactions', (req, res) => {
 });
 
 // Add transaction
-router.post('/portfolios/:id/transactions', (req, res) => {
+router.post('/portfolios/:id/transactions', transactionValidation, (req, res) => {
   const { id } = req.params;
   const { symbol, type, action, quantity, price, fees, notes, executed_at } = req.body;
   
@@ -88,7 +89,7 @@ router.post('/portfolios/:id/transactions', (req, res) => {
 });
 
 // Delete transaction
-router.delete('/:id', (req, res) => {
+router.delete('/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
   
   const transaction = dbGet(`

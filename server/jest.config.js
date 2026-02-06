@@ -3,6 +3,7 @@ module.exports = {
   testMatch: ['**/tests/**/*.test.js'],
   collectCoverageFrom: [
     '*.js',
+    'routes/**/*.js',
     'middleware/**/*.js',
     'validators/**/*.js',
     'utils/**/*.js',
@@ -12,10 +13,10 @@ module.exports = {
   ],
   coverageThreshold: {
     global: {
-      branches: 10,
-      functions: 15,
-      lines: 20,
-      statements: 20,
+      branches: 15,
+      functions: 20,
+      lines: 35,
+      statements: 35,
     },
   },
   testTimeout: 30000,

@@ -4,12 +4,14 @@ const { alertValidation } = require('../validators/portfolio');
 const { logSecurityEvent } = require('../utils/logger');
 const { sendPushNotification } = require('./push');
 
+const { idParamValidation } = require('../validators/portfolio');
+
 const router = express.Router();
 
 const crypto = require('crypto');
 const ALERT_API_KEY = process.env.ALERT_API_KEY || (() => {
   const generated = crypto.randomBytes(32).toString('hex');
-  console.warn('⚠️  ALERT_API_KEY not set! Generated random key: ' + generated);
+  console.warn('⚠️  ALERT_API_KEY not set! Generated random key. Set ALERT_API_KEY in .env for production.');
   return generated;
 })();
 
@@ -21,23 +23,28 @@ router.get('/', (req, res) => {
 
 // Create alert
 router.post('/', alertValidation, (req, res) => {
-  const { symbol, condition, value } = req.body;
+  const { symbol, condition, target_price, value } = req.body;
+  const alertValue = target_price || value; // Support both field names
+  
+  if (!alertValue) {
+    return res.status(400).json({ error: 'target_price is required' });
+  }
   
   const result = dbRun('INSERT INTO alerts (user_id, symbol, condition, value) VALUES (?, ?, ?, ?)',
-    [req.user.id, symbol.toUpperCase(), condition, value]);
+    [req.user.id, symbol.toUpperCase(), condition, alertValue]);
   
   res.json({
     id: result.lastInsertRowid,
     user_id: req.user.id,
     symbol: symbol.toUpperCase(),
     condition,
-    value,
+    value: alertValue,
     is_active: 1
   });
 });
 
 // Delete alert
-router.delete('/:id', (req, res) => {
+router.delete('/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
   
   const alert = dbGet('SELECT * FROM alerts WHERE id = ? AND user_id = ?', [id, req.user.id]);
@@ -70,26 +77,12 @@ router.get('/check', async (req, res) => {
   // Fetch prices
   const triggered = [];
   
+  const { fetchYahooPrice } = require('../utils/yahoo');
+  
   for (const symbol of symbols) {
     try {
-      const https = require('https');
-      const response = await new Promise((resolve, reject) => {
-        https.get(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`, {
-          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' }
-        }, (res) => {
-          let data = '';
-          res.on('data', chunk => data += chunk);
-          res.on('end', () => {
-            try {
-              resolve(JSON.parse(data));
-            } catch (e) {
-              reject(e);
-            }
-          });
-        }).on('error', reject);
-      });
-      
-      const price = response?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      const priceData = await fetchYahooPrice(symbol);
+      const price = priceData?.price;
       
       if (price) {
         // Check alerts for this symbol
