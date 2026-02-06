@@ -2,7 +2,7 @@
 
 A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 
-![Version](https://img.shields.io/badge/version-0.17.2-blue)
+![Version](https://img.shields.io/badge/version-0.17.3-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -99,6 +99,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.17.3** — Performance chart uses cost basis (matches P&L)
 - **v0.17.2** — Fix performance chart rendering, allocation option prices
 - **v0.17.1** — Fix options multiplier, rate limiting
 - **v0.17.0 "Horizon"** — Portfolio performance chart with historical reconstruction

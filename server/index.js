@@ -1006,13 +1006,22 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
   
   const snapshots = dbAll(sql, params);
   
-  // Calculate overall performance (first = oldest, last = newest)
-  const first = snapshots[0];
-  const last = snapshots[snapshots.length - 1];
+  // Get cost basis from positions (what was actually paid)
+  const positions = dbAll('SELECT * FROM positions WHERE portfolio_id = ?', [id]);
+  let costBasis = 0;
+  for (const pos of positions) {
+    const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+    costBasis += pos.entry_price * pos.quantity * mult;
+  }
+  costBasis += portfolio.cash || 0;
   
-  const totalReturn = first && last ? last.total_value - first.total_value : 0;
-  const totalReturnPct = first && first.total_value > 0 
-    ? ((last.total_value - first.total_value) / first.total_value) * 100 
+  // Calculate performance based on cost basis (matches P&L)
+  const last = snapshots[snapshots.length - 1];
+  const currentValue = last?.total_value || 0;
+  
+  const totalReturn = currentValue - costBasis;
+  const totalReturnPct = costBasis > 0 
+    ? ((currentValue - costBasis) / costBasis) * 100 
     : 0;
   
   res.json({
@@ -1020,8 +1029,8 @@ app.get('/api/portfolios/:id/performance', authenticateToken, (req, res) => {
     summary: {
       total_return: totalReturn,
       total_return_pct: totalReturnPct,
-      start_value: first?.total_value || 0,
-      current_value: last?.total_value || 0,
+      start_value: costBasis, // Cost basis instead of first snapshot
+      current_value: currentValue,
       days: snapshots.length
     }
   });

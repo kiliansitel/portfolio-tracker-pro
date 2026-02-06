@@ -1,6 +1,16 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.17.2 (2026-02-06) ← CURRENT
+## v0.17.3 (2026-02-06) ← CURRENT
+Performance chart uses cost basis.
+
+**Fixes:**
+- 📊 Performance return now matches P&L (uses cost basis, not first snapshot)
+- Start value = what you paid (entry prices × quantities)
+- Makes P&L and Performance consistent
+
+---
+
+## v0.17.2 (2026-02-06)
 Performance chart and allocation fixes.
 
 **Fixes:**
