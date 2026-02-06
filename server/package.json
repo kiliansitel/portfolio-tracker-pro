@@ -1,0 +1,18 @@
+{
+  "name": "portfolio-tracker-server",
+  "version": "1.0.0",
+  "description": "Portfolio tracker backend with user auth and portfolio management",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "sql.js": "^1.10.2",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0"
+  }
+}

@@ -1,0 +1,2444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Portfolio Tracker Pro</title>
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Portfolio Pro&quot;,&quot;display&quot;:&quot;standalone&quot;}">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#131722">
+    <style>
+        :root {
+            --bg-primary: #131722;
+            --bg-secondary: #1e222d;
+            --bg-tertiary: #2a2e39;
+            --text-primary: #d1d4dc;
+            --text-secondary: #787b86;
+            --accent-blue: #2962ff;
+            --accent-green: #26a69a;
+            --accent-red: #ef5350;
+            --accent-orange: #ff9800;
+            --border-color: #363a45;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Auth Overlay */
+        .auth-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-primary);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .auth-overlay.hidden { display: none; }
+
+        .auth-box {
+            background: var(--bg-secondary);
+            padding: 32px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 400px;
+            margin: 16px;
+        }
+
+        .auth-logo {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .auth-logo h1 {
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .auth-logo h1::before { content: "📊"; }
+
+        .auth-tabs {
+            display: flex;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            color: var(--text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+
+        .auth-form { display: none; }
+        .auth-form.active { display: block; }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--accent-blue);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover { background: #1e4bd8; }
+        .btn-primary:disabled { background: var(--bg-tertiary); cursor: not-allowed; }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-danger {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        .auth-error {
+            background: rgba(239, 83, 80, 0.1);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+            padding: 10px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .auth-error.show { display: block; }
+
+        .guest-link {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.85rem;
+        }
+
+        .guest-link a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header h1 {
+            font-size: 1.2rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header h1::before { content: "📊"; }
+
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-name {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .dropdown {
+            position: relative;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            min-width: 180px;
+            z-index: 100;
+            display: none;
+            margin-top: 8px;
+        }
+
+        .dropdown-menu.show { display: block; }
+
+        .dropdown-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dropdown-item:hover { background: var(--bg-tertiary); }
+
+        /* Main Layout */
+        .main-container {
+            display: flex;
+            height: calc(100vh - 52px);
+        }
+
+        .sidebar {
+            width: 60px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 0;
+            gap: 8px;
+        }
+
+        .nav-item {
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.3rem;
+            transition: all 0.2s;
+            color: var(--text-secondary);
+        }
+
+        .nav-item:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .nav-item.active { background: var(--accent-blue); color: white; }
+
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        /* Pages */
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* Cards */
+        .card {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 16px;
+        }
+
+        .card-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .card-body { padding: 16px; }
+
+        /* Portfolio Summary */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .summary-item {
+            background: var(--bg-tertiary);
+            padding: 14px;
+            border-radius: 6px;
+        }
+
+        .summary-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .summary-value {
+            font-size: 1.3rem;
+            font-weight: 600;
+        }
+
+        .summary-sub {
+            font-size: 0.75rem;
+            margin-top: 2px;
+        }
+
+        .positive { color: var(--accent-green); }
+        .negative { color: var(--accent-red); }
+
+        /* Tables */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table th, .data-table td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .data-table th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .data-table tr:hover { background: var(--bg-tertiary); }
+
+        .symbol-cell {
+            font-weight: 600;
+            color: var(--accent-blue);
+            cursor: pointer;
+        }
+
+        .type-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 6px;
+        }
+
+        .type-stock { background: rgba(41, 98, 255, 0.2); color: var(--accent-blue); }
+        .type-option { background: rgba(156, 39, 176, 0.2); color: #9c27b0; }
+        .type-crypto { background: rgba(255, 152, 0, 0.2); color: var(--accent-orange); }
+
+        /* Chart */
+        .chart-wrapper {
+            height: 350px;
+            min-height: 300px;
+            position: relative;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .chart-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .chart-btn {
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .chart-btn.active { background: var(--accent-blue); color: white; border-color: var(--accent-blue); }
+
+        #chartContainer { height: 100%; }
+
+        /* Markets Grid */
+        .markets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+        }
+
+        .market-item {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .market-item:hover { border-color: var(--accent-blue); }
+        .market-item.selected { border-color: var(--accent-blue); background: rgba(41, 98, 255, 0.1); }
+
+        .market-symbol { font-size: 0.75rem; color: var(--text-secondary); }
+        .market-price { font-size: 1.1rem; font-weight: 600; margin: 2px 0; }
+        .market-change { font-size: 0.85rem; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show { display: flex; }
+
+        .modal {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            margin: 16px;
+        }
+
+        .modal-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 { font-size: 1.1rem; }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+
+        .modal-body { padding: 16px; }
+
+        .modal-footer {
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        /* Watchlist */
+        .watchlist-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+
+        .watchlist-item:hover { background: var(--bg-tertiary); margin: 0 -16px; padding: 10px 16px; }
+
+        .watch-symbol { font-weight: 600; }
+        .watch-name { font-size: 0.75rem; color: var(--text-secondary); }
+        .watch-target { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
+        .watch-price { text-align: right; }
+
+        .alert-badge {
+            font-size: 0.6rem;
+            padding: 2px 5px;
+            border-radius: 3px;
+            background: rgba(38, 166, 154, 0.2);
+            color: var(--accent-green);
+            margin-left: 5px;
+        }
+
+        /* Settings */
+        .settings-section {
+            margin-bottom: 24px;
+        }
+
+        .settings-section h3 {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .setting-label { font-size: 0.95rem; }
+        .setting-desc { font-size: 0.75rem; color: var(--text-secondary); }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 12px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar { width: 50px; }
+            .nav-item { width: 38px; height: 38px; font-size: 1.1rem; }
+            .content { padding: 12px; }
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+        .empty-state-text { margin-bottom: 16px; }
+
+        /* Position Cards */
+        .positions-list { display: flex; flex-direction: column; gap: 8px; }
+        .position-card {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+        }
+        .position-pnl {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        .position-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .position-symbol {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--accent-blue);
+            cursor: pointer;
+        }
+        .position-actions { display: flex; gap: 8px; }
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            padding: 4px;
+            opacity: 0.7;
+        }
+        .btn-icon:hover { opacity: 1; }
+        .btn-icon.btn-danger { color: var(--accent-red); }
+        .btn-add {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            font-size: 1.4rem;
+            font-weight: 300;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .btn-add:hover { background: #1e50d9; }
+        .position-details {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        .position-stat {
+            display: flex;
+            flex-direction: column;
+        }
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+        .position-notes {
+            margin-top: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        /* Watchlist Categories - Collapsible */
+        .watchlist-category { margin-bottom: 8px; }
+        .category-header {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .category-header:hover { background: var(--border-color); }
+        .category-header::after {
+            content: '▼';
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+        .category-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+        .category-items {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        .category-items.collapsed {
+            max-height: 0 !important;
+        }
+        .watchlist-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+        }
+        .watch-info { flex: 1; cursor: pointer; }
+        .watch-actions { display: flex; gap: 4px; margin-left: 8px; }
+        .alert-badge {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 8px;
+        }
+        .alert-badge.buy { background: var(--accent-green); color: white; }
+        .alert-badge.sell { background: var(--accent-red); color: white; }
+
+        /* Alerts Page */
+        .alert-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .alert-info { flex: 1; }
+        .alert-symbol { font-weight: 600; color: var(--accent-blue); }
+        .alert-condition { color: var(--text-secondary); font-size: 0.85rem; }
+        .alert-status { margin-left: 12px; }
+        .alert-status.triggered { color: var(--accent-green); }
+        .alert-status.pending { color: var(--accent-orange); }
+
+        @media (max-width: 480px) {
+            .position-details { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* Swipeable rows */
+        .swipe-container {
+            position: relative;
+            overflow: hidden;
+            background: var(--bg-primary);
+        }
+        .swipe-content {
+            position: relative;
+            background: var(--bg-secondary);
+            transition: transform 0.2s ease;
+            z-index: 1;
+        }
+        .swipe-actions {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            display: flex;
+            align-items: stretch;
+        }
+        .swipe-action {
+            width: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: white;
+            cursor: pointer;
+        }
+        .swipe-action.edit { background: var(--accent-blue); }
+        .swipe-action.alert { background: var(--accent-orange); }
+        .swipe-action.delete { background: var(--accent-red); }
+
+        /* Chart Detail Modal */
+        .modal-fullscreen {
+            width: 100%;
+            max-width: 100%;
+            height: 100%;
+            max-height: 100%;
+            border-radius: 0;
+            display: flex;
+            flex-direction: column;
+        }
+        .chart-detail-header {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .chart-detail-header h2 { margin: 0; font-size: 1.2rem; }
+        .chart-detail-price {
+            display: flex;
+            gap: 12px;
+            align-items: baseline;
+        }
+        #chartDetailPrice { font-size: 1.5rem; font-weight: 600; }
+        .chart-detail-controls {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .chart-type-btns, .chart-tf-btns {
+            display: flex;
+            gap: 4px;
+        }
+        .chart-detail-ma-controls {
+            display: flex;
+            gap: 16px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .chart-detail-ma-controls label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .chart-detail-ma-controls input { cursor: pointer; }
+
+        @media (min-width: 768px) {
+            .modal-fullscreen {
+                width: 90%;
+                max-width: 900px;
+                height: 90%;
+                max-height: 700px;
+                border-radius: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Auth Overlay -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-box">
+            <div class="auth-logo">
+                <h1>Portfolio Tracker Pro</h1>
+                <p style="color: var(--text-secondary); margin-top: 8px;">Track your investments like a pro</p>
+            </div>
+            
+            <div class="auth-error" id="authError"></div>
+            
+            <div class="auth-tabs">
+                <div class="auth-tab active" data-form="login">Login</div>
+                <div class="auth-tab" data-form="register">Register</div>
+            </div>
+            
+            <form class="auth-form active" id="loginForm">
+                <div class="form-group">
+                    <label>Username or Email</label>
+                    <input type="text" name="login" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+            </form>
+            
+            <form class="auth-form" id="registerForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" name="email" required autocomplete="email">
+                </div>
+                <div class="form-group">
+                    <label>Password (min 6 characters)</label>
+                    <input type="password" name="password" required minlength="6" autocomplete="new-password">
+                </div>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+            
+            <div class="guest-link">
+                <a href="#" onclick="continueAsGuest()">Continue as guest →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <header class="header">
+        <div class="header-left">
+            <h1>Portfolio Pro</h1>
+        </div>
+        <div class="user-menu">
+            <span class="user-name" id="userName">Guest</span>
+            <div class="dropdown">
+                <div class="user-avatar" id="userAvatar" onclick="toggleDropdown()">G</div>
+                <div class="dropdown-menu" id="userDropdown">
+                    <div class="dropdown-item" onclick="showPage('settings')">⚙️ Settings</div>
+                    <div class="dropdown-item" onclick="logout()">🚪 Logout</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="main-container">
+        <nav class="sidebar">
+            <div class="nav-item active" data-page="dashboard" title="Dashboard">📊</div>
+            <div class="nav-item" data-page="portfolio" title="Portfolio">💼</div>
+            <div class="nav-item" data-page="watchlist" title="Watchlist">👁️</div>
+            <div class="nav-item" data-page="alerts" title="Alerts">🔔</div>
+            <div class="nav-item" data-page="settings" title="Settings">⚙️</div>
+        </nav>
+
+        <main class="content">
+            <!-- Dashboard Page -->
+            <div class="page active" id="page-dashboard">
+                <div class="summary-grid" id="summaryGrid">
+                    <div class="summary-item">
+                        <div class="summary-label">Portfolio Value</div>
+                        <div class="summary-value" id="totalValue">$0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Total P&L</div>
+                        <div class="summary-value" id="totalPnL">$0.00</div>
+                        <div class="summary-sub" id="totalPnLPct">0%</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">Cash</div>
+                        <div class="summary-value" id="cashValue">$0.00</div>
+                    </div>
+                    <div class="summary-item">
+                        <div class="summary-label">VIX</div>
+                        <div class="summary-value" id="vixValue">--</div>
+                        <div class="summary-sub" id="vixStatus">--</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <span>📈 Chart</span>
+                        <div class="chart-controls">
+                            <button class="chart-btn" onclick="setTimeframe('1d')">1D</button>
+                            <button class="chart-btn" onclick="setTimeframe('5d')">5D</button>
+                            <button class="chart-btn active" onclick="setTimeframe('1mo')">1M</button>
+                            <button class="chart-btn" onclick="setTimeframe('3mo')">3M</button>
+                            <button class="chart-btn" onclick="setTimeframe('1y')">1Y</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-header">
+                            <div class="chart-title" id="chartTitle">S&P 500</div>
+                        </div>
+                        <div class="chart-wrapper">
+                            <div id="chartContainer"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">🌍 Markets</div>
+                    <div class="card-body">
+                        <div class="markets-grid" id="marketsGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portfolio Page -->
+            <div class="page" id="page-portfolio">
+                <div class="card">
+                    <div class="card-header">
+                        <span>💼 My Positions</span>
+                        <button class="btn-add" onclick="showAddPositionModal()" title="Add Position">+</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="positionsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Watchlist Page -->
+            <div class="page" id="page-watchlist">
+                <div class="card">
+                    <div class="card-header">
+                        <span>👁️ Watchlist</span>
+                        <button class="btn-add" onclick="showAddWatchlistModal()" title="Add Ticker">+</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="watchlistItems"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alerts Page -->
+            <div class="page" id="page-alerts">
+                <div class="card">
+                    <div class="card-header">
+                        <span>🔔 Price Alerts</span>
+                        <button class="btn-add" onclick="showAddWatchlistModal()" title="Add Alert">+</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="alertsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div class="page" id="page-settings">
+                <div class="card">
+                    <div class="card-header">⚙️ Settings</div>
+                    <div class="card-body">
+                        <div class="settings-section">
+                            <h3>Account</h3>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Username</div>
+                                    <div class="setting-desc" id="settingsUsername">--</div>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Email</div>
+                                    <div class="setting-desc" id="settingsEmail">--</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <h3>Portfolio</h3>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Default Cash</div>
+                                    <div class="setting-desc">Set your available cash for dry powder tracking</div>
+                                </div>
+                                <input type="number" id="settingsCash" style="width: 120px; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);" onchange="updateCashSetting()">
+                            </div>
+                        </div>
+                        <div class="settings-section" id="loggedInSettings" style="display:none;">
+                            <button class="btn btn-danger" onclick="logout()">Logout</button>
+                        </div>
+                        <div class="settings-section">
+                            <h3>About</h3>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Portfolio Tracker Pro</div>
+                                    <div class="setting-desc">v0.8.0 "Detail"</div>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Data Sources</div>
+                                    <div class="setting-desc" id="dataSourceStatus">Checking...</div>
+                                </div>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Cache Status</div>
+                                    <div class="setting-desc" id="cacheStatus">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Position Modal -->
+    <div class="modal-overlay" id="addPositionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="addPositionTitle">Add Position</h2>
+                <button class="modal-close" onclick="closeModal('addPositionModal')">&times;</button>
+            </div>
+            <form id="positionForm" onsubmit="savePosition(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Symbol *</label>
+                        <input type="text" name="symbol" required placeholder="e.g. AAPL, BTC-USD">
+                    </div>
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" name="name" placeholder="e.g. Apple Inc.">
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="type" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="stock">Stock</option>
+                            <option value="option">Option/LEAP</option>
+                            <option value="crypto">Crypto</option>
+                            <option value="etf">ETF</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity *</label>
+                        <input type="number" name="quantity" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Entry Price *</label>
+                        <input type="number" name="entry_price" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Entry Date</label>
+                        <input type="date" name="entry_date">
+                    </div>
+                    <div id="optionFields" style="display:none;">
+                        <div class="form-group">
+                            <label>Strike Price</label>
+                            <input type="number" name="strike_price" step="any">
+                        </div>
+                        <div class="form-group">
+                            <label>Expiry Date</label>
+                            <input type="date" name="expiry_date">
+                        </div>
+                        <div class="form-group">
+                            <label>Current Price (per contract)</label>
+                            <input type="number" name="current_price" step="any" placeholder="Update manually">
+                        </div>
+                        <div class="form-group">
+                            <label>Multiplier</label>
+                            <input type="number" name="multiplier" value="100">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <textarea name="notes" rows="2" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addPositionModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Position</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Watchlist Modal -->
+    <div class="modal-overlay" id="addWatchlistModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="addWatchlistTitle">Add to Watchlist</h2>
+                <button class="modal-close" onclick="closeModal('addWatchlistModal')">&times;</button>
+            </div>
+            <form id="watchlistForm" onsubmit="saveWatchlistItem(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Symbol *</label>
+                        <input type="text" name="symbol" required placeholder="e.g. NVDA">
+                    </div>
+                    <div class="form-group">
+                        <label>Name</label>
+                        <input type="text" name="name" placeholder="e.g. NVIDIA Corporation">
+                    </div>
+                    <div class="form-group">
+                        <label>Alert Below (Buy Target)</label>
+                        <input type="number" name="alert_below" step="any" placeholder="e.g. 150">
+                    </div>
+                    <div class="form-group">
+                        <label>Alert Above (Sell Target)</label>
+                        <input type="number" name="alert_above" step="any" placeholder="e.g. 200">
+                    </div>
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select name="category" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="tech">Tech</option>
+                            <option value="safe">Safe Haven</option>
+                            <option value="robotics">Robotics/AI</option>
+                            <option value="crypto">Crypto</option>
+                            <option value="general">General</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addWatchlistModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add to Watchlist</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Chart Detail Modal -->
+    <div class="modal-overlay" id="chartDetailModal">
+        <div class="modal modal-fullscreen">
+            <div class="modal-header">
+                <div class="chart-detail-header">
+                    <h2 id="chartDetailTitle">AAPL</h2>
+                    <div class="chart-detail-price">
+                        <span id="chartDetailPrice">$0.00</span>
+                        <span id="chartDetailChange" class="positive">+0.00%</span>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeChartDetail()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding:0;flex:1;display:flex;flex-direction:column;">
+                <div class="chart-detail-controls">
+                    <div class="chart-type-btns">
+                        <button class="chart-btn active" onclick="setDetailChartType('area')">Area</button>
+                        <button class="chart-btn" onclick="setDetailChartType('candle')">Candle</button>
+                    </div>
+                    <div class="chart-tf-btns">
+                        <button class="chart-btn" onclick="setDetailTimeframe('1d')">1D</button>
+                        <button class="chart-btn" onclick="setDetailTimeframe('5d')">5D</button>
+                        <button class="chart-btn active" onclick="setDetailTimeframe('1mo')">1M</button>
+                        <button class="chart-btn" onclick="setDetailTimeframe('3mo')">3M</button>
+                        <button class="chart-btn" onclick="setDetailTimeframe('1y')">1Y</button>
+                    </div>
+                </div>
+                <div class="chart-detail-ma-controls">
+                    <label><input type="checkbox" id="maToggle20" checked onchange="toggleDetailMA(20)"> MA20</label>
+                    <label><input type="checkbox" id="maToggle50" checked onchange="toggleDetailMA(50)"> MA50</label>
+                    <label><input type="checkbox" id="maToggle200" onchange="toggleDetailMA(200)"> MA200</label>
+                </div>
+                <div id="chartDetailContainer" style="flex:1;min-height:300px;"></div>
+            </div>
+            <div class="modal-footer" style="justify-content:space-around;">
+                <button class="btn btn-secondary" onclick="addToMarkets()" id="addToMarketsBtn">📌 Pin to Markets</button>
+                <button class="btn btn-primary" onclick="closeChartDetail()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ STATE ============
+        let token = localStorage.getItem('token');
+        let user = JSON.parse(localStorage.getItem('user') || 'null');
+        let portfolioId = null;
+        let watchlistId = null;
+        let positions = [];
+        let watchlist = [];
+        let alerts = [];
+        let priceCache = {};
+        let chart = null;
+        let mainSeries = null;
+        let ma20Series = null;
+        let ma50Series = null;
+        let selectedSymbol = '^GSPC';
+        let currentTimeframe = '1mo';
+        
+        // Detail chart state
+        let detailChart = null;
+        let detailMainSeries = null;
+        let detailCandleSeries = null;
+        let detailMA20 = null;
+        let detailMA50 = null;
+        let detailMA200 = null;
+        let detailSymbol = '';
+        let detailTimeframe = '1mo';
+        let detailChartType = 'area';
+        let pinnedMarkets = JSON.parse(localStorage.getItem('pinnedMarkets') || '[]');
+
+        const API_BASE = '/api';
+
+        // ============ API ============
+        async function api(endpoint, options = {}) {
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            
+            const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+            const data = await res.json();
+            
+            if (!res.ok) throw new Error(data.error || 'Request failed');
+            return data;
+        }
+
+        // ============ PRICE SOURCES ============
+        const CACHE_KEY = 'portfolio_price_cache';
+        const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 min for stale data display
+        const FRESH_AGE = 30 * 1000; // 30s for "fresh" data
+        
+        // Load cache from localStorage on startup
+        function loadPriceCache() {
+            try {
+                const saved = localStorage.getItem(CACHE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    Object.assign(priceCache, parsed);
+                    console.log(`📦 Loaded ${Object.keys(parsed).length} cached prices`);
+                }
+            } catch (e) {}
+        }
+        
+        function savePriceCache() {
+            try {
+                localStorage.setItem(CACHE_KEY, JSON.stringify(priceCache));
+            } catch (e) {}
+        }
+        
+        // Data sources with fallback
+        const dataSources = [
+            {
+                name: 'Yahoo (corsproxy)',
+                fetch: async (symbol) => {
+                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+                    const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(5000) });
+                    const data = await res.json();
+                    const meta = data.chart?.result?.[0]?.meta;
+                    if (!meta?.regularMarketPrice) throw new Error('No data');
+                    return { price: meta.regularMarketPrice, prev: meta.previousClose || meta.chartPreviousClose };
+                }
+            },
+            {
+                name: 'Yahoo (allorigins)',
+                fetch: async (symbol) => {
+                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+                    const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(5000) });
+                    const data = await res.json();
+                    const meta = data.chart?.result?.[0]?.meta;
+                    if (!meta?.regularMarketPrice) throw new Error('No data');
+                    return { price: meta.regularMarketPrice, prev: meta.previousClose || meta.chartPreviousClose };
+                }
+            },
+            {
+                name: 'Yahoo (direct)',
+                fetch: async (symbol) => {
+                    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
+                    const res = await fetch(url, { signal: AbortSignal.timeout(4000), mode: 'cors' });
+                    const data = await res.json();
+                    const meta = data.chart?.result?.[0]?.meta;
+                    if (!meta?.regularMarketPrice) throw new Error('No data');
+                    return { price: meta.regularMarketPrice, prev: meta.previousClose || meta.chartPreviousClose };
+                }
+            }
+        ];
+        
+        let activeSource = 0;
+        let sourceStats = { success: 0, fail: 0 };
+        
+        async function fetchQuote(symbol) {
+            // Return cached if fresh
+            const cached = priceCache[symbol];
+            if (cached && cached._fetchedAt && Date.now() - cached._fetchedAt < FRESH_AGE) {
+                return cached;
+            }
+            
+            // Try each source
+            for (let i = 0; i < dataSources.length; i++) {
+                const srcIdx = (activeSource + i) % dataSources.length;
+                const source = dataSources[srcIdx];
+                try {
+                    const result = await source.fetch(symbol);
+                    const price = result.price;
+                    const prev = result.prev || price;
+                    const quote = { 
+                        symbol, 
+                        price, 
+                        change: price - prev, 
+                        changePercent: prev ? ((price - prev) / prev) * 100 : 0, 
+                        _fetchedAt: Date.now(),
+                        _source: source.name
+                    };
+                    priceCache[symbol] = quote;
+                    activeSource = srcIdx; // Stick with working source
+                    sourceStats.success++;
+                    return quote;
+                } catch (e) {
+                    sourceStats.fail++;
+                    continue;
+                }
+            }
+            
+            // All sources failed - return stale cache if available
+            if (cached && Date.now() - cached._fetchedAt < CACHE_MAX_AGE) {
+                cached._stale = true;
+                return cached;
+            }
+            return null;
+        }
+        
+        // Batch fetch for speed
+        async function fetchQuotes(symbols) {
+            const results = await Promise.allSettled(symbols.map(s => fetchQuote(s)));
+            savePriceCache();
+            return results.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean);
+        }
+        
+        function updateCacheStatus() {
+            const count = Object.keys(priceCache).length;
+            const fresh = Object.values(priceCache).filter(p => p._fetchedAt && Date.now() - p._fetchedAt < FRESH_AGE).length;
+            document.getElementById('cacheStatus').textContent = `${count} symbols (${fresh} fresh)`;
+            document.getElementById('dataSourceStatus').textContent = dataSources[activeSource]?.name || 'Unknown';
+        }
+
+        // Chart data cache
+        const CHART_CACHE_KEY = 'portfolio_chart_cache';
+        const CHART_CACHE_MAX_AGE = 5 * 60 * 1000; // 5 min
+        let chartCache = {};
+        let chartAbortController = null;
+        
+        function loadChartCache() {
+            try {
+                const saved = localStorage.getItem(CHART_CACHE_KEY);
+                if (saved) chartCache = JSON.parse(saved);
+            } catch (e) {}
+        }
+        
+        function saveChartCache() {
+            try {
+                // Only keep last 20 entries
+                const keys = Object.keys(chartCache);
+                if (keys.length > 20) {
+                    const sorted = keys.sort((a, b) => (chartCache[b]._ts || 0) - (chartCache[a]._ts || 0));
+                    sorted.slice(20).forEach(k => delete chartCache[k]);
+                }
+                localStorage.setItem(CHART_CACHE_KEY, JSON.stringify(chartCache));
+            } catch (e) {}
+        }
+        
+        async function fetchChartData(symbol, range) {
+            const cacheKey = `${symbol}_${range}`;
+            const cached = chartCache[cacheKey];
+            const now = Date.now();
+            
+            // Return fresh cache immediately
+            if (cached && cached._ts && (now - cached._ts) < CHART_CACHE_MAX_AGE) {
+                return cached.data;
+            }
+            
+            // Abort previous fetch
+            if (chartAbortController) {
+                chartAbortController.abort();
+            }
+            chartAbortController = new AbortController();
+            
+            const intervals = { '1d': '5m', '5d': '15m', '1mo': '1h', '3mo': '1d', '1y': '1d' };
+            const yahooUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`;
+            
+            // Try multiple proxies for speed
+            const proxies = [
+                `https://corsproxy.io/?${encodeURIComponent(yahooUrl)}`,
+                `https://api.allorigins.win/raw?url=${encodeURIComponent(yahooUrl)}`
+            ];
+            
+            for (const proxyUrl of proxies) {
+                try {
+                    const res = await fetch(proxyUrl, { 
+                        signal: chartAbortController.signal,
+                        cache: 'no-store'
+                    });
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const r = data.chart?.result?.[0];
+                    if (!r || !r.timestamp) continue;
+                    
+                    const chartData = r.timestamp
+                        .map((t, i) => r.indicators.quote[0].close[i] != null ? { time: t, value: r.indicators.quote[0].close[i] } : null)
+                        .filter(Boolean);
+                    
+                    // Cache it
+                    chartCache[cacheKey] = { data: chartData, _ts: now };
+                    saveChartCache();
+                    return chartData;
+                } catch (e) {
+                    if (e.name === 'AbortError') return cached?.data || [];
+                    continue;
+                }
+            }
+            
+            // Return stale cache if all proxies failed
+            return cached?.data || [];
+        }
+
+        // ============ AUTH ============
+        document.querySelectorAll('.auth-tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById(`${tab.dataset.form}Form`).classList.add('active');
+                document.getElementById('authError').classList.remove('show');
+            };
+        });
+
+        document.getElementById('loginForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            try {
+                const data = await api('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ login: form.login.value, password: form.password.value })
+                });
+                token = data.token;
+                user = data.user;
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+                hideAuth();
+                initApp();
+            } catch (err) {
+                showAuthError(err.message);
+            }
+        };
+
+        document.getElementById('registerForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            try {
+                const data = await api('/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ username: form.username.value, email: form.email.value, password: form.password.value })
+                });
+                token = data.token;
+                user = data.user;
+                localStorage.setItem('token', token);
+                localStorage.setItem('user', JSON.stringify(user));
+                hideAuth();
+                initApp();
+            } catch (err) {
+                showAuthError(err.message);
+            }
+        };
+
+        function showAuthError(msg) {
+            const el = document.getElementById('authError');
+            el.textContent = msg;
+            el.classList.add('show');
+        }
+
+        function hideAuth() {
+            document.getElementById('authOverlay').classList.add('hidden');
+        }
+
+        function showAuth() {
+            document.getElementById('authOverlay').classList.remove('hidden');
+        }
+
+        function continueAsGuest() {
+            hideAuth();
+            user = { username: 'Guest' };
+            initApp();
+        }
+
+        function logout() {
+            token = null;
+            user = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            positions = [];
+            watchlist = [];
+            showAuth();
+        }
+
+        // ============ UI ============
+        function updateUserUI() {
+            const name = user?.username || 'Guest';
+            document.getElementById('userName').textContent = name;
+            document.getElementById('userAvatar').textContent = name[0].toUpperCase();
+            document.getElementById('settingsUsername').textContent = user?.username || '--';
+            document.getElementById('settingsEmail').textContent = user?.email || '--';
+            document.getElementById('loggedInSettings').style.display = token ? 'block' : 'none';
+        }
+
+        function toggleDropdown() {
+            document.getElementById('userDropdown').classList.toggle('show');
+        }
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.dropdown')) {
+                document.getElementById('userDropdown').classList.remove('show');
+            }
+        });
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.onclick = () => showPage(item.dataset.page);
+        });
+
+        function showPage(page) {
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
+            document.getElementById(`page-${page}`)?.classList.add('active');
+            document.getElementById('userDropdown').classList.remove('show');
+            // Render alerts when switching to alerts page
+            if (page === 'alerts') renderAlerts();
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('show');
+        }
+        
+        function showModal(id) {
+            document.getElementById(id).classList.add('show');
+        }
+
+        function showAddPositionModal() {
+            editingPositionId = null;
+            document.getElementById('positionForm').reset();
+            const title = document.getElementById('addPositionTitle');
+            if (title) title.textContent = 'Add Position';
+            showModal('addPositionModal');
+        }
+
+        function showAddWatchlistModal() {
+            editingWatchlistItemId = null;
+            document.getElementById('watchlistForm').reset();
+            const title = document.getElementById('addWatchlistTitle');
+            if (title) title.textContent = 'Add to Watchlist';
+            showModal('addWatchlistModal');
+        }
+
+        // Type toggle for options
+        document.querySelector('select[name="type"]').onchange = (e) => {
+            document.getElementById('optionFields').style.display = e.target.value === 'option' ? 'block' : 'none';
+        };
+
+        // ============ DATA ============
+        async function loadPortfolio() {
+            if (!token) return;
+            try {
+                const portfolios = await api('/portfolios');
+                if (portfolios.length > 0) {
+                    portfolioId = portfolios[0].id;
+                    document.getElementById('settingsCash').value = portfolios[0].cash || 0;
+                    positions = await api(`/portfolios/${portfolioId}/positions`);
+                    renderPositions();
+                }
+            } catch (e) {
+                console.error('Load portfolio error:', e);
+            }
+        }
+
+        async function loadWatchlists() {
+            if (!token) return;
+            try {
+                const wls = await api('/watchlists');
+                if (wls.length > 0) {
+                    watchlistId = wls[0].id;
+                    watchlist = wls[0].items || [];
+                    renderWatchlist();
+                }
+            } catch (e) {
+                console.error('Load watchlist error:', e);
+            }
+        }
+
+        async function savePosition(e) {
+            e.preventDefault();
+            if (!token || !portfolioId) {
+                alert('Please login to save positions');
+                return;
+            }
+            const form = e.target;
+            const data = {
+                symbol: form.symbol.value.toUpperCase(),
+                name: form.name.value,
+                type: form.type.value,
+                quantity: parseFloat(form.quantity.value),
+                entry_price: parseFloat(form.entry_price.value),
+                entry_date: form.entry_date.value || null,
+                notes: form.notes.value,
+                strike_price: form.strike_price.value ? parseFloat(form.strike_price.value) : null,
+                expiry_date: form.expiry_date.value || null,
+                current_price: form.current_price?.value ? parseFloat(form.current_price.value) : null,
+                multiplier: form.multiplier.value ? parseFloat(form.multiplier.value) : 1
+            };
+            
+            try {
+                if (editingPositionId) {
+                    await api(`/positions/${editingPositionId}`, { method: 'PUT', body: JSON.stringify(data) });
+                    editingPositionId = null;
+                } else {
+                    await api(`/portfolios/${portfolioId}/positions`, { method: 'POST', body: JSON.stringify(data) });
+                }
+                closeModal('addPositionModal');
+                form.reset();
+                document.getElementById('addPositionTitle').textContent = 'Add Position';
+                await loadPortfolio();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function saveWatchlistItem(e) {
+            e.preventDefault();
+            if (!token || !watchlistId) {
+                alert('Please login to save watchlist items');
+                return;
+            }
+            const form = e.target;
+            const data = {
+                symbol: form.symbol.value.toUpperCase(),
+                name: form.name.value,
+                alert_below: form.alert_below.value ? parseFloat(form.alert_below.value) : null,
+                alert_above: form.alert_above.value ? parseFloat(form.alert_above.value) : null,
+                category: form.category.value
+            };
+            
+            try {
+                if (editingWatchlistItemId) {
+                    await api(`/watchlist-items/${editingWatchlistItemId}`, { method: 'PUT', body: JSON.stringify(data) });
+                    editingWatchlistItemId = null;
+                } else {
+                    await api(`/watchlists/${watchlistId}/items`, { method: 'POST', body: JSON.stringify(data) });
+                }
+                closeModal('addWatchlistModal');
+                form.reset();
+                document.getElementById('addWatchlistTitle').textContent = 'Add to Watchlist';
+                await loadWatchlists();
+                renderAlerts();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+        
+        function renderAlerts() {
+            const el = document.getElementById('alertsList');
+            // Get all watchlist items with alerts set
+            const itemsWithAlerts = watchlist.filter(w => w.alert_below || w.alert_above);
+            
+            if (itemsWithAlerts.length === 0) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-text">No price alerts set</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add alerts from the Watchlist page</p></div>';
+                return;
+            }
+            
+            let html = '';
+            for (const item of itemsWithAlerts) {
+                const q = priceCache[item.symbol];
+                const price = q?.price || 0;
+                
+                let condition = '';
+                let status = 'pending';
+                let statusText = '⏳ Waiting';
+                
+                if (item.alert_below) {
+                    condition = `Buy below $${item.alert_below}`;
+                    if (price > 0 && price <= item.alert_below) {
+                        status = 'triggered';
+                        statusText = '🔔 TRIGGERED!';
+                    }
+                }
+                if (item.alert_above) {
+                    condition += condition ? ' / ' : '';
+                    condition += `Sell above $${item.alert_above}`;
+                    if (price > 0 && price >= item.alert_above) {
+                        status = 'triggered';
+                        statusText = '🔔 TRIGGERED!';
+                    }
+                }
+                
+                html += `<div class="swipe-container" data-id="${item.id}" data-type="alert">
+                    <div class="swipe-actions">
+                        <div class="swipe-action edit" onclick="editWatchlistItem(${item.id})">✏️</div>
+                        <div class="swipe-action delete" onclick="deleteWatchlistItem(${item.id})">🗑️</div>
+                    </div>
+                    <div class="swipe-content alert-item">
+                        <div class="alert-info" onclick="selectTicker('${item.symbol}')" style="cursor:pointer;flex:1;">
+                            <div class="alert-symbol">${item.symbol}</div>
+                            <div class="alert-condition">${condition}</div>
+                            <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? '$' + price.toFixed(2) : 'Loading...'}</div>
+                        </div>
+                        <div class="alert-status ${status}">${statusText}</div>
+                    </div>
+                </div>`;
+            }
+            el.innerHTML = html;
+            setupSwipeHandlers();
+        }
+
+        async function deletePosition(id) {
+            if (!confirm('Delete this position?')) return;
+            try {
+                await api(`/positions/${id}`, { method: 'DELETE' });
+                await loadPortfolio();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function deleteWatchlistItem(id) {
+            if (!confirm('Remove from watchlist?')) return;
+            try {
+                await api(`/watchlist-items/${id}`, { method: 'DELETE' });
+                await loadWatchlists();
+            } catch (e) {
+                alert(e.message);
+            }
+        }
+
+        async function updateCashSetting() {
+            if (!token || !portfolioId) return;
+            const cash = parseFloat(document.getElementById('settingsCash').value) || 0;
+            try {
+                await api(`/portfolios/${portfolioId}`, { method: 'PUT', body: JSON.stringify({ cash }) });
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        // Edit mode state (must be declared before render functions)
+        let editingPositionId = null;
+        let editingWatchlistItemId = null;
+        
+        // Build Yahoo option ticker symbol
+        // Format: QQQ270617C00800000 (underlying + YYMMDD + C/P + strike*1000 padded to 8)
+        function buildOptionSymbol(underlying, expiryDate, strike, isCall = true) {
+            if (!underlying || !expiryDate || !strike) return null;
+            const d = new Date(expiryDate);
+            const yy = String(d.getFullYear()).slice(2);
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const cp = isCall ? 'C' : 'P';
+            const strikeStr = String(Math.round(strike * 1000)).padStart(8, '0');
+            return `${underlying.toUpperCase()}${yy}${mm}${dd}${cp}${strikeStr}`;
+        }
+        
+        // ============ RENDER ============
+        function renderPositions() {
+            const el = document.getElementById('positionsList');
+            if (positions.length === 0) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💼</div><div class="empty-state-text">No positions yet</div><button class="btn btn-primary" onclick="showAddPositionModal()">Add Your First Position</button></div>';
+                return;
+            }
+            
+            // Use cards for mobile-friendly layout
+            let html = '<div class="positions-list">';
+            
+            for (const pos of positions) {
+                let currentPrice;
+                if (pos.type === 'option') {
+                    // Try to get option price from cache (using constructed symbol)
+                    const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
+                    const optQuote = optSym ? priceCache[optSym] : null;
+                    currentPrice = optQuote?.price || pos.current_price || pos.entry_price;
+                } else {
+                    const q = priceCache[pos.symbol];
+                    currentPrice = q?.price || pos.entry_price;
+                }
+                const cost = pos.entry_price * pos.quantity * (pos.multiplier || 1);
+                const value = currentPrice * pos.quantity * (pos.multiplier || 1);
+                const pnl = value - cost;
+                const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                
+                const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
+                const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
+                
+                html += `<div class="swipe-container" data-id="${pos.id}" data-type="position">
+                    <div class="swipe-actions">
+                        <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
+                        <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
+                    </div>
+                    <div class="swipe-content position-card">
+                        <div class="position-header">
+                            <div class="position-symbol" onclick="selectTicker('${pos.symbol}')">${pos.symbol}${optionInfo}<span class="type-badge ${typeClass}">${pos.type}</span></div>
+                            <div class="position-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)}</div>
+                        </div>
+                        <div class="position-details">
+                            <div class="position-stat"><span class="stat-label">Qty</span><span>${pos.quantity}${pos.type === 'option' ? 'x' : ''}</span></div>
+                            <div class="position-stat"><span class="stat-label">Entry</span><span>$${pos.entry_price.toFixed(2)}</span></div>
+                            <div class="position-stat"><span class="stat-label">Current</span><span>$${currentPrice.toFixed(2)}</span></div>
+                            <div class="position-stat"><span class="stat-label">P&L %</span><span class="${pnlPct >= 0 ? 'positive' : 'negative'}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</span></div>
+                        </div>
+                        ${pos.notes ? `<div class="position-notes">${pos.notes}</div>` : ''}
+                    </div>
+                </div>`;
+            }
+            
+            html += '</div>';
+            el.innerHTML = html;
+            setupSwipeHandlers();
+        }
+        
+        function editPosition(id) {
+            const pos = positions.find(p => p.id === id);
+            if (!pos) { console.error('Position not found:', id); return; }
+            editingPositionId = id;
+            
+            // Use querySelector for reliability
+            const form = document.getElementById('positionForm');
+            if (!form) { console.error('Position form not found'); return; }
+            
+            form.querySelector('[name="symbol"]').value = pos.symbol || '';
+            form.querySelector('[name="name"]').value = pos.name || '';
+            form.querySelector('[name="type"]').value = pos.type || 'stock';
+            form.querySelector('[name="quantity"]').value = pos.quantity || '';
+            form.querySelector('[name="entry_price"]').value = pos.entry_price || '';
+            form.querySelector('[name="entry_date"]').value = pos.entry_date || '';
+            form.querySelector('[name="notes"]').value = pos.notes || '';
+            form.querySelector('[name="strike_price"]').value = pos.strike_price || '';
+            form.querySelector('[name="expiry_date"]').value = pos.expiry_date || '';
+            form.querySelector('[name="current_price"]').value = pos.current_price || '';
+            form.querySelector('[name="multiplier"]').value = pos.multiplier || 1;
+            
+            // Show option fields if editing an option
+            document.getElementById('optionFields').style.display = pos.type === 'option' ? 'block' : 'none';
+            const title = document.getElementById('addPositionTitle');
+            if (title) title.textContent = 'Edit Position';
+            showModal('addPositionModal');
+        }
+
+        function renderWatchlist() {
+            const el = document.getElementById('watchlistItems');
+            if (watchlist.length === 0) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👁️</div><div class="empty-state-text">Watchlist empty</div><button class="btn btn-primary" onclick="showAddWatchlistModal()">Add Ticker</button></div>';
+                return;
+            }
+            
+            // Group by category
+            const categories = {};
+            const categoryNames = { tech: '💻 Tech', crypto: '₿ Crypto', safe: '🛡️ Safe Haven', robotics: '🤖 Robotics', general: '📈 General' };
+            
+            for (const item of watchlist) {
+                const cat = item.category || 'general';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(item);
+            }
+            
+            let html = '';
+            const catOrder = ['tech', 'robotics', 'crypto', 'safe', 'general'];
+            
+            // Load collapsed state from localStorage
+            const collapsedCats = JSON.parse(localStorage.getItem('collapsedCategories') || '[]');
+            
+            for (const cat of catOrder) {
+                if (!categories[cat]) continue;
+                const isCollapsed = collapsedCats.includes(cat);
+                const count = categories[cat].length;
+                html += `<div class="watchlist-category">
+                    <div class="category-header ${isCollapsed ? 'collapsed' : ''}" onclick="toggleCategory('${cat}')">
+                        <span>${categoryNames[cat] || cat} (${count})</span>
+                    </div>
+                    <div class="category-items ${isCollapsed ? 'collapsed' : ''}" id="cat-${cat}" style="max-height: ${isCollapsed ? 0 : count * 80}px;">`;
+                
+                for (const item of categories[cat]) {
+                    const q = priceCache[item.symbol];
+                    const price = q?.price || 0;
+                    const change = q?.changePercent || 0;
+                    
+                    let alertBadge = '';
+                    let target = '';
+                    if (item.alert_below && price > 0 && price <= item.alert_below) {
+                        alertBadge = '<span class="alert-badge buy">🔔 BUY</span>';
+                    } else if (item.alert_above && price > 0 && price >= item.alert_above) {
+                        alertBadge = '<span class="alert-badge sell">🔔 SELL</span>';
+                    }
+                    if (item.alert_below) target = `Target: $${item.alert_below}`;
+                    
+                    html += `<div class="swipe-container" data-id="${item.id}" data-type="watchlist">
+                        <div class="swipe-actions">
+                            <div class="swipe-action edit" onclick="editWatchlistItem(${item.id})">✏️</div>
+                            <div class="swipe-action delete" onclick="deleteWatchlistItem(${item.id})">🗑️</div>
+                        </div>
+                        <div class="swipe-content watchlist-item">
+                            <div class="watch-info" onclick="selectTicker('${item.symbol}')">
+                                <div><span class="watch-symbol">${item.symbol}</span>${alertBadge}</div>
+                                <div class="watch-name">${item.name || ''}</div>
+                                ${target ? `<div class="watch-target">${target}</div>` : ''}
+                            </div>
+                            <div class="watch-price">
+                                <div>${price > 0 ? '$' + price.toFixed(2) : '--'}</div>
+                                <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                html += '</div></div>'; // Close category-items and watchlist-category
+            }
+            el.innerHTML = html;
+            setupSwipeHandlers();
+        }
+        
+        // Toggle category collapse
+        function toggleCategory(cat) {
+            const header = event.currentTarget;
+            const items = document.getElementById(`cat-${cat}`);
+            const isCollapsed = header.classList.toggle('collapsed');
+            items.classList.toggle('collapsed');
+            
+            // Save state
+            let collapsedCats = JSON.parse(localStorage.getItem('collapsedCategories') || '[]');
+            if (isCollapsed) {
+                if (!collapsedCats.includes(cat)) collapsedCats.push(cat);
+            } else {
+                collapsedCats = collapsedCats.filter(c => c !== cat);
+            }
+            localStorage.setItem('collapsedCategories', JSON.stringify(collapsedCats));
+        }
+        
+        // Swipe gesture handling
+        let activeSwipe = null;
+        function setupSwipeHandlers() {
+            document.querySelectorAll('.swipe-container').forEach(container => {
+                const content = container.querySelector('.swipe-content');
+                let startX = 0, currentX = 0, isDragging = false;
+                
+                content.addEventListener('touchstart', (e) => {
+                    // Close any other open swipes
+                    if (activeSwipe && activeSwipe !== container) {
+                        activeSwipe.querySelector('.swipe-content').style.transform = '';
+                        activeSwipe = null;
+                    }
+                    startX = e.touches[0].clientX;
+                    isDragging = true;
+                    content.style.transition = 'none';
+                }, { passive: true });
+                
+                content.addEventListener('touchmove', (e) => {
+                    if (!isDragging) return;
+                    currentX = e.touches[0].clientX;
+                    const diff = startX - currentX;
+                    if (diff > 0 && diff < 150) { // Only allow left swipe, max 150px
+                        content.style.transform = `translateX(-${diff}px)`;
+                    }
+                }, { passive: true });
+                
+                content.addEventListener('touchend', () => {
+                    isDragging = false;
+                    content.style.transition = 'transform 0.2s ease';
+                    const diff = startX - currentX;
+                    if (diff > 60) { // Threshold to keep open
+                        content.style.transform = 'translateX(-140px)';
+                        activeSwipe = container;
+                    } else {
+                        content.style.transform = '';
+                        activeSwipe = null;
+                    }
+                });
+                
+                // Close on tap elsewhere
+                content.addEventListener('click', (e) => {
+                    if (activeSwipe === container && !e.target.closest('.watch-info')) {
+                        content.style.transform = '';
+                        activeSwipe = null;
+                    }
+                });
+            });
+        }
+        
+        // Close swipe when tapping elsewhere
+        document.addEventListener('click', (e) => {
+            if (activeSwipe && !e.target.closest('.swipe-container')) {
+                activeSwipe.querySelector('.swipe-content').style.transform = '';
+                activeSwipe = null;
+            }
+        });
+        
+        function editWatchlistItem(id) {
+            const item = watchlist.find(w => w.id === id);
+            if (!item) { console.error('Watchlist item not found:', id); return; }
+            editingWatchlistItemId = id;
+            
+            const form = document.getElementById('watchlistForm');
+            if (!form) { console.error('Watchlist form not found'); return; }
+            
+            form.querySelector('[name="symbol"]').value = item.symbol || '';
+            form.querySelector('[name="name"]').value = item.name || '';
+            form.querySelector('[name="alert_below"]').value = item.alert_below || '';
+            form.querySelector('[name="alert_above"]').value = item.alert_above || '';
+            form.querySelector('[name="category"]').value = item.category || 'general';
+            
+            const title = document.getElementById('addWatchlistTitle');
+            if (title) title.textContent = 'Edit Watchlist Item';
+            showModal('addWatchlistModal');
+        }
+
+        async function renderMarkets() {
+            // Default markets + pinned markets
+            const defaultSymbols = ['^GSPC', '^IXIC', '^DJI', '^VIX', 'BTC-USD'];
+            const allSymbols = [...new Set([...defaultSymbols, ...pinnedMarkets])];
+            const names = { '^GSPC': 'S&P 500', '^IXIC': 'Nasdaq', '^DJI': 'Dow', '^VIX': 'VIX', 'BTC-USD': 'Bitcoin' };
+            
+            const quotes = await Promise.all(allSymbols.map(fetchQuote));
+            quotes.forEach(q => { if (q) priceCache[q.symbol] = q; });
+            
+            const el = document.getElementById('marketsGrid');
+            el.innerHTML = quotes.filter(Boolean).map(q => {
+                const sel = q.symbol === selectedSymbol ? 'selected' : '';
+                const price = q.symbol.includes('BTC') ? '$' + q.price.toFixed(0) : q.price.toFixed(2);
+                const isPinned = pinnedMarkets.includes(q.symbol);
+                const pinBadge = isPinned && !defaultSymbols.includes(q.symbol) ? '<span style="font-size:0.6rem;">📌</span>' : '';
+                return `<div class="market-item ${sel}" onclick="selectTickerSmall('${q.symbol}')">
+                    <div class="market-symbol">${names[q.symbol] || q.symbol} ${pinBadge}</div>
+                    <div class="market-price">${price}</div>
+                    <div class="market-change ${q.changePercent >= 0 ? 'positive' : 'negative'}">${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%</div>
+                </div>`;
+            }).join('');
+            
+            // Update VIX
+            const vix = priceCache['^VIX'];
+            if (vix) {
+                document.getElementById('vixValue').textContent = vix.price.toFixed(1);
+                let status = vix.price < 15 ? '😌 Calm' : vix.price < 20 ? '😐 Normal' : vix.price < 30 ? '😟 Elevated' : '😱 Fear';
+                document.getElementById('vixStatus').textContent = status;
+            }
+        }
+
+        function updateSummary() {
+            let totalValue = 0;
+            let totalCost = 0;
+            
+            for (const pos of positions) {
+                // For options: use entry price as current (can't fetch option prices)
+                // For stocks/crypto: use live price or entry price as fallback
+                let currentPrice;
+                if (pos.type === 'option') {
+                    // Options: use manual current_price if set, otherwise entry_price
+                    currentPrice = pos.current_price || pos.entry_price;
+                } else {
+                    const q = priceCache[pos.symbol];
+                    currentPrice = q?.price || pos.entry_price;
+                }
+                
+                const mult = pos.multiplier || 1;
+                totalValue += currentPrice * pos.quantity * mult;
+                totalCost += pos.entry_price * pos.quantity * mult;
+            }
+            
+            const cash = parseFloat(document.getElementById('settingsCash').value) || 0;
+            const pnl = totalValue - totalCost;
+            const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+            
+            document.getElementById('totalValue').textContent = '$' + (totalValue + cash).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('totalPnL').textContent = (pnl >= 0 ? '+' : '') + '$' + pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            document.getElementById('totalPnL').className = 'summary-value ' + (pnl >= 0 ? 'positive' : 'negative');
+            document.getElementById('totalPnLPct').textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
+            document.getElementById('totalPnLPct').className = 'summary-sub ' + (pnlPct >= 0 ? 'positive' : 'negative');
+            document.getElementById('cashValue').textContent = '$' + cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        // ============ CHART ============
+        function initChart() {
+            const el = document.getElementById('chartContainer');
+            const wrapper = el.parentElement;
+            // Use wrapper dimensions or fallback to reasonable defaults
+            const width = wrapper.clientWidth || el.clientWidth || 300;
+            const height = wrapper.clientHeight || 350;
+            
+            chart = LightweightCharts.createChart(el, {
+                width: width,
+                height: height,
+                layout: { background: { type: 'solid', color: '#1e222d' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#2a2e39' }, horzLines: { color: '#2a2e39' } },
+                rightPriceScale: { borderColor: '#363a45' },
+                timeScale: { borderColor: '#363a45', timeVisible: true }
+            });
+            mainSeries = chart.addAreaSeries({ topColor: 'rgba(41,98,255,0.4)', bottomColor: 'rgba(41,98,255,0)', lineColor: '#2962ff', lineWidth: 2 });
+            
+            // Moving averages
+            ma20Series = chart.addLineSeries({ color: '#f7931a', lineWidth: 1, title: 'MA20' });
+            ma50Series = chart.addLineSeries({ color: '#627eea', lineWidth: 1, title: 'MA50' });
+            
+            // Handle resize
+            new ResizeObserver((entries) => {
+                const rect = entries[0].contentRect;
+                if (chart && rect.width > 0) {
+                    chart.applyOptions({ width: rect.width, height: rect.height || 350 });
+                }
+            }).observe(wrapper);
+        }
+        
+        // Calculate moving average
+        function calcMA(data, period) {
+            const result = [];
+            for (let i = period - 1; i < data.length; i++) {
+                let sum = 0;
+                for (let j = 0; j < period; j++) {
+                    sum += data[i - j].value;
+                }
+                result.push({ time: data[i].time, value: sum / period });
+            }
+            return result;
+        }
+
+        function renderChartData(data) {
+            if (!data.length || !mainSeries) return;
+            
+            mainSeries.setData(data);
+            
+            // Calculate and display moving averages (only for longer timeframes)
+            if (data.length >= 20 && ['1mo', '3mo', '1y'].includes(currentTimeframe)) {
+                ma20Series.setData(calcMA(data, 20));
+                ma50Series.setData(data.length >= 50 ? calcMA(data, 50) : []);
+            } else {
+                ma20Series.setData([]);
+                ma50Series.setData([]);
+            }
+            
+            chart.timeScale().fitContent();
+            
+            // Set color based on price change
+            const q = priceCache[selectedSymbol];
+            if (q) {
+                const color = q.change >= 0 ? '#26a69a' : '#ef5350';
+                mainSeries.applyOptions({ 
+                    topColor: q.change >= 0 ? 'rgba(38,166,154,0.4)' : 'rgba(239,83,80,0.4)', 
+                    lineColor: color 
+                });
+            }
+        }
+
+        async function updateChart() {
+            const cacheKey = `${selectedSymbol}_${currentTimeframe}`;
+            const titleEl = document.getElementById('chartTitle');
+            const displayName = selectedSymbol.replace('-USD', '').replace('^', '');
+            
+            // Show cached data IMMEDIATELY (no await)
+            const cached = chartCache[cacheKey];
+            if (cached?.data?.length) {
+                titleEl.textContent = displayName;
+                renderChartData(cached.data);
+            } else {
+                titleEl.textContent = displayName + ' ⏳';
+            }
+            
+            // Then fetch fresh data in background
+            const freshData = await fetchChartData(selectedSymbol, currentTimeframe);
+            titleEl.textContent = displayName;
+            if (freshData.length) {
+                renderChartData(freshData);
+            }
+        }
+
+        function selectTicker(symbol) {
+            // Open detail chart modal
+            openChartDetail(symbol);
+        }
+        
+        function selectTickerSmall(symbol) {
+            // For market grid - update small chart
+            selectedSymbol = symbol;
+            document.querySelectorAll('.market-item').forEach(m => m.classList.remove('selected'));
+            updateChart();
+        }
+
+        function setTimeframe(tf) {
+            currentTimeframe = tf;
+            document.querySelectorAll('.chart-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+            updateChart();
+        }
+
+        // ============ DETAIL CHART ============
+        function openChartDetail(symbol) {
+            detailSymbol = symbol;
+            detailTimeframe = '1mo';
+            detailChartType = 'area';
+            
+            // Update header
+            const q = priceCache[symbol];
+            document.getElementById('chartDetailTitle').textContent = symbol.replace('-USD', '').replace('^', '');
+            if (q) {
+                document.getElementById('chartDetailPrice').textContent = '$' + q.price.toFixed(2);
+                const changeEl = document.getElementById('chartDetailChange');
+                changeEl.textContent = (q.changePercent >= 0 ? '+' : '') + q.changePercent.toFixed(2) + '%';
+                changeEl.className = q.changePercent >= 0 ? 'positive' : 'negative';
+            }
+            
+            // Update pin button
+            const isPinned = pinnedMarkets.includes(symbol);
+            document.getElementById('addToMarketsBtn').textContent = isPinned ? '📌 Unpin' : '📌 Pin to Markets';
+            
+            // Reset MA toggles
+            document.getElementById('maToggle20').checked = true;
+            document.getElementById('maToggle50').checked = true;
+            document.getElementById('maToggle200').checked = false;
+            
+            // Reset button states
+            document.querySelectorAll('.chart-type-btns .chart-btn').forEach((b, i) => b.classList.toggle('active', i === 0));
+            document.querySelectorAll('.chart-tf-btns .chart-btn').forEach((b, i) => b.classList.toggle('active', i === 2));
+            
+            showModal('chartDetailModal');
+            
+            // Init chart after modal is visible
+            setTimeout(() => {
+                initDetailChart();
+                updateDetailChart();
+            }, 100);
+        }
+        
+        function closeChartDetail() {
+            closeModal('chartDetailModal');
+            if (detailChart) {
+                detailChart.remove();
+                detailChart = null;
+            }
+        }
+        
+        function initDetailChart() {
+            const el = document.getElementById('chartDetailContainer');
+            if (detailChart) detailChart.remove();
+            
+            detailChart = LightweightCharts.createChart(el, {
+                width: el.clientWidth,
+                height: el.clientHeight || 400,
+                layout: { background: { type: 'solid', color: '#1e222d' }, textColor: '#d1d4dc' },
+                grid: { vertLines: { color: '#2a2e39' }, horzLines: { color: '#2a2e39' } },
+                rightPriceScale: { borderColor: '#363a45' },
+                timeScale: { borderColor: '#363a45', timeVisible: true }
+            });
+            
+            detailMainSeries = detailChart.addAreaSeries({ topColor: 'rgba(41,98,255,0.4)', bottomColor: 'rgba(41,98,255,0)', lineColor: '#2962ff', lineWidth: 2 });
+            detailCandleSeries = detailChart.addCandlestickSeries({ upColor: '#26a69a', downColor: '#ef5350', borderVisible: false, wickUpColor: '#26a69a', wickDownColor: '#ef5350' });
+            detailCandleSeries.applyOptions({ visible: false });
+            
+            detailMA20 = detailChart.addLineSeries({ color: '#f7931a', lineWidth: 1, title: 'MA20' });
+            detailMA50 = detailChart.addLineSeries({ color: '#627eea', lineWidth: 1, title: 'MA50' });
+            detailMA200 = detailChart.addLineSeries({ color: '#e91e63', lineWidth: 1, title: 'MA200' });
+            detailMA200.applyOptions({ visible: false });
+            
+            new ResizeObserver(() => {
+                if (detailChart) detailChart.applyOptions({ width: el.clientWidth, height: el.clientHeight || 400 });
+            }).observe(el);
+        }
+        
+        async function updateDetailChart() {
+            if (!detailChart) return;
+            const data = await fetchChartData(detailSymbol, detailTimeframe);
+            if (!data.length) return;
+            
+            if (detailChartType === 'area') {
+                detailMainSeries.setData(data);
+                detailMainSeries.applyOptions({ visible: true });
+                detailCandleSeries.applyOptions({ visible: false });
+            } else {
+                // Need OHLC data for candles - fetch again with different format
+                const ohlcData = await fetchOHLCData(detailSymbol, detailTimeframe);
+                if (ohlcData.length) {
+                    detailCandleSeries.setData(ohlcData);
+                    detailCandleSeries.applyOptions({ visible: true });
+                    detailMainSeries.applyOptions({ visible: false });
+                }
+            }
+            
+            // MAs
+            if (document.getElementById('maToggle20').checked && data.length >= 20) {
+                detailMA20.setData(calcMA(data, 20));
+            } else {
+                detailMA20.setData([]);
+            }
+            if (document.getElementById('maToggle50').checked && data.length >= 50) {
+                detailMA50.setData(calcMA(data, 50));
+            } else {
+                detailMA50.setData([]);
+            }
+            if (document.getElementById('maToggle200').checked && data.length >= 200) {
+                detailMA200.setData(calcMA(data, 200));
+            } else {
+                detailMA200.setData([]);
+            }
+            
+            detailChart.timeScale().fitContent();
+        }
+        
+        async function fetchOHLCData(symbol, range) {
+            try {
+                const intervals = { '1d': '5m', '5d': '15m', '1mo': '1h', '3mo': '1d', '1y': '1d' };
+                const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=${intervals[range]}&range=${range}`;
+                const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: AbortSignal.timeout(8000) });
+                const data = await res.json();
+                const r = data.chart?.result?.[0];
+                if (!r || !r.timestamp) return [];
+                const q = r.indicators.quote[0];
+                return r.timestamp.map((t, i) => {
+                    if (q.open[i] == null) return null;
+                    return { time: t, open: q.open[i], high: q.high[i], low: q.low[i], close: q.close[i] };
+                }).filter(Boolean);
+            } catch (e) {
+                return [];
+            }
+        }
+        
+        function setDetailChartType(type) {
+            detailChartType = type;
+            document.querySelectorAll('.chart-type-btns .chart-btn').forEach(b => b.classList.toggle('active', b.textContent.toLowerCase() === type));
+            updateDetailChart();
+        }
+        
+        function setDetailTimeframe(tf) {
+            detailTimeframe = tf;
+            document.querySelectorAll('.chart-tf-btns .chart-btn').forEach(b => {
+                const btnTf = { '1D': '1d', '5D': '5d', '1M': '1mo', '3M': '3mo', '1Y': '1y' }[b.textContent];
+                b.classList.toggle('active', btnTf === tf);
+            });
+            updateDetailChart();
+        }
+        
+        function toggleDetailMA(period) {
+            updateDetailChart();
+        }
+        
+        function addToMarkets() {
+            const idx = pinnedMarkets.indexOf(detailSymbol);
+            if (idx >= 0) {
+                pinnedMarkets.splice(idx, 1);
+                document.getElementById('addToMarketsBtn').textContent = '📌 Pin to Markets';
+            } else {
+                pinnedMarkets.push(detailSymbol);
+                document.getElementById('addToMarketsBtn').textContent = '📌 Unpin';
+            }
+            localStorage.setItem('pinnedMarkets', JSON.stringify(pinnedMarkets));
+            renderMarkets();
+        }
+
+        // ============ INIT ============
+        async function initApp() {
+            // Load caches immediately for instant display
+            loadPriceCache();
+            loadChartCache();
+            
+            updateUserUI();
+            initChart();
+            
+            // Load user data
+            await Promise.all([loadPortfolio(), loadWatchlists()]);
+            
+            // Render immediately with cached data (instant!)
+            renderPositions();
+            renderWatchlist();
+            renderAlerts();
+            updateSummary();
+            updateCacheStatus();
+            
+            // Load chart (don't await - let it load in background)
+            updateChart();
+            
+            // Fetch fresh market data
+            renderMarkets();
+            
+            // Background: refresh prices for positions/watchlist
+            setTimeout(async () => {
+                // Build list of symbols including option symbols
+                const stockSymbols = [
+                    ...positions.filter(p => p.type !== 'option').map(p => p.symbol),
+                    ...watchlist.map(w => w.symbol)
+                ];
+                const optionSymbols = positions
+                    .filter(p => p.type === 'option' && p.expiry_date && p.strike_price)
+                    .map(p => buildOptionSymbol(p.symbol, p.expiry_date, p.strike_price))
+                    .filter(Boolean);
+                
+                const allSymbols = [...new Set([...stockSymbols, ...optionSymbols])];
+                await fetchQuotes(allSymbols);
+                renderPositions();
+                renderWatchlist();
+                renderAlerts();
+                updateSummary();
+                updateCacheStatus();
+                savePriceCache();
+            }, 100);
+            
+            // Auto refresh every 60s
+            setInterval(async () => {
+                const symbols = [...new Set([...positions.map(p => p.symbol), ...watchlist.slice(0, 10).map(w => w.symbol)])];
+                await fetchQuotes(symbols);
+                await renderMarkets();
+                updateSummary();
+                renderPositions();
+                renderWatchlist();
+                renderAlerts();
+                updateCacheStatus();
+                savePriceCache();
+            }, 60000);
+        }
+
+        // Start
+        if (token) {
+            hideAuth();
+            initApp();
+        } else {
+            showAuth();
+        }
+    </script>
+</body>
+</html>
