@@ -1,6 +1,26 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.11.0 "Container" (2026-02-06) ← CURRENT
+## v0.12.0 "Chronicle" (2026-02-06) ← CURRENT
+Transaction history and alert notifications.
+
+**New Features:**
+- 📜 **Transaction History** — Track buys/sells with dates, prices, fees
+- 🔔 **Alert Notifications** — Telegram alerts when price targets hit
+- ⏰ **Cron-based checking** — Hourly checks during market hours
+- 🔄 **Swipe to delete** — Transactions support swipe actions
+
+**API Endpoints:**
+```
+GET  /api/transactions              — All user transactions
+GET  /api/portfolios/:id/transactions — Portfolio transactions
+POST /api/portfolios/:id/transactions — Add transaction
+DELETE /api/transactions/:id        — Delete transaction
+GET  /api/alerts/check              — Internal alert checker
+```
+
+---
+
+## v0.11.0 "Container" (2026-02-06)
 Docker containerization.
 
 **New Features:**

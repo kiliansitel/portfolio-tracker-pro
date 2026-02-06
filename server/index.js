@@ -123,6 +123,23 @@ async function initDatabase() {
     )
   `);
 
+  db.run(`
+    CREATE TABLE IF NOT EXISTS transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      portfolio_id INTEGER NOT NULL,
+      symbol TEXT NOT NULL,
+      type TEXT NOT NULL,
+      action TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      price REAL NOT NULL,
+      fees REAL DEFAULT 0,
+      notes TEXT,
+      executed_at TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)
+    )
+  `);
+
   saveDatabase();
   console.log('📦 Database initialized');
 }
@@ -608,6 +625,190 @@ app.delete('/api/alerts/:id', authenticateToken, (req, res) => {
   
   dbRun('DELETE FROM alerts WHERE id = ?', [id]);
   res.json({ message: 'Alert deleted' });
+});
+
+// Check alerts against current prices (internal endpoint for cron)
+app.get('/api/alerts/check', async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey !== 'portfolio-alert-checker-key') {
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  // Get all untriggered alerts
+  const alerts = dbAll('SELECT a.*, u.username FROM alerts a JOIN users u ON a.user_id = u.id WHERE a.triggered = 0');
+  
+  if (alerts.length === 0) {
+    return res.json({ triggered: [], checked: 0 });
+  }
+  
+  // Get unique symbols
+  const symbols = [...new Set(alerts.map(a => a.symbol))];
+  
+  // Fetch prices (simple Yahoo Finance approach)
+  const triggered = [];
+  
+  for (const symbol of symbols) {
+    try {
+      const response = await fetch(`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`);
+      const data = await response.json();
+      const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
+      
+      if (price) {
+        // Check alerts for this symbol
+        for (const alert of alerts.filter(a => a.symbol === symbol)) {
+          let shouldTrigger = false;
+          
+          if (alert.condition === 'above' && price >= alert.target_price) {
+            shouldTrigger = true;
+          } else if (alert.condition === 'below' && price <= alert.target_price) {
+            shouldTrigger = true;
+          }
+          
+          if (shouldTrigger) {
+            // Mark as triggered
+            dbRun('UPDATE alerts SET triggered = 1, triggered_at = ? WHERE id = ?', 
+              [new Date().toISOString(), alert.id]);
+            
+            triggered.push({
+              id: alert.id,
+              symbol: alert.symbol,
+              condition: alert.condition,
+              target_price: alert.target_price,
+              current_price: price,
+              username: alert.username
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`Failed to fetch price for ${symbol}:`, e.message);
+    }
+  }
+  
+  res.json({ triggered, checked: symbols.length });
+});
+
+// ============ TRANSACTIONS ROUTES ============
+
+// Get transactions for a portfolio
+app.get('/api/portfolios/:id/transactions', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { limit, offset } = req.query;
+  
+  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  if (!portfolio) {
+    return res.status(404).json({ error: 'Portfolio not found' });
+  }
+  
+  let sql = 'SELECT * FROM transactions WHERE portfolio_id = ? ORDER BY executed_at DESC';
+  const params = [id];
+  
+  if (limit) {
+    sql += ' LIMIT ?';
+    params.push(parseInt(limit));
+    if (offset) {
+      sql += ' OFFSET ?';
+      params.push(parseInt(offset));
+    }
+  }
+  
+  const transactions = dbAll(sql, params);
+  const total = dbGet('SELECT COUNT(*) as count FROM transactions WHERE portfolio_id = ?', [id]);
+  
+  res.json({ transactions, total: total.count });
+});
+
+// Add transaction
+app.post('/api/portfolios/:id/transactions', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { symbol, type, action, quantity, price, fees, notes, executed_at } = req.body;
+  
+  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  if (!portfolio) {
+    return res.status(404).json({ error: 'Portfolio not found' });
+  }
+  
+  if (!symbol || !action || !quantity || !price) {
+    return res.status(400).json({ error: 'Symbol, action, quantity, and price required' });
+  }
+  
+  if (!['buy', 'sell'].includes(action.toLowerCase())) {
+    return res.status(400).json({ error: 'Action must be "buy" or "sell"' });
+  }
+  
+  const result = dbRun(`
+    INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, notes, executed_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    id, 
+    symbol.toUpperCase(), 
+    type || 'stock', 
+    action.toLowerCase(), 
+    quantity, 
+    price, 
+    fees || 0, 
+    notes || null, 
+    executed_at || new Date().toISOString()
+  ]);
+  
+  res.json({
+    id: result.lastInsertRowid,
+    portfolio_id: parseInt(id),
+    symbol: symbol.toUpperCase(),
+    type: type || 'stock',
+    action: action.toLowerCase(),
+    quantity,
+    price,
+    fees: fees || 0,
+    notes,
+    executed_at: executed_at || new Date().toISOString()
+  });
+});
+
+// Delete transaction
+app.delete('/api/transactions/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  
+  const transaction = dbGet(`
+    SELECT t.* FROM transactions t 
+    JOIN portfolios p ON t.portfolio_id = p.id 
+    WHERE t.id = ? AND p.user_id = ?
+  `, [id, req.user.id]);
+  
+  if (!transaction) {
+    return res.status(404).json({ error: 'Transaction not found' });
+  }
+  
+  dbRun('DELETE FROM transactions WHERE id = ?', [id]);
+  res.json({ message: 'Transaction deleted' });
+});
+
+// Get all transactions for user (across all portfolios)
+app.get('/api/transactions', authenticateToken, (req, res) => {
+  const { limit, symbol } = req.query;
+  
+  let sql = `
+    SELECT t.*, p.name as portfolio_name 
+    FROM transactions t 
+    JOIN portfolios p ON t.portfolio_id = p.id 
+    WHERE p.user_id = ?
+  `;
+  const params = [req.user.id];
+  
+  if (symbol) {
+    sql += ' AND t.symbol = ?';
+    params.push(symbol.toUpperCase());
+  }
+  
+  sql += ' ORDER BY t.executed_at DESC';
+  
+  if (limit) {
+    sql += ' LIMIT ?';
+    params.push(parseInt(limit));
+  }
+  
+  const transactions = dbAll(sql, params);
+  res.json(transactions);
 });
 
 // ============ TICKER SEARCH ============

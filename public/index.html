@@ -934,6 +934,7 @@
             <div class="nav-item" data-page="portfolio" title="Portfolio">💼</div>
             <div class="nav-item" data-page="watchlist" title="Watchlist">👁️</div>
             <div class="nav-item" data-page="alerts" title="Alerts">🔔</div>
+            <div class="nav-item" data-page="history" title="History">📜</div>
             <div class="nav-item" data-page="settings" title="Settings">⚙️</div>
         </nav>
 
@@ -1025,6 +1026,19 @@
                     </div>
                     <div class="card-body">
                         <div id="alertsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Page -->
+            <div class="page" id="page-history">
+                <div class="card">
+                    <div class="card-header">
+                        <span>📜 Transaction History</span>
+                        <button class="btn-add" onclick="showAddTransactionModal()" title="Add Transaction">+</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="transactionsList"></div>
                     </div>
                 </div>
             </div>
@@ -1234,6 +1248,64 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addWatchlistModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Add to Watchlist</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Transaction Modal -->
+    <div class="modal-overlay" id="addTransactionModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="addTransactionTitle">Add Transaction</h2>
+                <button class="modal-close" onclick="closeModal('addTransactionModal')">&times;</button>
+            </div>
+            <form id="transactionForm" onsubmit="saveTransaction(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Symbol *</label>
+                        <input type="text" name="symbol" required placeholder="e.g. AAPL">
+                    </div>
+                    <div class="form-group">
+                        <label>Action *</label>
+                        <select name="action" required style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="buy">Buy</option>
+                            <option value="sell">Sell</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select name="type" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="stock">Stock</option>
+                            <option value="option">Option</option>
+                            <option value="crypto">Crypto</option>
+                            <option value="etf">ETF</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity *</label>
+                        <input type="number" name="quantity" required step="any" placeholder="e.g. 100">
+                    </div>
+                    <div class="form-group">
+                        <label>Price *</label>
+                        <input type="number" name="price" required step="any" placeholder="e.g. 150.50">
+                    </div>
+                    <div class="form-group">
+                        <label>Fees</label>
+                        <input type="number" name="fees" step="any" placeholder="e.g. 0.65">
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="datetime-local" name="executed_at">
+                    </div>
+                    <div class="form-group">
+                        <label>Notes</label>
+                        <input type="text" name="notes" placeholder="e.g. Averaging down">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addTransactionModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Transaction</button>
                 </div>
             </form>
         </div>
@@ -1632,6 +1704,7 @@
             document.getElementById('userDropdown').classList.remove('show');
             // Render alerts when switching to alerts page
             if (page === 'alerts') renderAlerts();
+            if (page === 'history') renderTransactions();
         }
 
         function closeModal(id) {
@@ -1814,6 +1887,103 @@
             }
             el.innerHTML = html;
             setupSwipeHandlers();
+        }
+
+        // Transactions
+        let transactions = [];
+        
+        async function loadTransactions() {
+            if (!token || !currentPortfolio) return;
+            try {
+                const resp = await api(`/portfolios/${currentPortfolio.id}/transactions?limit=100`);
+                transactions = resp.transactions || [];
+            } catch (e) {
+                console.error('Failed to load transactions:', e);
+                transactions = [];
+            }
+        }
+        
+        async function renderTransactions() {
+            await loadTransactions();
+            const el = document.getElementById('transactionsList');
+            
+            if (transactions.length === 0) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">No transactions yet</div><p style="color:var(--text-secondary);font-size:0.9rem;">Track your buys and sells</p></div>';
+                return;
+            }
+            
+            let html = '';
+            for (const tx of transactions) {
+                const date = new Date(tx.executed_at).toLocaleDateString();
+                const total = (tx.quantity * tx.price + (tx.fees || 0)).toFixed(2);
+                const actionClass = tx.action === 'buy' ? 'positive' : 'negative';
+                const actionIcon = tx.action === 'buy' ? '📈' : '📉';
+                
+                html += `<div class="swipe-container" data-id="${tx.id}" data-type="transaction">
+                    <div class="swipe-actions">
+                        <div class="swipe-action delete" onclick="deleteTransaction(${tx.id})">🗑️</div>
+                    </div>
+                    <div class="swipe-content" style="padding:12px;display:flex;justify-content:space-between;align-items:center;">
+                        <div onclick="selectTicker('${tx.symbol}')" style="cursor:pointer;flex:1;">
+                            <div style="font-weight:600;">${actionIcon} ${tx.symbol}</div>
+                            <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ $${tx.price.toFixed(2)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
+                            ${tx.notes ? `<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">${tx.notes}</div>` : ''}
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="${actionClass}" style="font-weight:600;">${tx.action === 'buy' ? '-' : '+'}$${total}</div>
+                            <div style="font-size:0.8rem;color:var(--text-secondary);">${date}</div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+            el.innerHTML = html;
+            setupSwipeHandlers();
+        }
+        
+        function showAddTransactionModal() {
+            document.getElementById('transactionForm').reset();
+            document.getElementById('addTransactionTitle').textContent = 'Add Transaction';
+            // Set default date to now
+            const now = new Date();
+            now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+            document.querySelector('#transactionForm [name="executed_at"]').value = now.toISOString().slice(0, 16);
+            showModal('addTransactionModal');
+        }
+        
+        async function saveTransaction(e) {
+            e.preventDefault();
+            const form = e.target;
+            const data = {
+                symbol: form.symbol.value,
+                action: form.action.value,
+                type: form.type.value,
+                quantity: parseFloat(form.quantity.value),
+                price: parseFloat(form.price.value),
+                fees: form.fees.value ? parseFloat(form.fees.value) : 0,
+                notes: form.notes.value || null,
+                executed_at: form.executed_at.value ? new Date(form.executed_at.value).toISOString() : new Date().toISOString()
+            };
+            
+            try {
+                await api(`/portfolios/${currentPortfolio.id}/transactions`, {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                closeModal('addTransactionModal');
+                renderTransactions();
+            } catch (e) {
+                alert('Failed to save transaction: ' + e.message);
+            }
+        }
+        
+        async function deleteTransaction(id) {
+            if (!confirm('Delete this transaction?')) return;
+            try {
+                await api(`/transactions/${id}`, { method: 'DELETE' });
+                renderTransactions();
+            } catch (e) {
+                alert('Failed to delete: ' + e.message);
+            }
         }
 
         async function deletePosition(id) {
