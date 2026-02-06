@@ -53,6 +53,9 @@ http://localhost:8080
 ### Dashboard
 ![Dashboard](screenshots/dashboard.jpg)
 
+### Positions
+![Positions](screenshots/positions.jpg)
+
 ### Watchlist
 ![Watchlist](screenshots/watchlist.jpg)
 
