@@ -1507,6 +1507,52 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="settings-section" id="updateSection">
+                            <h3>🔄 App Updates</h3>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Current Version</div>
+                                    <div class="setting-desc" id="updateCurrentVersion">--</div>
+                                </div>
+                                <span class="setting-desc" id="updateCommitHash" style="font-family: monospace; font-size: 0.8rem; color: var(--text-secondary);"></span>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Channel</div>
+                                    <div class="setting-desc">Switch between stable and beta releases</div>
+                                </div>
+                                <select id="updateChannel" style="padding: 8px 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary); font-size: 0.95rem;" onchange="changeUpdateChannel()">
+                                    <option value="main">🏷️ Main (Stable)</option>
+                                    <option value="beta">🧪 Beta</option>
+                                </select>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Latest Available</div>
+                                    <div class="setting-desc" id="updateLatestVersion">--</div>
+                                </div>
+                                <span id="updateStatusBadge"></span>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Auto-Update</div>
+                                    <div class="setting-desc">Automatically apply updates when available</div>
+                                </div>
+                                <div class="theme-toggle">
+                                    <button class="theme-btn" id="autoUpdateToggle" onclick="toggleAutoUpdate()">Off</button>
+                                </div>
+                            </div>
+                            <div class="setting-item" style="flex-wrap: wrap; gap: 8px;">
+                                <div>
+                                    <div class="setting-label" id="updateLastChecked">Last checked: never</div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <button class="btn btn-secondary" id="checkUpdatesBtn" onclick="checkForUpdates()">🔍 Check for Updates</button>
+                                    <button class="btn btn-primary" id="applyUpdateBtn" onclick="applyUpdate()" style="display: none;">⬆️ Apply Update</button>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="settings-section">
                             <h3>About</h3>
                             <div class="setting-item">
@@ -5371,6 +5417,172 @@
             setTheme(saved);
         }
 
+        // ============ APP UPDATES ============
+        let updateState = { updateAvailable: false, channel: 'beta' };
+
+        async function initUpdateSection() {
+            try {
+                const status = await api('/updates/status');
+                updateState = { ...updateState, ...status };
+                
+                document.getElementById('updateCurrentVersion').textContent = status.currentVersion;
+                document.getElementById('updateCommitHash').textContent = status.commitHash ? `(${status.commitHash})` : '';
+                
+                // Set channel dropdown
+                const channelSelect = document.getElementById('updateChannel');
+                if (channelSelect) channelSelect.value = status.settings?.channel || status.channel || 'beta';
+
+                // Auto-update toggle
+                const autoBtn = document.getElementById('autoUpdateToggle');
+                if (status.settings?.autoUpdate) {
+                    autoBtn.textContent = '✅ On';
+                    autoBtn.classList.add('active');
+                } else {
+                    autoBtn.textContent = 'Off';
+                    autoBtn.classList.remove('active');
+                }
+
+                // Last check time
+                if (status.lastCheckTime) {
+                    updateLastCheckedDisplay(status.lastCheckTime);
+                }
+
+                // If we have cached check result, show it
+                if (status.lastCheckResult) {
+                    renderUpdateResult(status.lastCheckResult);
+                }
+            } catch (e) {
+                console.warn('Failed to load update status:', e);
+            }
+        }
+
+        function renderUpdateResult(result) {
+            const latestEl = document.getElementById('updateLatestVersion');
+            const badgeEl = document.getElementById('updateStatusBadge');
+            const applyBtn = document.getElementById('applyUpdateBtn');
+            const channel = result.channel || 'beta';
+            
+            const latestVer = channel === 'beta' ? result.latestBeta : result.latestMain;
+            latestEl.textContent = latestVer || result.currentVersion;
+            
+            if (result.updateAvailable) {
+                const commits = result.commitsAhead ? ` (${result.commitsAhead} commits)` : '';
+                badgeEl.innerHTML = `<span style="color: var(--accent-green); font-weight: 600;">⬆️ Update Available${commits}</span>`;
+                applyBtn.style.display = '';
+                updateState.updateAvailable = true;
+            } else {
+                badgeEl.innerHTML = '<span style="color: var(--accent-green);">✅ Up to date</span>';
+                applyBtn.style.display = 'none';
+                updateState.updateAvailable = false;
+            }
+        }
+
+        function updateLastCheckedDisplay(isoTime) {
+            const el = document.getElementById('updateLastChecked');
+            if (!isoTime) { el.textContent = 'Last checked: never'; return; }
+            const diff = Date.now() - new Date(isoTime).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 1) el.textContent = 'Last checked: just now';
+            else if (mins < 60) el.textContent = `Last checked: ${mins} minute${mins > 1 ? 's' : ''} ago`;
+            else {
+                const hrs = Math.floor(mins / 60);
+                el.textContent = `Last checked: ${hrs} hour${hrs > 1 ? 's' : ''} ago`;
+            }
+        }
+
+        async function checkForUpdates() {
+            const btn = document.getElementById('checkUpdatesBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Checking...';
+            try {
+                const result = await api('/updates/check');
+                renderUpdateResult(result);
+                updateLastCheckedDisplay(result.checkedAt);
+                if (result.updateAvailable) {
+                    showToast('Update available! 🎉', 'success');
+                } else {
+                    showToast('You\'re up to date ✅', 'info');
+                }
+            } catch (e) {
+                showToast('Failed to check for updates', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔍 Check for Updates';
+            }
+        }
+
+        async function applyUpdate() {
+            const btn = document.getElementById('applyUpdateBtn');
+            const channel = document.getElementById('updateChannel').value;
+            
+            if (!confirm(`Apply update from the "${channel}" channel? The app will restart.`)) return;
+            
+            btn.disabled = true;
+            btn.textContent = '⏳ Updating...';
+            btn.style.opacity = '0.7';
+            
+            try {
+                await api('/updates/apply', {
+                    method: 'POST',
+                    body: JSON.stringify({ channel })
+                });
+                btn.textContent = '🔄 Restarting...';
+                showToast('Update applied! Restarting...', 'success');
+                // Wait for server to restart, then reload
+                setTimeout(() => {
+                    const checkReady = setInterval(async () => {
+                        try {
+                            const r = await fetch('/api/info');
+                            if (r.ok) {
+                                clearInterval(checkReady);
+                                window.location.reload();
+                            }
+                        } catch (e) { /* server still restarting */ }
+                    }, 2000);
+                }, 3000);
+            } catch (e) {
+                showToast('Update failed: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = '⬆️ Apply Update';
+                btn.style.opacity = '1';
+            }
+        }
+
+        async function toggleAutoUpdate() {
+            const btn = document.getElementById('autoUpdateToggle');
+            const isOn = btn.classList.contains('active');
+            try {
+                await api('/updates/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ autoUpdate: !isOn })
+                });
+                if (isOn) {
+                    btn.textContent = 'Off';
+                    btn.classList.remove('active');
+                    showToast('Auto-update disabled', 'info');
+                } else {
+                    btn.textContent = '✅ On';
+                    btn.classList.add('active');
+                    showToast('Auto-update enabled', 'success');
+                }
+            } catch (e) {
+                showToast('Failed to update setting', 'error');
+            }
+        }
+
+        async function changeUpdateChannel() {
+            const channel = document.getElementById('updateChannel').value;
+            try {
+                await api('/updates/settings', {
+                    method: 'POST',
+                    body: JSON.stringify({ channel })
+                });
+                showToast(`Channel set to ${channel}`, 'info');
+            } catch (e) {
+                showToast('Failed to change channel', 'error');
+            }
+        }
+
         // ============ INIT ============
         // Load theme immediately (before anything else)
         loadTheme();
@@ -5392,6 +5604,7 @@
             initChart();
             initCurrencySetting();
             initPushNotifications();
+            initUpdateSection();
             initTickerAutocomplete();
             loadExchangeRates();
             
