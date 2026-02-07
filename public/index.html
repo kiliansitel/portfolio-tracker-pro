@@ -3143,32 +3143,62 @@
                 const balStr = w.balance !== null && w.balance !== undefined ? Number(w.balance).toFixed(w.chain === 'btc' ? 8 : 4) : '0';
                 const usdStr = fc(w.usd_value || 0);
                 const syncTime = timeSince(w.last_synced);
+                const tokenCount = w.token_count || 0;
+                const tokens = w.tokens || [];
+                const isEvm = ['eth','bnb','avax','matic','arb','op'].includes(w.chain);
 
                 html += `<div class="swipe-container" data-id="${w.id}" data-type="wallet">
                     <div class="swipe-actions">
                         <div class="swipe-action delete" onclick="deleteWallet(${w.id})">🗑️</div>
                     </div>
-                    <div class="swipe-content" style="display:flex;align-items:center;gap:12px;padding:12px 0;">
-                        <div style="width:40px;height:40px;border-radius:50%;background:${chainColor}20;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;color:${chainColor};">${chainIcon}</div>
-                        <div style="flex:1;min-width:0;">
-                            <div style="display:flex;justify-content:space-between;align-items:center;">
-                                <div style="font-weight:600;font-size:0.95rem;">${w.label || w.chain_name || w.chain.toUpperCase()}</div>
-                                <div style="font-weight:600;">${usdStr}</div>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
-                                <div style="font-size:0.8rem;color:var(--text-secondary);font-family:monospace;" title="${w.address}">${truncateAddress(w.address)}</div>
-                                <div style="font-size:0.8rem;color:var(--text-secondary);">${balStr} ${w.chain.toUpperCase()}</div>
-                            </div>
-                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
-                                <div style="font-size:0.75rem;color:var(--text-secondary);">Synced: ${syncTime}</div>
-                                <div style="display:flex;gap:8px;align-items:center;">
-                                    <button onclick="showWalletTx(${w.id}, '${w.chain}', '${(w.label || w.chain_name || w.chain.toUpperCase()).replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--accent-blue);padding:2px 4px;">📜 Txs</button>
-                                    <button onclick="syncWallet(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;color:var(--accent-blue);padding:2px 6px;">🔄 Sync</button>
+                    <div class="swipe-content" style="padding:12px 0;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:40px;height:40px;border-radius:50%;background:${chainColor}20;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;color:${chainColor};">${chainIcon}</div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;">
+                                    <div style="font-weight:600;font-size:0.95rem;">${w.label || w.chain_name || w.chain.toUpperCase()}</div>
+                                    <div style="font-weight:600;">${usdStr}</div>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                                    <div style="font-size:0.8rem;color:var(--text-secondary);font-family:monospace;" title="${w.address}">${truncateAddress(w.address)}</div>
+                                    <div style="font-size:0.8rem;color:var(--text-secondary);">${balStr} ${w.chain.toUpperCase()}</div>
+                                </div>
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+                                    <div style="display:flex;gap:6px;align-items:center;">
+                                        <span style="font-size:0.75rem;color:var(--text-secondary);">Synced: ${syncTime}</span>
+                                        ${isEvm && tokenCount > 0 ? `<button onclick="toggleWalletTokens(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:var(--accent-blue);padding:1px 6px;border-radius:10px;border:1px solid var(--accent-blue);">🪙 ${tokenCount} token${tokenCount !== 1 ? 's' : ''}</button>` : ''}
+                                    </div>
+                                    <div style="display:flex;gap:8px;align-items:center;">
+                                        <button onclick="showWalletTx(${w.id}, '${w.chain}', '${(w.label || w.chain_name || w.chain.toUpperCase()).replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--accent-blue);padding:2px 4px;">📜 Txs</button>
+                                        <button onclick="syncWallet(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;color:var(--accent-blue);padding:2px 6px;">🔄 Sync</button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                </div>`;
+                        </div>`;
+
+                html += `</div></div>`;
+
+                // Collapsible ERC-20 token list (OUTSIDE swipe-container)
+                if (isEvm && tokens.length > 0) {
+                    html += `<div id="wallet-tokens-${w.id}" style="display:none;margin-left:52px;border-top:1px solid var(--border-color);padding:8px 0;">`;
+                    html += `<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">ERC-20 Tokens — ${fc(w.tokens_usd_value || 0)}</div>`;
+                    for (const t of tokens) {
+                        const tBal = parseFloat(t.balance) || 0;
+                        const tBalStr = tBal >= 1000 ? tBal.toLocaleString(undefined, {maximumFractionDigits: 2}) : tBal.toFixed(Math.min(6, Math.max(2, 4 - Math.floor(Math.log10(Math.max(tBal, 0.0001))))));
+                        const tUsdStr = fc(t.usd_value || 0);
+                        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.8rem;">
+                            <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                                <span style="font-weight:600;color:var(--text-primary);">${t.symbol}</span>
+                                <span style="color:var(--text-secondary);font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;" title="${t.name}">${t.name}</span>
+                            </div>
+                            <div style="text-align:right;flex-shrink:0;">
+                                <div style="font-weight:500;">${tUsdStr}</div>
+                                <div style="font-size:0.7rem;color:var(--text-secondary);">${tBalStr}</div>
+                            </div>
+                        </div>`;
+                    }
+                    html += `</div>`;
+                }
             }
 
             el.innerHTML = html;
@@ -3208,6 +3238,12 @@
             } catch (err) {
                 showToast(err.message || 'Failed to add wallet', 'error');
             }
+        }
+
+        function toggleWalletTokens(walletId) {
+            const el = document.getElementById(`wallet-tokens-${walletId}`);
+            if (!el) return;
+            el.style.display = el.style.display === 'none' ? 'block' : 'none';
         }
 
         async function deleteWallet(id) {

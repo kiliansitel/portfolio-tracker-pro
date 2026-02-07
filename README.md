@@ -8,7 +8,7 @@
   A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.19.0-blue)
+![Version](https://img.shields.io/badge/version-0.19.1-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -137,6 +137,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.19.1** — ERC-20 token tracking, self-update system, UI polish
 - **v0.19.0 "Chain"** — Blockchain wallet tracking (13 chains), positions redesign, auto-sync, on-chain transactions
 - **v0.18.2 "Vault"** — Historical OHLCV storage, auto-snapshots, Docker/CI fixes, Playwright caching
 - **v0.18.1 "Forge"** — Code modularization, multi-currency (EUR/USD/GBP/CHF), push notifications

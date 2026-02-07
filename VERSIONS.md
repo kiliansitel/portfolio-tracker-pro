@@ -1,6 +1,23 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.19.0 "Chain" (2026-02-07) ← CURRENT
+## v0.19.1 (2026-02-07) ← CURRENT
+ERC-20 token tracking, self-update system, UI polish.
+
+**New Features:**
+- 🪙 **ERC-20 Token Tracking** — Auto-detect tokens in ETH wallets (20 popular tokens via direct RPC)
+- 🔗 **Token → Position Sync** — ERC-20 tokens auto-create portfolio positions
+- ⬆️ **Self-Update System** — Check for updates, switch channels (main/beta), one-click apply from Settings
+- 🔄 **Auto-Update Toggle** — Smooth iOS-style toggle switch
+
+**Fixes:**
+- 🔧 **Etherscan v1 deprecated** — Replaced with direct RPC calls (no API key needed)
+- 🔧 **CoinGecko rate limit** — Token pricing now via Yahoo Finance
+- 🔧 **Delete button stretching** — Token list moved outside swipe container
+- 🔧 **Update apply crash** — Frontend handles server restart gracefully
+
+---
+
+## v0.19.0 "Chain" (2026-02-07)
 Blockchain wallet tracking, positions redesign, multi-chain support.
 
 **New Features:**
