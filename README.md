@@ -66,7 +66,9 @@ npm install && npm start
 
 Open http://localhost:8080
 
-📖 **[Full Installation Guide](docs/INSTALL.md)** — Docker, reverse proxy, environment variables, backups
+📖 **[Full Manual](docs/MANUAL.md)** — Complete user guide, API reference, and self-hosting docs
+
+📦 **[Installation Guide](docs/INSTALL.md)** — Docker, reverse proxy, environment variables, backups
 
 ## API Endpoints
 
