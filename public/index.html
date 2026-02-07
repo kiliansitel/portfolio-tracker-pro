@@ -2425,7 +2425,7 @@
                     case 'Enter':
                         e.preventDefault();
                         if (selectedIndex >= 0) {
-                            selectTicker(autocompleteResults[selectedIndex], input, form);
+                            selectAutocompleteTicker(autocompleteResults[selectedIndex], input, form);
                         }
                         break;
                     case 'Escape':
@@ -2505,7 +2505,8 @@
                 <div class="autocomplete-item" 
                      data-symbol="${ticker.symbol.replace(/"/g, '&quot;')}" 
                      data-name="${ticker.name.replace(/"/g, '&quot;')}"
-                     onclick="selectTickerFromClick(this)">
+                     onmousedown="event.preventDefault(); selectTickerFromClick(this)"
+                     ontouchend="event.preventDefault(); selectTickerFromClick(this)">
                     <span class="autocomplete-symbol">${ticker.symbol}</span>
                     <span class="autocomplete-name">${ticker.name}</span>
                 </div>
@@ -2549,7 +2550,7 @@
             }
         }
 
-        function selectTicker(ticker, input, form) {
+        function selectAutocompleteTicker(ticker, input, form) {
             if (!activeAutocompleteInput) return;
 
             const { input: activeInput, form: activeForm, dropdown: activeDropdown } = activeAutocompleteInput;
@@ -2603,7 +2604,7 @@
                 form = input?.closest('form');
             }
             
-            selectTicker(ticker, input, form);
+            selectAutocompleteTicker(ticker, input, form);
         }
 
         function showDropdown(dropdown) {
