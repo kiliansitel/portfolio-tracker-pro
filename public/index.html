@@ -1017,6 +1017,13 @@
         .theme-btn:hover:not(.active) {
             background: var(--border-color);
         }
+        .toggle-switch input:checked + span {
+            background: var(--accent-blue) !important;
+            border-color: var(--accent-blue) !important;
+        }
+        .toggle-switch input:checked ~ .toggle-knob {
+            transform: translateX(22px);
+        }
 
         @media (min-width: 768px) {
             .modal-fullscreen {
@@ -1538,9 +1545,11 @@
                                     <div class="setting-label">Auto-Update</div>
                                     <div class="setting-desc">Automatically apply updates when available</div>
                                 </div>
-                                <div class="theme-toggle">
-                                    <button class="theme-btn" id="autoUpdateToggle" onclick="toggleAutoUpdate()">Off</button>
-                                </div>
+                                <label class="toggle-switch" style="cursor:pointer;position:relative;display:inline-block;width:48px;height:26px;">
+                                    <input type="checkbox" id="autoUpdateToggle" onchange="toggleAutoUpdate()" style="opacity:0;width:0;height:0;">
+                                    <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:13px;transition:.3s;"></span>
+                                    <span class="toggle-knob" style="position:absolute;top:3px;left:3px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s;"></span>
+                                </label>
                             </div>
                             <div class="setting-item" style="flex-wrap: wrap; gap: 8px;">
                                 <div>
@@ -5434,13 +5443,7 @@
 
                 // Auto-update toggle
                 const autoBtn = document.getElementById('autoUpdateToggle');
-                if (status.settings?.autoUpdate) {
-                    autoBtn.textContent = '✅ On';
-                    autoBtn.classList.add('active');
-                } else {
-                    autoBtn.textContent = 'Off';
-                    autoBtn.classList.remove('active');
-                }
+                autoBtn.checked = !!status.settings?.autoUpdate;
 
                 // Last check time
                 if (status.lastCheckTime) {
@@ -5561,23 +5564,15 @@
         }
 
         async function toggleAutoUpdate() {
-            const btn = document.getElementById('autoUpdateToggle');
-            const isOn = btn.classList.contains('active');
+            const cb = document.getElementById('autoUpdateToggle');
             try {
                 await api('/updates/settings', {
                     method: 'POST',
-                    body: JSON.stringify({ autoUpdate: !isOn })
+                    body: JSON.stringify({ autoUpdate: cb.checked })
                 });
-                if (isOn) {
-                    btn.textContent = 'Off';
-                    btn.classList.remove('active');
-                    showToast('Auto-update disabled', 'info');
-                } else {
-                    btn.textContent = '✅ On';
-                    btn.classList.add('active');
-                    showToast('Auto-update enabled', 'success');
-                }
+                showToast(cb.checked ? 'Auto-update enabled' : 'Auto-update disabled', cb.checked ? 'success' : 'info');
             } catch (e) {
+                cb.checked = !cb.checked; // revert on failure
                 showToast('Failed to update setting', 'error');
             }
         }
