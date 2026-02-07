@@ -181,6 +181,25 @@ async function initDatabase() {
   // Migrate old 'date' column data to 'executed_at' if both exist
   try { db.run(`UPDATE transactions SET executed_at = date WHERE executed_at IS NULL AND date IS NOT NULL`); } catch (e) { /* ignore */ }
 
+  // Position enhancements
+  try { db.run(`ALTER TABLE positions ADD COLUMN name TEXT`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN type TEXT DEFAULT 'stock'`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN entry_date TEXT`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN notes TEXT`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN strike_price REAL`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN expiry_date TEXT`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN multiplier REAL DEFAULT 1`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN current_price REAL`); } catch (e) { /* exists */ }
+
+  // Portfolio enhancements
+  try { db.run(`ALTER TABLE portfolios ADD COLUMN is_default INTEGER DEFAULT 0`); } catch (e) { /* exists */ }
+
+  // Watchlist item enhancements
+  try { db.run(`ALTER TABLE watchlist_items ADD COLUMN name TEXT`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE watchlist_items ADD COLUMN category TEXT`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE watchlist_items ADD COLUMN alert_above REAL`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE watchlist_items ADD COLUMN alert_below REAL`); } catch (e) { /* exists */ }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS portfolio_snapshots (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

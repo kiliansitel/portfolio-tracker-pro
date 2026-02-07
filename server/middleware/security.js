@@ -18,7 +18,7 @@ const authLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 100, // 100 requests per minute
+  max: process.env.APP_ENV === 'beta' ? 1000 : 100, // Higher limit for beta testing
   message: { error: 'Too many requests, please slow down' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -26,7 +26,7 @@ const apiLimiter = rateLimit({
 
 const strictLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute  
-  max: 30, // 30 requests per minute for write operations
+  max: process.env.APP_ENV === 'beta' ? 300 : 30, // Higher limit for beta testing
   message: { error: 'Too many requests, please slow down' },
   standardHeaders: true,
   legacyHeaders: false,
