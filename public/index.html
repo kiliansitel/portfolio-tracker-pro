@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Portfolio Tracker Pro</title>
+    <title>Portfolio Tracker Pro - Beta v3</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Portfolio Pro&quot;,&quot;display&quot;:&quot;standalone&quot;}">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -966,6 +966,75 @@
                 border-radius: 12px;
             }
         }
+
+        /* Ticker Autocomplete */
+        .autocomplete-container {
+            position: relative;
+            width: 100%;
+        }
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 8px 8px;
+            border-top: none;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .autocomplete-dropdown.hidden {
+            display: none;
+        }
+        .autocomplete-item {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: var(--accent-blue);
+            color: white;
+        }
+        .autocomplete-symbol {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        .autocomplete-name {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+        .autocomplete-item:hover .autocomplete-name,
+        .autocomplete-item.selected .autocomplete-name {
+            color: rgba(255, 255, 255, 0.8);
+        }
+        .autocomplete-loading {
+            padding: 12px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        @media (max-width: 480px) {
+            .autocomplete-dropdown {
+                max-height: 150px;
+            }
+            .autocomplete-item {
+                padding: 10px;
+            }
+            .autocomplete-name {
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1193,7 +1262,7 @@
                 <div class="card">
                     <div class="card-header">
                         <span>🔔 Price Alerts</span>
-                        <button class="btn-add" onclick="showAddWatchlistModal()" title="Add Alert">+</button>
+                        <button class="btn-add" onclick="showAddAlertModal()" title="Add Alert">+</button>
                     </div>
                     <div class="card-body">
                         <div id="alertsList"></div>
@@ -1395,7 +1464,10 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Symbol *</label>
-                        <input type="text" name="symbol" required placeholder="e.g. AAPL, BTC-USD">
+                        <div class="autocomplete-container">
+                            <input type="text" name="symbol" id="symbolInput" required placeholder="e.g. AAPL, BTC-USD" autocomplete="off">
+                            <div class="autocomplete-dropdown hidden" id="symbolDropdown"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Name</label>
@@ -1472,7 +1544,10 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Symbol *</label>
-                        <input type="text" name="symbol" required placeholder="e.g. NVDA">
+                        <div class="autocomplete-container">
+                            <input type="text" name="symbol" id="watchlistSymbolInput" required placeholder="e.g. NVDA" autocomplete="off">
+                            <div class="autocomplete-dropdown hidden" id="watchlistSymbolDropdown"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Name</label>
@@ -1512,6 +1587,42 @@
         </div>
     </div>
 
+    <!-- Add Alert Modal -->
+    <div class="modal-overlay" id="addAlertModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="addAlertTitle">Add Price Alert</h2>
+                <button class="modal-close" onclick="closeModal('addAlertModal')">&times;</button>
+            </div>
+            <form id="alertForm" onsubmit="saveAlert(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Symbol *</label>
+                        <div class="autocomplete-container">
+                            <input type="text" name="symbol" id="alertSymbolInput" required placeholder="e.g. NVDA" autocomplete="off">
+                            <div class="autocomplete-dropdown hidden" id="alertSymbolDropdown"></div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Condition *</label>
+                        <select name="condition" required style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="above">Alert when price goes above</option>
+                            <option value="below">Alert when price goes below</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Target Price *</label>
+                        <input type="number" name="target_price" step="any" required placeholder="e.g. 150.00">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addAlertModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Alert</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Add Transaction Modal -->
     <div class="modal-overlay" id="addTransactionModal">
         <div class="modal">
@@ -1523,7 +1634,10 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Symbol *</label>
-                        <input type="text" name="symbol" required placeholder="e.g. AAPL">
+                        <div class="autocomplete-container">
+                            <input type="text" name="symbol" id="transactionSymbolInput" required placeholder="e.g. AAPL" autocomplete="off">
+                            <div class="autocomplete-dropdown hidden" id="transactionSymbolDropdown"></div>
+                        </div>
                     </div>
                     <div class="form-group">
                         <label>Action *</label>
@@ -2014,6 +2128,53 @@
             el.classList.add('show');
         }
 
+        function showToast(message, type = 'info') {
+            // Create toast element if it doesn't exist
+            let toastContainer = document.getElementById('toast-container');
+            if (!toastContainer) {
+                toastContainer = document.createElement('div');
+                toastContainer.id = 'toast-container';
+                toastContainer.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    pointer-events: none;
+                `;
+                document.body.appendChild(toastContainer);
+            }
+
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                background: ${type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                padding: 12px 16px;
+                border-radius: 8px;
+                margin-bottom: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                font-size: 14px;
+                pointer-events: auto;
+                transform: translateX(100%);
+                transition: transform 0.3s ease;
+                max-width: 300px;
+                word-wrap: break-word;
+            `;
+            toast.textContent = message;
+            
+            toastContainer.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => toast.style.transform = 'translateX(0)', 10);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                toast.style.transform = 'translateX(100%)';
+                setTimeout(() => {
+                    if (toast.parentNode) toast.parentNode.removeChild(toast);
+                }, 300);
+            }, 3000);
+        }
+
         function hideAuth() {
             document.getElementById('authOverlay').classList.add('hidden');
         }
@@ -2071,7 +2232,10 @@
             document.getElementById('userDropdown').classList.remove('show');
             // Render content when switching pages
             if (page === 'alerts') renderAlerts();
-            if (page === 'history') renderTransactions();
+            if (page === 'history') {
+                console.log('🔄 Switching to history page, calling renderTransactions');
+                renderTransactions();
+            }
             if (page === 'news') loadNews();
         }
 
@@ -2100,6 +2264,40 @@
             const title = document.getElementById('addWatchlistTitle');
             if (title) title.textContent = 'Add to Watchlist';
             showModal('addWatchlistModal');
+        }
+
+        function showAddAlertModal() {
+            const form = document.getElementById('alertForm');
+            if (form) form.reset();
+            document.getElementById('addAlertTitle').textContent = 'Add Price Alert';
+            showModal('addAlertModal');
+        }
+
+        async function saveAlert(e) {
+            e.preventDefault();
+            if (!token) {
+                alert('Please login to create alerts');
+                return;
+            }
+            const form = e.target;
+            const data = {
+                symbol: form.symbol.value.toUpperCase(),
+                condition: form.condition.value,
+                target_price: parseFloat(form.target_price.value)
+            };
+            
+            try {
+                await api('/alerts', {
+                    method: 'POST',
+                    body: JSON.stringify(data)
+                });
+                closeModal('addAlertModal');
+                form.reset();
+                await renderAlerts();
+                showToast('Price alert created successfully', 'success');
+            } catch (e) {
+                alert('Failed to create alert: ' + e.message);
+            }
         }
 
         // Type toggle for options
@@ -2139,6 +2337,277 @@
             }
         }
 
+        // ============ TICKER AUTOCOMPLETE ============
+        let autocompleteTimeout = null;
+        let selectedIndex = -1;
+        let autocompleteResults = [];
+        let isDropdownVisible = false;
+        let activeAutocompleteInput = null;
+
+        // Enhanced reusable autocomplete system
+        function initTickerAutocomplete() {
+            // Initialize autocomplete for all ticker inputs
+            initAutocompleteForInput('symbolInput', 'positionForm');
+            initAutocompleteForInput('watchlistSymbolInput', 'watchlistForm');
+            initAutocompleteForInput('alertSymbolInput', 'alertForm');
+            initAutocompleteForInput('transactionSymbolInput', 'transactionForm');
+        }
+
+        function initAutocompleteForInput(inputId, formId) {
+            const input = document.getElementById(inputId);
+            const form = document.getElementById(formId);
+            if (!input || !form) return;
+
+            const dropdown = input.nextElementSibling; // Should be the dropdown
+            if (!dropdown || !dropdown.classList.contains('autocomplete-dropdown')) return;
+
+            // Show popular tickers on focus
+            input.addEventListener('focus', async () => {
+                activeAutocompleteInput = { input, form, dropdown };
+                if (input.value.trim() === '') {
+                    await showPopularTickers(dropdown);
+                }
+            });
+
+            // Search on input
+            input.addEventListener('input', (e) => {
+                activeAutocompleteInput = { input, form, dropdown };
+                const query = e.target.value.trim();
+                selectedIndex = -1;
+                
+                if (query === '') {
+                    showPopularTickers(dropdown);
+                } else {
+                    searchTickers(query, dropdown);
+                }
+            });
+
+            // Handle keyboard navigation
+            input.addEventListener('keydown', (e) => {
+                if (!isDropdownVisible) return;
+
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        selectedIndex = Math.min(selectedIndex + 1, autocompleteResults.length - 1);
+                        updateSelection(dropdown);
+                        break;
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        selectedIndex = Math.max(selectedIndex - 1, -1);
+                        updateSelection(dropdown);
+                        break;
+                    case 'Enter':
+                        e.preventDefault();
+                        if (selectedIndex >= 0) {
+                            selectTicker(autocompleteResults[selectedIndex], input, form);
+                        }
+                        break;
+                    case 'Escape':
+                        hideDropdown(dropdown);
+                        input.blur();
+                        break;
+                }
+            });
+
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.autocomplete-container')) {
+                    hideDropdown(dropdown);
+                }
+            });
+        }
+
+        async function showPopularTickers(dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            try {
+                showLoadingDropdown(targetDropdown);
+                const response = await fetch('/api/tickers/popular');
+                if (!response.ok) throw new Error('Failed to fetch popular tickers');
+                const tickers = await response.json();
+                autocompleteResults = tickers.slice(0, 8);
+                renderDropdown(autocompleteResults, targetDropdown);
+                showDropdown(targetDropdown);
+            } catch (error) {
+                console.error('Error loading popular tickers:', error);
+                hideDropdown(targetDropdown);
+            }
+        }
+
+        function searchTickers(query, dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            // Clear existing timeout
+            if (autocompleteTimeout) {
+                clearTimeout(autocompleteTimeout);
+            }
+
+            // Show loading state immediately for better UX
+            showLoadingDropdown(targetDropdown);
+
+            // Debounce search requests (300ms delay)
+            autocompleteTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/tickers/search?q=${encodeURIComponent(query)}`);
+                    if (!response.ok) throw new Error('Search failed');
+                    const tickers = await response.json();
+                    autocompleteResults = tickers.slice(0, 10);
+                    
+                    if (autocompleteResults.length === 0) {
+                        renderNoResults(targetDropdown);
+                    } else {
+                        renderDropdown(autocompleteResults, targetDropdown);
+                    }
+                    showDropdown(targetDropdown);
+                } catch (error) {
+                    console.error('Error searching tickers:', error);
+                    renderErrorState(targetDropdown);
+                    showDropdown(targetDropdown);
+                }
+            }, 300);
+        }
+
+        function renderDropdown(tickers, dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            selectedIndex = -1; // Reset selection
+
+            targetDropdown.innerHTML = tickers.map((ticker, index) => `
+                <div class="autocomplete-item" 
+                     data-symbol="${ticker.symbol.replace(/"/g, '&quot;')}" 
+                     data-name="${ticker.name.replace(/"/g, '&quot;')}"
+                     onclick="selectTickerFromClick(this)">
+                    <span class="autocomplete-symbol">${ticker.symbol}</span>
+                    <span class="autocomplete-name">${ticker.name}</span>
+                </div>
+            `).join('');
+        }
+
+        function showLoadingDropdown(dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            targetDropdown.innerHTML = '<div class="autocomplete-loading">Searching tickers...</div>';
+            showDropdown(targetDropdown);
+        }
+
+        function renderNoResults(dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            targetDropdown.innerHTML = '<div class="autocomplete-loading">No tickers found</div>';
+        }
+
+        function renderErrorState(dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            targetDropdown.innerHTML = '<div class="autocomplete-loading">Error loading tickers</div>';
+        }
+
+        function updateSelection(dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            const items = targetDropdown.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                item.classList.toggle('selected', index === selectedIndex);
+            });
+
+            // Scroll selected item into view
+            if (selectedIndex >= 0 && items[selectedIndex]) {
+                items[selectedIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function selectTicker(ticker, input, form) {
+            if (!activeAutocompleteInput) return;
+
+            const { input: activeInput, form: activeForm, dropdown: activeDropdown } = activeAutocompleteInput;
+            const targetInput = input || activeInput;
+            const targetForm = form || activeForm;
+            
+            // Set symbol
+            targetInput.value = ticker.symbol;
+            
+            // Set name if available (only some forms have name fields)
+            const nameInput = targetForm.querySelector('[name="name"]');
+            if (nameInput && (!nameInput.value || nameInput.value.trim() === '')) {
+                nameInput.value = ticker.name;
+            }
+            
+            hideDropdown(activeDropdown);
+            selectedIndex = -1;
+            
+            // Focus next relevant input based on form type
+            if (targetForm.id === 'positionForm') {
+                const quantityInput = targetForm.querySelector('[name="quantity"]');
+                if (quantityInput) quantityInput.focus();
+            } else if (targetForm.id === 'alertForm') {
+                const targetPriceInput = targetForm.querySelector('[name="target_price"]');
+                if (targetPriceInput) targetPriceInput.focus();
+            } else if (targetForm.id === 'transactionForm') {
+                const quantityInput = targetForm.querySelector('[name="quantity"]');
+                if (quantityInput) quantityInput.focus();
+            }
+        }
+
+        function selectTickerFromClick(element, dropdownId) {
+            const ticker = {
+                symbol: element.dataset.symbol,
+                name: element.dataset.name
+            };
+            
+            // Find the input associated with this dropdown
+            let dropdown, container, input, form;
+            
+            if (dropdownId) {
+                dropdown = document.getElementById(dropdownId);
+                container = dropdown?.parentElement;
+                input = container?.querySelector('input[type="text"]');
+                form = input?.closest('form');
+            } else {
+                // Fallback: find the dropdown this element belongs to
+                dropdown = element.closest('.autocomplete-dropdown');
+                container = dropdown?.parentElement;
+                input = container?.querySelector('input[type="text"]');
+                form = input?.closest('form');
+            }
+            
+            selectTicker(ticker, input, form);
+        }
+
+        function showDropdown(dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            targetDropdown.classList.remove('hidden');
+            isDropdownVisible = true;
+        }
+
+        function hideDropdown(dropdown) {
+            const targetDropdown = dropdown || getActiveDropdown();
+            if (!targetDropdown) return;
+
+            targetDropdown.classList.add('hidden');
+            targetDropdown.innerHTML = ''; // Clear loading/error text
+            isDropdownVisible = false;
+            selectedIndex = -1;
+            
+            if (autocompleteTimeout) {
+                clearTimeout(autocompleteTimeout);
+                autocompleteTimeout = null;
+            }
+        }
+
+        function getActiveDropdown() {
+            return activeAutocompleteInput?.dropdown || document.getElementById('symbolDropdown');
+        }
+
         async function savePosition(e) {
             e.preventDefault();
             if (!token || !portfolioId) {
@@ -2172,7 +2641,7 @@
             
             try {
                 if (editingPositionId) {
-                    await api(`/positions/${editingPositionId}`, { method: 'PUT', body: JSON.stringify(data) });
+                    await api(`/portfolios/positions/${editingPositionId}`, { method: 'PUT', body: JSON.stringify(data) });
                     editingPositionId = null;
                 } else {
                     await api(`/portfolios/${portfolioId}/positions`, { method: 'POST', body: JSON.stringify(data) });
@@ -2181,6 +2650,29 @@
                 form.reset();
                 document.getElementById('addPositionTitle').textContent = 'Add Position';
                 await loadPortfolio();
+                
+                // Auto-add to "Main Watchlist" if not already present
+                if (!editingPositionId && watchlistId) {
+                    const symbol = data.symbol;
+                    const existingItem = watchlist.find(w => w.symbol === symbol);
+                    if (!existingItem) {
+                        try {
+                            await api(`/watchlists/${watchlistId}/items`, {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    symbol: symbol,
+                                    name: data.name || '',
+                                    category: 'general'
+                                })
+                            });
+                            await loadWatchlists(); // Refresh watchlist
+                            showToast(`${symbol} added to Main Watchlist`, 'success');
+                        } catch (e) {
+                            console.error('Failed to auto-add to watchlist:', e);
+                            // Don't show error to user as this is a convenience feature
+                        }
+                    }
+                }
             } catch (e) {
                 alert(e.message);
             }
@@ -2218,54 +2710,63 @@
             }
         }
         
-        function renderAlerts() {
+        // Load alerts from API
+        async function loadAlerts() {
+            if (!token) return;
+            try {
+                alerts = await api('/alerts');
+            } catch (e) {
+                console.error('Failed to load alerts:', e);
+                alerts = [];
+            }
+        }
+
+        async function renderAlerts() {
+            await loadAlerts(); // Load alerts from API
             const el = document.getElementById('alertsList');
-            // Get all watchlist items with alerts set
-            const itemsWithAlerts = watchlist.filter(w => w.alert_below || w.alert_above);
             
-            if (itemsWithAlerts.length === 0) {
-                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-text">No price alerts set</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add alerts from the Watchlist page</p></div>';
+            if (alerts.length === 0) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-text">No price alerts set</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add alerts via the + button</p></div>';
                 return;
             }
             
+            // Fetch prices for alert symbols that aren't cached
+            const symbolsToFetch = alerts
+                .map(alert => alert.symbol)
+                .filter(symbol => !priceCache[symbol] || Date.now() - priceCache[symbol]._fetchedAt > 300000); // 5 min cache
+            
+            if (symbolsToFetch.length > 0) {
+                const quotes = await Promise.allSettled(symbolsToFetch.map(fetchQuote));
+                quotes.forEach((result, i) => {
+                    if (result.status === 'fulfilled' && result.value) {
+                        priceCache[symbolsToFetch[i]] = result.value;
+                    }
+                });
+            }
+            
             let html = '';
-            for (const item of itemsWithAlerts) {
-                const q = priceCache[item.symbol];
+            for (const alert of alerts) {
+                const q = priceCache[alert.symbol];
                 const price = q?.price || 0;
                 
-                let condition = '';
+                const condition = `${alert.condition} ${fp(alert.value)}`;
                 let status = 'pending';
-                let statusText = '⏳ Waiting';
+                let statusText = '⏳ Active';
                 
-                if (item.alert_below) {
-                    condition = `Buy below ${fp(item.alert_below)}`;
-                    if (price > 0 && price <= item.alert_below) {
-                        status = 'triggered';
-                        statusText = '🔔 TRIGGERED!';
-                    }
-                }
-                if (item.alert_above) {
-                    condition += condition ? ' / ' : '';
-                    condition += `Sell above ${fp(item.alert_above)}`;
-                    if (price > 0 && price >= item.alert_above) {
-                        status = 'triggered';
-                        statusText = '🔔 TRIGGERED!';
-                    }
+                if (!alert.is_active) {
+                    status = 'triggered';
+                    statusText = '🔔 TRIGGERED';
                 }
                 
                 // Calculate proximity percentage for progress bar
                 let proximityPct = 0;
                 let proximityColor = 'var(--accent-blue)';
-                if (item.alert_below && price > 0) {
-                    // How close is current price to the buy target (lower = closer)
-                    // If price is at target: 100%, if price is 2x target: 0%
-                    proximityPct = Math.max(0, Math.min(100, (2 - price / item.alert_below) * 100));
-                    if (proximityPct >= 80) proximityColor = 'var(--accent-green)';
-                    else if (proximityPct >= 50) proximityColor = '#f39c12';
-                }
-                if (item.alert_above && price > 0) {
-                    // How close is current price to the sell target (higher = closer)
-                    proximityPct = Math.max(0, Math.min(100, (price / item.alert_above) * 100));
+                if (price > 0) {
+                    if (alert.condition === 'below') {
+                        proximityPct = Math.max(0, Math.min(100, (2 - price / alert.value) * 100));
+                    } else if (alert.condition === 'above') {
+                        proximityPct = Math.max(0, Math.min(100, (price / alert.value) * 100));
+                    }
                     if (proximityPct >= 80) proximityColor = 'var(--accent-green)';
                     else if (proximityPct >= 50) proximityColor = '#f39c12';
                 }
@@ -2277,16 +2778,15 @@
                     <div style="font-size:0.7rem;color:var(--text-secondary);margin-top:2px;">${proximityPct.toFixed(0)}% to target</div>
                 ` : '';
                 
-                html += `<div class="swipe-container" data-id="${item.id}" data-type="alert">
+                html += `<div class="swipe-container" data-id="${alert.id}" data-type="alert">
                     <div class="swipe-actions">
-                        <div class="swipe-action edit" onclick="editWatchlistItem(${item.id})">✏️</div>
-                        <div class="swipe-action delete" onclick="deleteWatchlistItem(${item.id})">🗑️</div>
+                        <div class="swipe-action delete" onclick="deleteAlert(${alert.id})">🗑️</div>
                     </div>
                     <div class="swipe-content alert-item">
-                        <div class="alert-info" onclick="selectTicker('${item.symbol}')" style="cursor:pointer;flex:1;display:flex;align-items:center;gap:10px;">
-                            ${logoHtml(item.symbol, 32)}
+                        <div class="alert-info" onclick="selectTicker('${alert.symbol}')" style="cursor:pointer;flex:1;display:flex;align-items:center;gap:10px;">
+                            ${logoHtml(alert.symbol, 32)}
                             <div style="flex:1;">
-                                <div class="alert-symbol">${item.symbol}</div>
+                                <div class="alert-symbol">${alert.symbol}</div>
                                 <div class="alert-condition">${condition}</div>
                                 <div style="font-size:0.8rem;color:var(--text-secondary);">Current: ${price > 0 ? fp(price) : 'Loading...'}</div>
                                 ${progressBar}
@@ -2301,59 +2801,118 @@
         }
 
         // Transactions
+        // Clean transaction loading and display logic
         let transactions = [];
-        
+
         async function loadTransactions() {
-            if (!token || !currentPortfolio) return;
+            if (!token || !currentPortfolio) {
+                console.log('Missing token or portfolio for transactions');
+                return false;
+            }
+            
             try {
-                const resp = await api(`/portfolios/${currentPortfolio.id}/transactions?limit=100`);
-                transactions = resp.transactions || [];
-            } catch (e) {
-                console.error('Failed to load transactions:', e);
+                const response = await fetch(`/api/transactions/portfolios/${currentPortfolio.id}/transactions?limit=100`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load transactions: ' + response.status);
+                }
+                
+                const data = await response.json();
+                transactions = data.transactions || [];
+                console.log('Loaded ' + transactions.length + ' transactions');
+                return true;
+            } catch (error) {
+                console.error('Error loading transactions:', error);
                 transactions = [];
+                return false;
             }
         }
-        
+
         async function renderTransactions() {
-            await loadTransactions();
             const el = document.getElementById('transactionsList');
-            
-            if (transactions.length === 0) {
-                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">No transactions yet</div><p style="color:var(--text-secondary);font-size:0.9rem;">Track your buys and sells</p></div>';
-                return;
-            }
-            
-            let html = '';
-            for (const tx of transactions) {
-                const date = new Date(tx.executed_at).toLocaleDateString();
-                // Options have 100x multiplier
-                const multiplier = tx.type === 'option' ? 100 : 1;
-                const total = (tx.quantity * tx.price * multiplier + (tx.fees || 0)).toFixed(2);
-                const actionClass = tx.action === 'buy' ? 'positive' : 'negative';
-                const actionIcon = tx.action === 'buy' ? '📈' : '📉';
+            try {
+                // Ensure we have authentication and portfolio
+                if (!token) {
+                    console.error('renderTransactions: No token');
+                    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔒</div><div class="empty-state-text">Please log in to view transactions</div></div>';
+                    return;
+                }
                 
-                html += `<div class="swipe-container" data-id="${tx.id}" data-type="transaction">
-                    <div class="swipe-actions">
-                        <div class="swipe-action delete" onclick="deleteTransaction(${tx.id})">🗑️</div>
-                    </div>
-                    <div class="swipe-content" style="padding:12px;display:flex;justify-content:space-between;align-items:center;">
-                        <div onclick="selectTicker('${tx.symbol}')" style="cursor:pointer;flex:1;display:flex;align-items:center;gap:10px;">
-                            ${logoHtml(tx.symbol, 28)}
-                            <div>
-                                <div style="font-weight:600;">${actionIcon} ${tx.symbol}</div>
-                                <div style="font-size:0.8rem;color:var(--text-secondary);">${tx.action.toUpperCase()} ${tx.quantity} @ ${fp(tx.price)} ${tx.type !== 'stock' ? '(' + tx.type + ')' : ''}</div>
-                                ${tx.notes ? `<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">${tx.notes}</div>` : ''}
-                            </div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div class="${actionClass}" style="font-weight:600;">${tx.action === 'buy' ? '-' : '+'}${fc(total)}</div>
-                            <div style="font-size:0.8rem;color:var(--text-secondary);">${date}</div>
-                        </div>
-                    </div>
-                </div>`;
+                if (!currentPortfolio) {
+                    await loadPortfolio();
+                    if (!currentPortfolio) {
+                        console.error('renderTransactions: No portfolio after load');
+                        el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-text">Could not load portfolio</div></div>';
+                        return;
+                    }
+                }
+                
+                // Show loading state
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">Loading transactions...</div></div>';
+                
+                // Load transactions
+                const success = await loadTransactions();
+                if (!success) {
+                    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-text">Failed to load transactions</div></div>';
+                    return;
+                }
+                
+                if (transactions.length === 0) {
+                    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">No transactions yet</div></div>';
+                    return;
+                }
+                
+                // Render transactions
+                let html = '';
+                for (let i = 0; i < transactions.length; i++) {
+                    const tx = transactions[i];
+                    const date = new Date(tx.executed_at).toLocaleDateString();
+                    const multiplier = tx.type === 'option' ? 100 : 1;
+                    const total = (tx.quantity * tx.price * multiplier + (tx.fees || 0)).toFixed(2);
+                    const actionClass = tx.action === 'buy' ? 'positive' : 'negative';
+                    const actionIcon = tx.action === 'buy' ? '📈' : '📉';
+                    
+                    html += '<div class="swipe-container" data-id="' + tx.id + '" data-type="transaction">';
+                    html += '<div class="swipe-actions">';
+                    html += '<div class="swipe-action delete" onclick="deleteTransaction(' + tx.id + ')">🗑️</div>';
+                    html += '</div>';
+                    html += '<div class="swipe-content" style="padding:12px;display:flex;justify-content:space-between;align-items:center;">';
+                    html += '<div onclick="selectTicker(\'' + tx.symbol + '\')" style="cursor:pointer;flex:1;display:flex;align-items:center;gap:10px;">';
+                    html += logoHtml(tx.symbol, 28);
+                    html += '<div>';
+                    html += '<div style="font-weight:600;">' + actionIcon + ' ' + tx.symbol + '</div>';
+                    html += '<div style="font-size:0.8rem;color:var(--text-secondary);">' + tx.action.toUpperCase() + ' ' + tx.quantity + ' @ ' + fp(tx.price);
+                    if (tx.type !== 'stock') {
+                        html += ' (' + tx.type + ')';
+                    }
+                    html += '</div>';
+                    if (tx.notes) {
+                        html += '<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">' + tx.notes + '</div>';
+                    }
+                    html += '</div>';
+                    html += '</div>';
+                    html += '<div style="text-align:right;">';
+                    html += '<div class="' + actionClass + '" style="font-weight:600;">';
+                    html += (tx.action === 'buy' ? '-' : '+') + fc(total);
+                    html += '</div>';
+                    html += '<div style="font-size:0.8rem;color:var(--text-secondary);">' + date + '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                }
+                
+                el.innerHTML = html;
+                setupSwipeHandlers();
+                console.log('Rendered ' + transactions.length + ' transactions');
+            } catch (err) {
+                console.error('renderTransactions error:', err);
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💥</div><div class="empty-state-text">Error: ' + err.message + '</div></div>';
             }
-            el.innerHTML = html;
-            setupSwipeHandlers();
         }
         
         function showAddTransactionModal() {
@@ -2381,7 +2940,7 @@
             };
             
             try {
-                await api(`/portfolios/${currentPortfolio.id}/transactions`, {
+                await api(`/transactions/portfolios/${currentPortfolio.id}/transactions`, {
                     method: 'POST',
                     body: JSON.stringify(data)
                 });
@@ -2419,6 +2978,16 @@
                 await loadWatchlists();
             } catch (e) {
                 alert(e.message);
+            }
+        }
+
+        async function deleteAlert(id) {
+            if (!confirm('Delete this price alert?')) return;
+            try {
+                await api(`/alerts/${id}`, { method: 'DELETE' });
+                await renderAlerts();
+            } catch (e) {
+                alert('Failed to delete alert: ' + e.message);
             }
         }
 
@@ -2465,7 +3034,7 @@
         function formatCurrency(amount, currency) {
             const cur = currency || userCurrency;
             const sym = CURRENCY_SYMBOLS[cur] || cur + ' ';
-            const converted = convertPrice(amount, cur);
+            const converted = convertPrice(Number(amount), cur);
             if (Math.abs(converted) >= 1000) {
                 return sym + converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
@@ -4226,6 +4795,7 @@
             initChart();
             initCurrencySetting();
             initPushNotifications();
+            initTickerAutocomplete();
             loadExchangeRates();
             
             // Sync pinned markets from server if logged in
