@@ -38,3 +38,4 @@ test_frontend_issues.js
 test_transaction_fix.sh
 transaction_fix.patch
 verify_frontend_fixes.js
+server/portfolio-tracker-beta.service

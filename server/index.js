@@ -28,6 +28,7 @@ const transactionsRouter = require('./routes/transactions');
 const dataRouter = require('./routes/data');
 const historyRouter = require('./routes/history');
 const { router: pushRouter } = require('./routes/push');
+const walletsRouter = require('./routes/wallets');
 
 // Currency utilities
 const { fetchExchangeRates, SUPPORTED_CURRENCIES } = require('./utils/currency');
@@ -107,6 +108,7 @@ app.use('/api/transactions', authenticateToken, transactionsRouter);
 app.use('/api', authenticateToken, transactionsRouter); // Also mount for /api/portfolios/:id/transactions
 app.use('/api', authenticateToken, dataRouter); // Data routes (snapshots, performance, reconstruct)
 app.use('/api/push', authenticateToken, pushRouter);
+app.use('/api/wallets', authenticateToken, walletsRouter);
 app.use('/api/history/collect', authenticateToken, strictLimiter); // Stricter rate limit for collection
 app.use('/api/history', authenticateToken, historyRouter);
 
