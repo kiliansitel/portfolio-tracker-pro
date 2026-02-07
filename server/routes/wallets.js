@@ -7,6 +7,217 @@ const { logger } = require('../utils/logger');
 
 const router = express.Router();
 
+// ---- EVM chains that support ERC-20 tokens ----
+const EVM_CHAINS = ['eth', 'bnb', 'avax', 'matic', 'arb', 'op'];
+
+// ---- Etherscan-compatible block explorer API endpoints for token discovery ----
+const EXPLORER_API = {
+  eth: 'https://api.etherscan.io/api',
+};
+
+// Simple rate limiter for Etherscan (5 calls/sec free tier)
+let lastEtherscanCall = 0;
+async function etherscanThrottle() {
+  const now = Date.now();
+  const elapsed = now - lastEtherscanCall;
+  if (elapsed < 220) { // ~4.5 calls/sec to stay safe
+    await new Promise(r => setTimeout(r, 220 - elapsed));
+  }
+  lastEtherscanCall = Date.now();
+}
+
+// Fetch ERC-20 token list for an ETH address via Etherscan tokentx
+async function fetchErc20Tokens(address) {
+  const apiKey = process.env.ETHERSCAN_API_KEY || '';
+  await etherscanThrottle();
+
+  let url = `${EXPLORER_API.eth}?module=account&action=tokentx&address=${address}&startblock=0&endblock=99999999&sort=desc&page=1&offset=200`;
+  if (apiKey) url += `&apikey=${apiKey}`;
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
+  if (!res.ok) throw new Error(`Etherscan tokentx fetch failed: ${res.status}`);
+  const data = await res.json();
+
+  if (data.status !== '1' && data.message !== 'OK') {
+    if (data.message === 'No transactions found') return [];
+    if (data.result && typeof data.result === 'string' && data.result.includes('rate limit')) {
+      throw new Error('Etherscan rate limited');
+    }
+    return []; // No token transactions
+  }
+
+  const txList = Array.isArray(data.result) ? data.result : [];
+  // Discover unique tokens from transfer history
+  const tokenMap = new Map();
+  for (const tx of txList) {
+    const contract = (tx.contractAddress || '').toLowerCase();
+    if (!contract || tokenMap.has(contract)) continue;
+    tokenMap.set(contract, {
+      contract_address: contract,
+      symbol: tx.tokenSymbol || 'UNKNOWN',
+      name: tx.tokenName || 'Unknown Token',
+      decimals: parseInt(tx.tokenDecimal || '18', 10),
+    });
+  }
+
+  return Array.from(tokenMap.values());
+}
+
+// Fetch a single ERC-20 token balance via Etherscan
+async function fetchErc20Balance(address, contractAddress) {
+  const apiKey = process.env.ETHERSCAN_API_KEY || '';
+  await etherscanThrottle();
+
+  let url = `${EXPLORER_API.eth}?module=account&action=tokenbalance&contractaddress=${contractAddress}&address=${address}&tag=latest`;
+  if (apiKey) url += `&apikey=${apiKey}`;
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) return '0';
+  const data = await res.json();
+  if (data.status !== '1') return '0';
+  return data.result || '0';
+}
+
+// Fetch token USD prices from CoinGecko (batch up to 100 addresses)
+async function fetchTokenPrices(contractAddresses) {
+  if (!contractAddresses || contractAddresses.length === 0) return {};
+
+  // CoinGecko allows comma-separated contract addresses
+  const batchSize = 50;
+  const prices = {};
+
+  for (let i = 0; i < contractAddresses.length; i += batchSize) {
+    const batch = contractAddresses.slice(i, i + batchSize);
+    const addrParam = batch.join(',');
+
+    try {
+      const url = `https://api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=${addrParam}&vs_currencies=usd`;
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (res.ok) {
+        const data = await res.json();
+        for (const [addr, priceObj] of Object.entries(data)) {
+          prices[addr.toLowerCase()] = priceObj?.usd || 0;
+        }
+      }
+    } catch (e) {
+      logger.error('CoinGecko token price fetch error:', e.message);
+    }
+
+    // Small delay between batches
+    if (i + batchSize < contractAddresses.length) {
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
+  return prices;
+}
+
+// Full ERC-20 sync for a single ETH wallet
+async function syncWalletTokens(wallet) {
+  if (wallet.chain !== 'eth') return []; // ETH only for now
+
+  try {
+    // 1. Discover tokens via tokentx
+    const discoveredTokens = await fetchErc20Tokens(wallet.address);
+    if (discoveredTokens.length === 0) return [];
+
+    // 2. Fetch balances for each discovered token (rate-limited)
+    const tokensWithBalance = [];
+    for (const token of discoveredTokens) {
+      try {
+        const rawBalance = await fetchErc20Balance(wallet.address, token.contract_address);
+        const balanceBigInt = BigInt(rawBalance);
+        if (balanceBigInt === 0n) continue; // Skip zero balances
+
+        // Convert to human-readable balance
+        const decimals = token.decimals || 18;
+        const divisor = BigInt(10) ** BigInt(decimals);
+        const wholePart = balanceBigInt / divisor;
+        const fracPart = balanceBigInt % divisor;
+        const fracStr = fracPart.toString().padStart(decimals, '0').slice(0, 8); // 8 decimal places max
+        const humanBalance = `${wholePart}.${fracStr}`.replace(/0+$/, '').replace(/\.$/, '');
+
+        tokensWithBalance.push({
+          ...token,
+          balance: humanBalance || '0',
+        });
+      } catch (e) {
+        logger.error(`Failed to fetch balance for token ${token.symbol} (${token.contract_address}):`, e.message);
+      }
+    }
+
+    if (tokensWithBalance.length === 0) return [];
+
+    // 3. Fetch USD prices from CoinGecko
+    const contractAddresses = tokensWithBalance.map(t => t.contract_address);
+    const prices = await fetchTokenPrices(contractAddresses);
+
+    // 4. Store in DB — upsert each token
+    const now = new Date().toISOString();
+    const results = [];
+
+    for (const token of tokensWithBalance) {
+      const usdPrice = prices[token.contract_address] || 0;
+      const balanceNum = parseFloat(token.balance) || 0;
+      const usdValue = balanceNum * usdPrice;
+
+      // Filter out dust (< $1)
+      if (usdValue < 1 && usdPrice > 0) continue;
+      // If no price data, still store if balance is significant
+      if (usdPrice === 0 && balanceNum < 0.001) continue;
+
+      // Upsert
+      const existing = dbGet(
+        'SELECT id FROM wallet_tokens WHERE wallet_id = ? AND contract_address = ?',
+        [wallet.id, token.contract_address]
+      );
+
+      if (existing) {
+        dbRun(
+          `UPDATE wallet_tokens SET symbol = ?, name = ?, decimals = ?, balance = ?, usd_value = ?, last_synced = ? WHERE id = ?`,
+          [token.symbol, token.name, token.decimals, token.balance, usdValue, now, existing.id]
+        );
+      } else {
+        dbRun(
+          `INSERT INTO wallet_tokens (wallet_id, contract_address, symbol, name, decimals, balance, usd_value, last_synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [wallet.id, token.contract_address, token.symbol, token.name, token.decimals, token.balance, usdValue, now]
+        );
+      }
+
+      results.push({
+        contract_address: token.contract_address,
+        symbol: token.symbol,
+        name: token.name,
+        balance: token.balance,
+        usd_value: usdValue,
+      });
+    }
+
+    // Clean up tokens that no longer have balance (remove if balance went to zero)
+    const storedTokens = dbAll('SELECT id, contract_address FROM wallet_tokens WHERE wallet_id = ?', [wallet.id]);
+    const activeContracts = new Set(tokensWithBalance.map(t => t.contract_address));
+    for (const st of storedTokens) {
+      if (!activeContracts.has(st.contract_address)) {
+        dbRun('DELETE FROM wallet_tokens WHERE id = ?', [st.id]);
+      }
+    }
+
+    return results;
+  } catch (e) {
+    logger.error(`Token sync failed for wallet ${wallet.id} (${wallet.chain}:${wallet.address}):`, e.message);
+    return [];
+  }
+}
+
+// Get stored tokens for a wallet
+function getWalletTokens(walletId) {
+  return dbAll(
+    'SELECT * FROM wallet_tokens WHERE wallet_id = ? AND CAST(balance AS REAL) > 0 ORDER BY usd_value DESC',
+    [walletId]
+  );
+}
+
 // ---- Chain configuration for all 13 supported chains ----
 const CHAIN_CONFIG = {
   btc:   { ticker: 'BTC-USD',  name: 'Bitcoin',    decimals: 8  },
@@ -58,6 +269,14 @@ function startAutoSync() {
             await fetchAndStoreTransactions(wallet);
           } catch (txErr) {
             logger.error(`Auto-sync tx fetch failed for wallet ${wallet.id}:`, txErr.message);
+          }
+          // Sync ERC-20 tokens for EVM wallets during auto-sync
+          if (EVM_CHAINS.includes(wallet.chain)) {
+            try {
+              await syncWalletTokens(wallet);
+            } catch (tokenErr) {
+              logger.error(`Auto-sync token sync failed for wallet ${wallet.id}:`, tokenErr.message);
+            }
           }
           synced++;
         } catch (err) {
@@ -574,13 +793,23 @@ router.get('/', async (req, res) => {
       prices[chain] = await getChainPrice(chain);
     }));
 
-    // Enrich with USD value
-    const enriched = wallets.map(w => ({
-      ...w,
-      usd_value: (w.balance || 0) * (prices[w.chain] || 0),
-      chain_price: prices[w.chain] || 0,
-      chain_name: CHAIN_NAMES[w.chain] || w.chain,
-    }));
+    // Enrich with USD value and tokens
+    const enriched = wallets.map(w => {
+      const nativeUsd = (w.balance || 0) * (prices[w.chain] || 0);
+      const tokens = EVM_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
+      const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+
+      return {
+        ...w,
+        usd_value: nativeUsd + tokensUsd,
+        native_usd_value: nativeUsd,
+        tokens_usd_value: tokensUsd,
+        chain_price: prices[w.chain] || 0,
+        chain_name: CHAIN_NAMES[w.chain] || w.chain,
+        tokens: tokens,
+        token_count: tokens.length,
+      };
+    });
 
     res.json(enriched);
   } catch (error) {
@@ -637,6 +866,7 @@ router.delete('/:id', idParamValidation, (req, res) => {
     const deletedChain = wallet.chain;
     const deletedUserId = wallet.user_id;
 
+    dbRun('DELETE FROM wallet_tokens WHERE wallet_id = ?', [id]);
     dbRun('DELETE FROM wallet_transactions WHERE wallet_id = ?', [id]);
     dbRun('DELETE FROM wallets WHERE id = ?', [id]);
 
@@ -691,6 +921,16 @@ router.post('/:id/sync', idParamValidation, async (req, res) => {
       logger.error(`Tx fetch during sync failed for wallet ${wallet.id}:`, txErr.message);
     }
 
+    // Sync ERC-20 tokens for EVM wallets
+    let tokenResult = [];
+    if (EVM_CHAINS.includes(wallet.chain)) {
+      try {
+        tokenResult = await syncWalletTokens(wallet);
+      } catch (tokenErr) {
+        logger.error(`Token sync during manual sync failed for wallet ${wallet.id}:`, tokenErr.message);
+      }
+    }
+
     // After syncing this wallet, aggregate all balances for this chain and sync position
     const allWalletsForChain = dbAll(
       'SELECT * FROM wallets WHERE user_id = ? AND chain = ?',
@@ -699,13 +939,22 @@ router.post('/:id/sync', idParamValidation, async (req, res) => {
     const totalBalance = allWalletsForChain.reduce((sum, w) => sum + (w.balance || 0), 0);
     const positionUpdates = syncPositionsFromWallets(req.user.id, { [wallet.chain]: totalBalance });
 
+    const tokens = getWalletTokens(wallet.id);
+    const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+    const nativeUsd = (updated.balance || 0) * price;
+
     res.json({
       ...updated,
-      usd_value: (updated.balance || 0) * price,
+      usd_value: nativeUsd + tokensUsd,
+      native_usd_value: nativeUsd,
+      tokens_usd_value: tokensUsd,
       chain_price: price,
       chain_name: CHAIN_NAMES[wallet.chain] || wallet.chain,
+      tokens: tokens,
+      token_count: tokens.length,
       position_sync: positionUpdates,
       transactions: txResult,
+      token_sync: { synced: tokenResult.length },
     });
   } catch (error) {
     logger.error(`Error syncing wallet ${req.params.id}:`, error);
@@ -734,6 +983,14 @@ router.post('/sync-all', async (req, res) => {
         } catch (txErr) {
           logger.error(`Tx fetch during sync-all failed for wallet ${wallet.id}:`, txErr.message);
         }
+        // Sync ERC-20 tokens for EVM wallets
+        if (EVM_CHAINS.includes(wallet.chain)) {
+          try {
+            await syncWalletTokens(wallet);
+          } catch (tokenErr) {
+            logger.error(`Token sync during sync-all failed for wallet ${wallet.id}:`, tokenErr.message);
+          }
+        }
         results.push(updated);
       } catch (e) {
         logger.error(`Sync failed for wallet ${wallet.id} (${wallet.chain}:${wallet.address}):`, e.message);
@@ -749,12 +1006,22 @@ router.post('/sync-all', async (req, res) => {
       prices[chain] = await getChainPrice(chain);
     }));
 
-    const enriched = results.map(w => ({
-      ...w,
-      usd_value: (w.balance || 0) * (prices[w.chain] || 0),
-      chain_price: prices[w.chain] || 0,
-      chain_name: CHAIN_NAMES[w.chain] || w.chain,
-    }));
+    const enriched = results.map(w => {
+      const nativeUsd = (w.balance || 0) * (prices[w.chain] || 0);
+      const tokens = EVM_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
+      const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+
+      return {
+        ...w,
+        usd_value: nativeUsd + tokensUsd,
+        native_usd_value: nativeUsd,
+        tokens_usd_value: tokensUsd,
+        chain_price: prices[w.chain] || 0,
+        chain_name: CHAIN_NAMES[w.chain] || w.chain,
+        tokens: tokens,
+        token_count: tokens.length,
+      };
+    });
 
     // Aggregate balances by chain and sync into positions
     const chainBalances = {};
@@ -791,10 +1058,14 @@ router.get('/summary', async (req, res) => {
     // Aggregate by chain
     const byChain = {};
     let totalUsd = 0;
+    let totalTokensUsd = 0;
 
     for (const w of wallets) {
       const price = prices[w.chain] || 0;
-      const usdValue = (w.balance || 0) * price;
+      const nativeUsd = (w.balance || 0) * price;
+      const tokens = EVM_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
+      const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+      const walletTotalUsd = nativeUsd + tokensUsd;
 
       if (!byChain[w.chain]) {
         byChain[w.chain] = {
@@ -802,19 +1073,25 @@ router.get('/summary', async (req, res) => {
           chain_name: CHAIN_NAMES[w.chain] || w.chain,
           total_balance: 0,
           total_usd: 0,
+          total_tokens_usd: 0,
           chain_price: price,
           wallet_count: 0,
+          token_count: 0,
         };
       }
 
       byChain[w.chain].total_balance += w.balance || 0;
-      byChain[w.chain].total_usd += usdValue;
+      byChain[w.chain].total_usd += walletTotalUsd;
+      byChain[w.chain].total_tokens_usd += tokensUsd;
       byChain[w.chain].wallet_count++;
-      totalUsd += usdValue;
+      byChain[w.chain].token_count += tokens.length;
+      totalUsd += walletTotalUsd;
+      totalTokensUsd += tokensUsd;
     }
 
     res.json({
       total_usd: totalUsd,
+      total_tokens_usd: totalTokensUsd,
       by_chain: Object.values(byChain),
       wallet_count: wallets.length,
     });
@@ -883,6 +1160,65 @@ router.get('/:id/transactions', idParamValidation, async (req, res) => {
   } catch (error) {
     logger.error(`Error listing transactions for wallet ${req.params.id}:`, error);
     res.status(500).json({ error: 'Failed to list wallet transactions' });
+  }
+});
+
+// GET /wallets/:id/tokens — dedicated endpoint for token list
+router.get('/:id/tokens', idParamValidation, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const wallet = dbGet('SELECT * FROM wallets WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    if (!wallet) {
+      return res.status(404).json({ error: 'Wallet not found' });
+    }
+
+    if (!EVM_CHAINS.includes(wallet.chain)) {
+      return res.json({ tokens: [], message: 'Token tracking only available for EVM chains' });
+    }
+
+    const tokens = getWalletTokens(wallet.id);
+    const totalUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+
+    res.json({
+      tokens,
+      total_usd: totalUsd,
+      token_count: tokens.length,
+      wallet_chain: wallet.chain,
+    });
+  } catch (error) {
+    logger.error(`Error listing tokens for wallet ${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to list wallet tokens' });
+  }
+});
+
+// POST /wallets/:id/sync-tokens — sync tokens only (without full wallet sync)
+router.post('/:id/sync-tokens', idParamValidation, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const wallet = dbGet('SELECT * FROM wallets WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    if (!wallet) {
+      return res.status(404).json({ error: 'Wallet not found' });
+    }
+
+    if (!EVM_CHAINS.includes(wallet.chain)) {
+      return res.json({ tokens: [], message: 'Token tracking only available for EVM chains' });
+    }
+
+    const syncResult = await syncWalletTokens(wallet);
+    const tokens = getWalletTokens(wallet.id);
+    const totalUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+
+    res.json({
+      tokens,
+      total_usd: totalUsd,
+      token_count: tokens.length,
+      synced: syncResult.length,
+    });
+  } catch (error) {
+    logger.error(`Error syncing tokens for wallet ${req.params.id}:`, error);
+    res.status(500).json({ error: `Token sync failed: ${error.message}` });
   }
 });
 

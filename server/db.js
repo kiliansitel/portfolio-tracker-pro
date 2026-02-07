@@ -334,6 +334,24 @@ async function initDatabase() {
   db.run('CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet_hash ON wallet_transactions(wallet_id, tx_hash)');
   db.run('CREATE INDEX IF NOT EXISTS idx_wallet_tx_block ON wallet_transactions(wallet_id, block_height)');
 
+  // ERC-20 (and EVM) token balances per wallet
+  db.run(`
+    CREATE TABLE IF NOT EXISTS wallet_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wallet_id INTEGER NOT NULL,
+      contract_address TEXT NOT NULL,
+      symbol TEXT NOT NULL,
+      name TEXT NOT NULL,
+      decimals INTEGER DEFAULT 18,
+      balance TEXT DEFAULT '0',
+      usd_value REAL DEFAULT 0,
+      last_synced TEXT,
+      FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
+      UNIQUE(wallet_id, contract_address)
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_wallet_tokens_wallet ON wallet_tokens(wallet_id)');
+
   saveDatabaseImmediate(); // Use immediate save for init
   console.log('📦 Database initialized');
 }
