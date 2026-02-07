@@ -1,6 +1,44 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.18.2 "Vault" (2026-02-06) ← CURRENT
+## v0.19.0 "Chain" (2026-02-07) ← CURRENT
+Blockchain wallet tracking, positions redesign, multi-chain support.
+
+**New Features:**
+- 🔗 **Blockchain Wallet Tracking** — Connect public addresses, auto-sync balances from chain
+- ⛓️ **13 Chains Supported** — BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT
+- 🔄 **Auto-Sync** — Wallets sync every 5 minutes, positions auto-update from on-chain balances
+- 📜 **On-Chain Transactions** — BTC/ETH transaction history fetched from block explorers
+- 💼 **Positions Redesign** — Grouped by type (Crypto/Stocks/Options), sorted by value, current price prominent
+- 📊 **Portfolio Summary Bar** — Total value, P&L, today's change, cash at a glance
+- 🪙 **17 Crypto Tickers** — Full crypto autocomplete support
+- 🔗 **Wallet-Synced Positions** — On-chain badge, auto-create/update/delete with wallet changes
+
+**API:**
+- `GET /api/wallets` — List connected wallets with USD values
+- `POST /api/wallets` — Add wallet (chain, address, label)
+- `DELETE /api/wallets/:id` — Remove wallet + cleanup positions
+- `POST /api/wallets/:id/sync` — Sync single wallet balance
+- `POST /api/wallets/sync-all` — Sync all wallets
+- `GET /api/wallets/summary` — Aggregated on-chain value by chain
+- `POST /api/wallets/:id/fetch-transactions` — Fetch chain transactions
+- `GET /api/wallets/:id/transactions` — List stored chain transactions
+- `GET /api/info` — App version and environment info
+
+**Fixes:**
+- 🔧 **formatCurrency crash** — Fixed string-to-number coercion in currency formatting
+- 🔧 **Watchlist default** — Now selects "Main Watchlist" instead of first alphabetically
+- 🔧 **Custom watchlist dropdown** — Dark-themed, replaces broken native select
+- 🔧 **Category expand/collapse** — Fixed CSS max-height animation
+- 🔧 **Autocomplete click** — Fixed function name collision + blur timing for desktop/mobile
+- 🔧 **DB schema alignment** — Auto-migrations for positions, portfolios, watchlist_items, alerts
+
+**Infrastructure:**
+- 🏗️ **Beta/Production separation** — Separate directories and branches
+- 🔄 **DB auto-migrations** — Schema changes applied automatically on startup
+
+---
+
+## v0.18.2 "Vault" (2026-02-06)
 Historical data infrastructure + CI fixes.
 
 **New Features:**

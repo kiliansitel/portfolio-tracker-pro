@@ -8,15 +8,17 @@
   A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.18.2-blue)
+![Version](https://img.shields.io/badge/version-0.19.0-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
 
 - 📊 **Interactive Charts** — Area/candlestick views with MA20/50/200 overlays
-- 💼 **Portfolio Management** — Track positions, options, and cash
-- 👀 **Watchlists** — Customizable with 12+ categories and price alerts
+- 💼 **Portfolio Management** — Track positions, options, and cash with grouped display
+- 🔗 **Blockchain Wallets** — Connect public addresses across 13 chains with auto-sync
+- ⛓️ **13 Chains** — BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT
+- 👀 **Watchlists** — Customizable with 12+ categories, price alerts, and dropdown selector
 - 🔔 **Alerts** — Set price targets with Telegram & push notifications
 - ⛓️ **Options Chain** — View calls/puts with strikes and expiry dates
 - 📰 **News Feed** — Real-time market news with stock-specific filtering
@@ -86,6 +88,15 @@ Open http://localhost:8080
 | GET | `/api/history/status` | Collection stats |
 | POST | `/api/history/collect` | Trigger OHLCV backfill |
 | POST | `/api/portfolios/:id/snapshot/auto` | Auto portfolio snapshot |
+| GET | `/api/wallets` | List connected wallets |
+| POST | `/api/wallets` | Add wallet (chain, address) |
+| DELETE | `/api/wallets/:id` | Remove wallet |
+| POST | `/api/wallets/:id/sync` | Sync wallet balance |
+| POST | `/api/wallets/sync-all` | Sync all wallets |
+| GET | `/api/wallets/summary` | On-chain value summary |
+| POST | `/api/wallets/:id/fetch-transactions` | Fetch chain transactions |
+| GET | `/api/wallets/:id/transactions` | List chain transactions |
+| GET | `/api/info` | App version & environment |
 
 ## Screenshots
 
@@ -126,6 +137,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.19.0 "Chain"** — Blockchain wallet tracking (13 chains), positions redesign, auto-sync, on-chain transactions
 - **v0.18.2 "Vault"** — Historical OHLCV storage, auto-snapshots, Docker/CI fixes, Playwright caching
 - **v0.18.1 "Forge"** — Code modularization, multi-currency (EUR/USD/GBP/CHF), push notifications
 - **v0.18.0 "Chain"** — Options chain viewer + security hardening (CSP, CORS, validators, debounced writes)
@@ -167,10 +179,13 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Modular architecture (8 route modules, utility services)
 - [x] Historical OHLCV price storage with daily collection
 - [x] Automated daily portfolio snapshots
+- [x] Blockchain wallet tracking (13 chains, auto-sync)
+- [x] On-chain transaction history (BTC, ETH)
+- [x] Positions page redesign (grouped, sorted, summary bar)
 
 ### 🚧 In Progress
 
-### 🧠 v0.19.0 "Oracle" — AI Intelligence Layer
+### 🧠 v0.20.0 "Oracle" — AI Intelligence Layer
 The killer feature: connect any LLM to analyze your portfolio.
 - [ ] Multi-provider support (OpenAI, Anthropic, Google, Ollama, OpenClaw)
 - [ ] API key management with encryption
@@ -183,11 +198,12 @@ The killer feature: connect any LLM to analyze your portfolio.
 - [ ] Scheduled auto-reports (daily/weekly AI briefings)
 
 ### 🔗 Blockchain Integration
-- [ ] Connect BTC/ETH/SOL public addresses
-- [ ] Auto-sync balances from on-chain data
-- [ ] Transaction history from block explorers
-- [ ] Multi-wallet aggregation
+- [x] Connect public addresses (13 chains: BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT)
+- [x] Auto-sync balances from on-chain data (every 5 min)
+- [x] Transaction history from block explorers (BTC, ETH)
+- [x] Multi-wallet aggregation (sum per chain)
 - [ ] DeFi position tracking
+- [ ] ERC-20/SPL token tracking
 
 ### 🏦 Broker Integrations
 - [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)

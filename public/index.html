@@ -678,11 +678,73 @@
 
         /* Position Cards */
         .positions-list { display: flex; flex-direction: column; gap: 8px; }
+        /* ---- Position Summary Bar ---- */
+        .pos-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 14px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+        }
+        .pos-summary-item { text-align: center; }
+        .pos-summary-label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px; }
+        .pos-summary-value { font-size: 1rem; font-weight: 700; }
+
+        /* ---- Position Group Headers ---- */
+        .pos-group-header {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            margin-top: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .pos-group-header:hover { background: var(--border-color); }
+        .pos-group-header::after {
+            content: '▼';
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+        .pos-group-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+        .pos-group-items {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        /* ---- Position Card (redesigned) ---- */
         .position-card {
             background: var(--bg-secondary);
             border-radius: 8px;
             padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 10px;
+            align-items: center;
         }
+        .pos-left { display: flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0; }
+        .pos-left-info { min-width: 0; }
+        .pos-left-info .pos-symbol { font-weight: 600; font-size: 1rem; color: var(--accent-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pos-left-info .pos-name { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pos-center { text-align: center; min-width: 80px; }
+        .pos-price { font-size: 1.35rem; font-weight: 700; }
+        .pos-change { font-size: 0.8rem; margin-top: 2px; }
+        .pos-qty { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
+        .pos-right { text-align: right; min-width: 80px; }
+        .pos-value { font-size: 1rem; font-weight: 600; }
+        .pos-pnl { font-size: 0.85rem; margin-top: 2px; }
+        .pos-entry { font-size: 0.65rem; color: var(--text-secondary); margin-top: 2px; }
+
         .position-pnl {
             font-weight: 600;
             font-size: 1rem;
@@ -814,6 +876,8 @@
 
         @media (max-width: 480px) {
             .position-details { grid-template-columns: repeat(2, 1fr); }
+            .pos-summary { grid-template-columns: repeat(2, 1fr); }
+            .pos-summary-value { font-size: 0.85rem; }
         }
 
         /* Swipeable rows */
@@ -1109,6 +1173,7 @@
             <div class="nav-item" data-page="alerts" title="Alerts">🔔</div>
             <div class="nav-item" data-page="news" title="News">📰</div>
             <div class="nav-item" data-page="history" title="History">📜</div>
+            <div class="nav-item" data-page="wallets" title="Wallets">🔗</div>
             <div class="nav-item" data-page="settings" title="Settings">⚙️</div>
         </nav>
 
@@ -1302,6 +1367,22 @@
                     </div>
                     <div class="card-body">
                         <div id="transactionsList"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wallets Page -->
+            <div class="page" id="page-wallets">
+                <div class="card">
+                    <div class="card-header">
+                        <span>🔗 On-Chain Wallets</span>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn-add" onclick="syncAllWallets()" title="Sync All" style="font-size:0.85rem;">🔄</button>
+                            <button class="btn-add" onclick="showAddWalletModal()" title="Add Wallet">+</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="walletsList"></div>
                     </div>
                 </div>
             </div>
@@ -1684,6 +1765,50 @@
         </div>
     </div>
 
+    <!-- Add Wallet Modal -->
+    <div class="modal-overlay" id="addWalletModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Add Wallet</h2>
+                <button class="modal-close" onclick="closeModal('addWalletModal')">&times;</button>
+            </div>
+            <form id="walletForm" onsubmit="saveWallet(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label>Blockchain *</label>
+                        <select name="chain" required style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                            <option value="btc">₿ Bitcoin (BTC)</option>
+                            <option value="eth">⟠ Ethereum (ETH)</option>
+                            <option value="sol">◎ Solana (SOL)</option>
+                            <option value="bnb">🟡 BNB (BNB)</option>
+                            <option value="avax">🔺 Avalanche (AVAX)</option>
+                            <option value="matic">🟣 Polygon (MATIC)</option>
+                            <option value="arb">🔵 Arbitrum (ARB)</option>
+                            <option value="op">🔴 Optimism (OP)</option>
+                            <option value="ltc">🪙 Litecoin (LTC)</option>
+                            <option value="doge">🐕 Dogecoin (DOGE)</option>
+                            <option value="xrp">💧 Ripple (XRP)</option>
+                            <option value="ada">🔷 Cardano (ADA)</option>
+                            <option value="dot">⚪ Polkadot (DOT)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Wallet Address *</label>
+                        <input type="text" name="address" required placeholder="e.g. bc1q... or 0x..." style="width:100%; padding:12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-family: monospace; font-size: 0.85rem;">
+                    </div>
+                    <div class="form-group">
+                        <label>Label</label>
+                        <input type="text" name="label" placeholder="e.g. Cold Storage, DeFi Wallet" style="width:100%; padding:12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('addWalletModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Wallet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Chart Detail Modal -->
     <div class="modal-overlay" id="chartDetailModal">
         <div class="modal modal-fullscreen" style="display:flex;flex-direction:column;max-height:100vh;">
@@ -1739,6 +1864,23 @@
                 <button class="btn btn-secondary" onclick="addToMarkets()" id="addToMarketsBtn">📌 Pin to Markets</button>
                 <button class="btn btn-secondary" onclick="toggleOptionsChain()" id="optionsChainBtn">⛓️ Options</button>
                 <button class="btn btn-primary" onclick="closeChartDetail()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wallet Transactions Modal -->
+    <div class="modal-overlay" id="walletTxModal">
+        <div class="modal" style="max-width:550px;">
+            <div class="modal-header">
+                <h2 id="walletTxTitle">Wallet Transactions</h2>
+                <button class="modal-close" onclick="closeModal('walletTxModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="walletTxBody" style="max-height:60vh;overflow-y:auto;">
+                <div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">Loading...</div></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="walletTxFetchBtn" style="display:none;" onclick="fetchWalletTxFromChain()">🔄 Fetch from Chain</button>
+                <button class="btn btn-primary" onclick="closeModal('walletTxModal')">Close</button>
             </div>
         </div>
     </div>
@@ -2238,6 +2380,7 @@
                 renderTransactions();
             }
             if (page === 'news') loadNews();
+            if (page === 'wallets') renderWallets();
         }
 
         function closeModal(id) {
@@ -2826,6 +2969,290 @@
             setupSwipeHandlers();
         }
 
+        // ============ WALLETS ============
+        let walletsData = [];
+
+        const CHAIN_ICONS = {
+            btc: '₿',
+            eth: '⟠',
+            sol: '◎',
+            bnb: '⬡',
+            avax: '🔺',
+            matic: '⬡',
+            arb: '🔵',
+            op: '🔴',
+            ltc: 'Ł',
+            doge: 'Ð',
+            xrp: '✕',
+            ada: '₳',
+            dot: '●',
+        };
+        const CHAIN_COLORS = {
+            btc: '#F7931A',
+            eth: '#627EEA',
+            sol: '#9945FF',
+            bnb: '#F3BA2F',
+            avax: '#E84142',
+            matic: '#8247E5',
+            arb: '#28A0F0',
+            op: '#FF0420',
+            ltc: '#345D9D',
+            doge: '#C2A633',
+            xrp: '#23292F',
+            ada: '#0033AD',
+            dot: '#E6007A',
+        };
+
+        async function loadWallets() {
+            if (!token) return;
+            try {
+                walletsData = await api('/wallets');
+            } catch (e) {
+                console.error('Failed to load wallets:', e);
+                walletsData = [];
+            }
+        }
+
+        function truncateAddress(addr) {
+            if (!addr || addr.length <= 16) return addr;
+            return addr.slice(0, 8) + '...' + addr.slice(-6);
+        }
+
+        function timeSince(dateStr) {
+            if (!dateStr) return 'Never';
+            const seconds = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+            if (seconds < 60) return 'Just now';
+            if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+            if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+            return Math.floor(seconds / 86400) + 'd ago';
+        }
+
+        async function renderWallets() {
+            await loadWallets();
+            const el = document.getElementById('walletsList');
+            if (!el) return;
+
+            if (walletsData.length === 0) {
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔗</div><div class="empty-state-text">No wallets connected</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add a blockchain wallet to track on-chain balances</p></div>';
+                return;
+            }
+
+            let totalUsd = 0;
+            let html = '';
+
+            // Summary bar
+            for (const w of walletsData) totalUsd += (w.usd_value || 0);
+            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border-color);margin-bottom:12px;">
+                <div style="font-size:0.9rem;color:var(--text-secondary);">${walletsData.length} wallet${walletsData.length !== 1 ? 's' : ''}</div>
+                <div style="font-size:1.1rem;font-weight:600;">${fc(totalUsd)}</div>
+            </div>`;
+
+            for (const w of walletsData) {
+                const chainIcon = CHAIN_ICONS[w.chain] || '?';
+                const chainColor = CHAIN_COLORS[w.chain] || 'var(--text-primary)';
+                const balStr = w.balance !== null && w.balance !== undefined ? Number(w.balance).toFixed(w.chain === 'btc' ? 8 : 4) : '0';
+                const usdStr = fc(w.usd_value || 0);
+                const syncTime = timeSince(w.last_synced);
+
+                html += `<div class="swipe-container" data-id="${w.id}" data-type="wallet">
+                    <div class="swipe-actions">
+                        <div class="swipe-action delete" onclick="deleteWallet(${w.id})">🗑️</div>
+                    </div>
+                    <div class="swipe-content" style="display:flex;align-items:center;gap:12px;padding:12px 0;">
+                        <div style="width:40px;height:40px;border-radius:50%;background:${chainColor}20;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;color:${chainColor};">${chainIcon}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <div style="font-weight:600;font-size:0.95rem;">${w.label || w.chain_name || w.chain.toUpperCase()}</div>
+                                <div style="font-weight:600;">${usdStr}</div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                                <div style="font-size:0.8rem;color:var(--text-secondary);font-family:monospace;" title="${w.address}">${truncateAddress(w.address)}</div>
+                                <div style="font-size:0.8rem;color:var(--text-secondary);">${balStr} ${w.chain.toUpperCase()}</div>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+                                <div style="font-size:0.75rem;color:var(--text-secondary);">Synced: ${syncTime}</div>
+                                <div style="display:flex;gap:8px;align-items:center;">
+                                    <button onclick="showWalletTx(${w.id}, '${w.chain}', '${(w.label || w.chain_name || w.chain.toUpperCase()).replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--accent-blue);padding:2px 4px;">📜 Txs</button>
+                                    <button onclick="syncWallet(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;color:var(--accent-blue);padding:2px 6px;">🔄 Sync</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }
+
+            el.innerHTML = html;
+            setupSwipeHandlers();
+        }
+
+        function showAddWalletModal() {
+            document.getElementById('walletForm').reset();
+            showModal('addWalletModal');
+        }
+
+        async function saveWallet(e) {
+            e.preventDefault();
+            const form = document.getElementById('walletForm');
+            const chain = form.chain.value;
+            const address = form.address.value.trim();
+            const label = form.label.value.trim();
+
+            if (!address) {
+                showToast('Wallet address is required', 'error');
+                return;
+            }
+
+            try {
+                await api('/wallets', {
+                    method: 'POST',
+                    body: JSON.stringify({ chain, address, label }),
+                });
+                closeModal('addWalletModal');
+                showToast('Wallet added! Syncing balance...', 'success');
+                await renderWallets();
+                // Auto-sync the newly added wallet
+                if (walletsData.length > 0) {
+                    const newest = walletsData[walletsData.length - 1];
+                    await syncWallet(newest.id);
+                }
+            } catch (err) {
+                showToast(err.message || 'Failed to add wallet', 'error');
+            }
+        }
+
+        async function deleteWallet(id) {
+            if (!confirm('Remove this wallet?')) return;
+            try {
+                await api('/wallets/' + id, { method: 'DELETE' });
+                showToast('Wallet removed', 'success');
+                await renderWallets();
+            } catch (err) {
+                showToast(err.message || 'Failed to delete wallet', 'error');
+            }
+        }
+
+        async function syncWallet(id) {
+            try {
+                showToast('Syncing wallet...', 'info');
+                const result = await api('/wallets/' + id + '/sync', { method: 'POST' });
+                showToast('Wallet synced!', 'success');
+                await renderWallets();
+                // Refresh positions since wallet sync updates them
+                await loadPortfolio();
+                renderPositions();
+                updateSummary();
+            } catch (err) {
+                showToast('Sync failed: ' + (err.message || 'Unknown error'), 'error');
+            }
+        }
+
+        async function syncAllWallets() {
+            try {
+                showToast('Syncing all wallets...', 'info');
+                const result = await api('/wallets/sync-all', { method: 'POST' });
+                const errCount = result.errors ? result.errors.length : 0;
+                if (errCount > 0) {
+                    showToast(`Synced ${result.synced}/${result.total} wallets (${errCount} failed)`, 'error');
+                } else {
+                    const posActions = (result.position_sync || []).filter(p => p.action !== 'skipped_manual');
+                    const posMsg = posActions.length > 0 ? ` | ${posActions.length} position(s) updated` : '';
+                    showToast(`All ${result.synced} wallets synced!${posMsg}`, 'success');
+                }
+                await renderWallets();
+                // Refresh positions since wallet sync updates them
+                await loadPortfolio();
+                renderPositions();
+                updateSummary();
+            } catch (err) {
+                showToast('Sync failed: ' + (err.message || 'Unknown error'), 'error');
+            }
+        }
+
+        // ---- Wallet Transactions ----
+        let currentWalletTxId = null;
+        const EXPLORER_TX_URLS = {
+            btc: 'https://mempool.space/tx/',
+            eth: 'https://etherscan.io/tx/',
+            sol: 'https://solscan.io/tx/',
+        };
+
+        async function showWalletTx(walletId, chain, label) {
+            currentWalletTxId = walletId;
+            document.getElementById('walletTxTitle').textContent = `${label} — Transactions`;
+            document.getElementById('walletTxBody').innerHTML = '<div class="empty-state"><div class="empty-state-icon">⏳</div><div class="empty-state-text">Loading...</div></div>';
+            document.getElementById('walletTxFetchBtn').style.display = chain === 'sol' ? 'none' : 'inline-block';
+            showModal('walletTxModal');
+            await loadWalletTx(walletId);
+        }
+
+        async function loadWalletTx(walletId) {
+            try {
+                const data = await api(`/wallets/${walletId}/transactions?limit=50`);
+                const body = document.getElementById('walletTxBody');
+                const txs = data.transactions || [];
+                const explorerBase = data.explorer_base || '';
+
+                if (txs.length === 0) {
+                    body.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-text">No transactions yet</div><p style="color:var(--text-secondary);font-size:0.85rem;">Click "Fetch from Chain" to import on-chain transactions</p></div>';
+                    return;
+                }
+
+                let html = '';
+                for (const tx of txs) {
+                    const date = tx.block_time ? new Date(tx.block_time).toLocaleDateString() : '—';
+                    const time = tx.block_time ? new Date(tx.block_time).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+                    const dirIcon = tx.direction === 'in' ? '↙️' : '↗️';
+                    const dirLabel = tx.direction === 'in' ? 'Received' : 'Sent';
+                    const dirColor = tx.direction === 'in' ? 'var(--accent-green, #22c55e)' : 'var(--accent-red, #ef4444)';
+                    const hashShort = tx.tx_hash ? tx.tx_hash.slice(0, 8) + '...' + tx.tx_hash.slice(-6) : '';
+                    const explorerUrl = explorerBase + tx.tx_hash;
+                    const amountStr = Number(tx.amount).toFixed(tx.chain === 'btc' ? 8 : 6);
+                    const feeStr = tx.fee ? Number(tx.fee).toFixed(8) : '';
+                    const counterpartyShort = tx.counterparty ? tx.counterparty.slice(0, 8) + '...' + tx.counterparty.slice(-4) : '—';
+
+                    html += `<div style="padding:10px 0;border-bottom:1px solid var(--border-color);display:flex;align-items:center;gap:10px;">
+                        <div style="font-size:1.3rem;flex-shrink:0;">${dirIcon}</div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;">
+                                <span style="font-weight:600;color:${dirColor};font-size:0.9rem;">${dirLabel}</span>
+                                <span style="font-weight:600;font-size:0.9rem;">${amountStr} ${tx.chain.toUpperCase()}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                                <span style="font-size:0.75rem;color:var(--text-secondary);" title="${tx.counterparty || ''}">${tx.direction === 'in' ? 'From' : 'To'}: ${counterpartyShort}</span>
+                                <span style="font-size:0.75rem;color:var(--text-secondary);">${date} ${time}</span>
+                            </div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
+                                <a href="${explorerUrl}" target="_blank" rel="noopener" style="font-size:0.7rem;color:var(--accent-blue);font-family:monospace;text-decoration:none;" title="View on explorer">${hashShort}</a>
+                                ${feeStr ? `<span style="font-size:0.7rem;color:var(--text-secondary);">Fee: ${feeStr}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                body.innerHTML = html;
+            } catch (err) {
+                document.getElementById('walletTxBody').innerHTML = `<div class="empty-state"><div class="empty-state-icon">❌</div><div class="empty-state-text">Failed to load: ${err.message}</div></div>`;
+            }
+        }
+
+        async function fetchWalletTxFromChain() {
+            if (!currentWalletTxId) return;
+            const btn = document.getElementById('walletTxFetchBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Fetching...';
+            try {
+                const result = await api(`/wallets/${currentWalletTxId}/fetch-transactions`, { method: 'POST' });
+                showToast(`Fetched ${result.stored || 0} new transactions`, 'success');
+                await loadWalletTx(currentWalletTxId);
+            } catch (err) {
+                showToast('Fetch failed: ' + (err.message || 'Unknown error'), 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Fetch from Chain';
+            }
+        }
+
+        // On-Chain Holdings card removed — wallet balances now sync directly into positions
+
         // Transactions
         // Clean transaction loading and display logic
         let transactions = [];
@@ -3202,20 +3629,47 @@
         }
         
         // ============ RENDER ============
+        
+        // Toggle position group collapse (same pattern as watchlist toggleCategory)
+        function togglePosGroup(group) {
+            const header = event.currentTarget;
+            const items = document.getElementById(`pos-group-${group}`);
+            const isCollapsed = header.classList.toggle('collapsed');
+
+            if (isCollapsed) {
+                items.style.maxHeight = items.scrollHeight + 'px';
+                requestAnimationFrame(() => {
+                    items.style.maxHeight = '0px';
+                });
+            } else {
+                items.style.maxHeight = items.scrollHeight + 'px';
+                items.addEventListener('transitionend', function handler() {
+                    items.style.maxHeight = 'none';
+                    items.removeEventListener('transitionend', handler);
+                }, { once: true });
+            }
+
+            let collapsed = JSON.parse(localStorage.getItem('collapsedPosGroups') || '[]');
+            if (isCollapsed) {
+                if (!collapsed.includes(group)) collapsed.push(group);
+            } else {
+                collapsed = collapsed.filter(c => c !== group);
+            }
+            localStorage.setItem('collapsedPosGroups', JSON.stringify(collapsed));
+        }
+        
         function renderPositions() {
             const el = document.getElementById('positionsList');
+            try {
             if (positions.length === 0) {
                 el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💼</div><div class="empty-state-text">No positions yet</div><button class="btn btn-primary" onclick="showAddPositionModal()">Add Your First Position</button></div>';
                 return;
             }
             
-            // Use cards for mobile-friendly layout
-            let html = '<div class="positions-list">';
-            
-            for (const pos of positions) {
+            // Pre-compute values for all positions
+            const enriched = positions.map(pos => {
                 let currentPrice;
                 if (pos.type === 'option') {
-                    // Try to get option price from cache (using constructed symbol)
                     const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
                     const optQuote = optSym ? priceCache[optSym] : null;
                     currentPrice = optQuote?.price || pos.current_price || pos.entry_price;
@@ -3223,39 +3677,120 @@
                     const q = priceCache[pos.symbol];
                     currentPrice = q?.price || pos.entry_price;
                 }
+                const q = priceCache[pos.symbol] || {};
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 const cost = pos.entry_price * pos.quantity * mult;
                 const value = currentPrice * pos.quantity * mult;
                 const pnl = value - cost;
                 const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-                
-                const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
-                const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
-                
-                html += `<div class="swipe-container" data-id="${pos.id}" data-type="position">
-                    <div class="swipe-actions">
-                        <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
-                        <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
-                    </div>
-                    <div class="swipe-content position-card">
-                        <div class="position-header">
-                            <div class="position-symbol ticker-with-logo" onclick="selectTicker('${pos.symbol}')">${logoHtml(pos.symbol, 28)}${pos.symbol}${optionInfo}<span class="type-badge ${typeClass}">${pos.type}</span></div>
-                            <div class="position-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}${fc(pnl)}</div>
-                        </div>
-                        <div class="position-details">
-                            <div class="position-stat"><span class="stat-label">Qty</span><span>${pos.quantity}${pos.type === 'option' ? 'x' : ''}</span></div>
-                            <div class="position-stat"><span class="stat-label">Entry</span><span>${fp(pos.entry_price)}</span></div>
-                            <div class="position-stat"><span class="stat-label">Current</span><span>${fp(currentPrice)}</span></div>
-                            <div class="position-stat"><span class="stat-label">P&L %</span><span class="${pnlPct >= 0 ? 'positive' : 'negative'}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</span></div>
-                        </div>
-                        ${pos.notes ? `<div class="position-notes">${pos.notes}</div>` : ''}
-                    </div>
-                </div>`;
+                const changePct = q.changePercent || 0;
+                return { ...pos, currentPrice, value, cost, pnl, pnlPct, changePct, mult };
+            });
+            
+            // Summary calculations
+            const totalValue = enriched.reduce((s, p) => s + p.value, 0);
+            const totalPnl = enriched.reduce((s, p) => s + p.pnl, 0);
+            const totalCost = enriched.reduce((s, p) => s + p.cost, 0);
+            const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+            const todaysChange = enriched.reduce((s, p) => {
+                const prevVal = p.value / (1 + (p.changePct / 100));
+                return s + (p.value - prevVal);
+            }, 0);
+            const cash = currentPortfolio?.cash || 0;
+            
+            let html = '';
+            
+            // Summary bar
+            html += `<div class="pos-summary">
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Portfolio Value</div>
+                    <div class="pos-summary-value">${fc(totalValue + cash)}</div>
+                </div>
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Total P&L</div>
+                    <div class="pos-summary-value ${totalPnl >= 0 ? 'positive' : 'negative'}">${totalPnl >= 0 ? '+' : ''}${fc(totalPnl)} (${totalPnlPct >= 0 ? '+' : ''}${totalPnlPct.toFixed(1)}%)</div>
+                </div>
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Today's Change</div>
+                    <div class="pos-summary-value ${todaysChange >= 0 ? 'positive' : 'negative'}">${todaysChange >= 0 ? '+' : ''}${fc(todaysChange)}</div>
+                </div>
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Cash</div>
+                    <div class="pos-summary-value">${fc(cash)}</div>
+                </div>
+            </div>`;
+            
+            // Group by type
+            const groups = {
+                crypto:  { label: '🪙 Crypto',  items: [] },
+                stock:   { label: '📈 Stocks',  items: [] },
+                option:  { label: '📋 Options', items: [] },
+            };
+            
+            for (const p of enriched) {
+                const g = groups[p.type] || groups.stock;
+                g.items.push(p);
             }
             
-            html += '</div>';
+            // Sort each group by value (largest first)
+            for (const g of Object.values(groups)) {
+                g.items.sort((a, b) => b.value - a.value);
+            }
+            
+            const collapsedGroups = JSON.parse(localStorage.getItem('collapsedPosGroups') || '[]');
+            
+            for (const [groupKey, group] of Object.entries(groups)) {
+                if (group.items.length === 0) continue;
+                
+                const groupValue = group.items.reduce((s, p) => s + p.value, 0);
+                const isCollapsed = collapsedGroups.includes(groupKey);
+                
+                html += `<div class="pos-group-header ${isCollapsed ? 'collapsed' : ''}" onclick="togglePosGroup('${groupKey}')">
+                    <span>${group.label} (${group.items.length}) — ${fc(groupValue)}</span>
+                </div>`;
+                html += `<div class="pos-group-items" id="pos-group-${groupKey}" style="max-height: ${isCollapsed ? '0px' : 'none'};">`;
+                
+                for (const pos of group.items) {
+                    const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
+                    const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
+                    const isWalletSynced = pos.notes && pos.notes.includes('wallet-synced');
+                    const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-color);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
+                    
+                    html += `<div class="swipe-container" data-id="${pos.id}" data-type="position">
+                        <div class="swipe-actions">
+                            <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
+                            <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
+                        </div>
+                        <div class="swipe-content position-card" onclick="selectTicker('${pos.symbol}')">
+                            <div class="pos-left">
+                                ${logoHtml(pos.symbol, 32)}
+                                <div class="pos-left-info">
+                                    <div class="pos-symbol">${pos.symbol}${optionInfo} <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}</div>
+                                    <div class="pos-name">${pos.name || ''}</div>
+                                </div>
+                            </div>
+                            <div class="pos-center">
+                                <div class="pos-price">${fp(pos.currentPrice)}</div>
+                                <div class="pos-change ${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</div>
+                                <div class="pos-qty">${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</div>
+                            </div>
+                            <div class="pos-right">
+                                <div class="pos-value">${fc(pos.value)}</div>
+                                <div class="pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                html += '</div>'; // close pos-group-items
+            }
+            
             el.innerHTML = html;
             setupSwipeHandlers();
+            } catch(err) {
+                console.error('renderPositions error:', err);
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💥</div><div class="empty-state-text">Error: ' + err.message + '</div></div>';
+            }
         }
         
         function editPosition(id) {
@@ -4885,6 +5420,8 @@
             renderAlerts();
             updateSummary();
             updateCacheStatus();
+            
+            // On-chain holdings now flow through positions (wallet sync)
             
             // Load chart (don't await - let it load in background)
             updateChart();

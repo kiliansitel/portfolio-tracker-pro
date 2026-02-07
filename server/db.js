@@ -265,6 +265,75 @@ async function initDatabase() {
   db.run('CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_snapshots_portfolio_date ON portfolio_snapshots(portfolio_id, date)');
 
+  // Wallets table for on-chain wallet tracking (13 chains)
+  // Migration: if existing table has old CHECK constraint, recreate it
+  try {
+    const tableInfo = db.exec("SELECT sql FROM sqlite_master WHERE type='table' AND name='wallets'");
+    const createSql = tableInfo?.[0]?.values?.[0]?.[0] || '';
+    if (createSql && createSql.includes("IN ('btc', 'eth', 'sol')") && !createSql.includes("'bnb'")) {
+      // Old 3-chain constraint detected — migrate to 13 chains
+      logger.info('Migrating wallets table to support 13 chains...');
+      db.run(`ALTER TABLE wallets RENAME TO wallets_old`);
+      db.run(`
+        CREATE TABLE wallets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          chain TEXT NOT NULL CHECK (chain IN ('btc','eth','sol','bnb','avax','matic','arb','op','ltc','doge','xrp','ada','dot')),
+          address TEXT NOT NULL,
+          label TEXT,
+          balance REAL DEFAULT 0,
+          last_synced TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          UNIQUE(user_id, chain, address)
+        )
+      `);
+      db.run(`INSERT INTO wallets (id, user_id, chain, address, label, balance, last_synced, created_at)
+              SELECT id, user_id, chain, address, label, balance, last_synced, created_at FROM wallets_old`);
+      db.run(`DROP TABLE wallets_old`);
+      logger.info('Wallets table migrated successfully');
+    }
+  } catch (e) {
+    // Table might not exist yet, that's fine
+  }
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS wallets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      chain TEXT NOT NULL CHECK (chain IN ('btc','eth','sol','bnb','avax','matic','arb','op','ltc','doge','xrp','ada','dot')),
+      address TEXT NOT NULL,
+      label TEXT,
+      balance REAL DEFAULT 0,
+      last_synced TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      UNIQUE(user_id, chain, address)
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_wallets_user ON wallets(user_id)');
+
+  // Wallet on-chain transactions table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS wallet_transactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      wallet_id INTEGER NOT NULL,
+      tx_hash TEXT NOT NULL,
+      chain TEXT NOT NULL,
+      direction TEXT NOT NULL CHECK (direction IN ('in', 'out')),
+      amount REAL NOT NULL DEFAULT 0,
+      fee REAL DEFAULT 0,
+      counterparty TEXT,
+      block_height INTEGER DEFAULT 0,
+      block_time TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (wallet_id) REFERENCES wallets(id) ON DELETE CASCADE,
+      UNIQUE(wallet_id, tx_hash)
+    )
+  `);
+  db.run('CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet_hash ON wallet_transactions(wallet_id, tx_hash)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_wallet_tx_block ON wallet_transactions(wallet_id, block_height)');
+
   saveDatabaseImmediate(); // Use immediate save for init
   console.log('📦 Database initialized');
 }
