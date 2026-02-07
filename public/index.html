@@ -3640,6 +3640,7 @@
         
         function renderPositions() {
             const el = document.getElementById('positionsList');
+            try {
             if (positions.length === 0) {
                 el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💼</div><div class="empty-state-text">No positions yet</div><button class="btn btn-primary" onclick="showAddPositionModal()">Add Your First Position</button></div>';
                 return;
@@ -3766,6 +3767,10 @@
             
             el.innerHTML = html;
             setupSwipeHandlers();
+            } catch(err) {
+                console.error('renderPositions error:', err);
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💥</div><div class="empty-state-text">Error: ' + err.message + '</div></div>';
+            }
         }
         
         function editPosition(id) {
