@@ -304,6 +304,7 @@ function startAutoSync() {
             chainBalances[w.chain] = (chainBalances[w.chain] || 0) + (w.balance || 0);
           }
           syncPositionsFromWallets(userId, chainBalances);
+          syncTokenPositionsFromWallets(userId);
         } catch (err) {
           logger.error(`Auto-sync position update failed for user ${userId}:`, err.message);
         }
@@ -565,6 +566,74 @@ function syncPositionsFromWallets(userId, chainBalances) {
         [portfolioId, symbol, totalBalance, `wallet-synced | ${WALLET_SYNCED_NOTE}`]
       );
       updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+    }
+  }
+
+  return updatedPositions;
+}
+
+// Sync ERC-20 token balances into positions for a user
+// Aggregates tokens across all wallets by symbol
+function syncTokenPositionsFromWallets(userId) {
+  const portfolioId = getUserPortfolioId(userId);
+  if (!portfolioId) return [];
+
+  // Get all token balances across all user's wallets
+  const userWallets = dbAll('SELECT id FROM wallets WHERE user_id = ?', [userId]);
+  if (!userWallets.length) return [];
+
+  const walletIds = userWallets.map(w => w.id);
+  const placeholders = walletIds.map(() => '?').join(',');
+  const allTokens = dbAll(
+    `SELECT symbol, SUM(CAST(balance AS REAL)) as total_balance, SUM(usd_value) as total_usd
+     FROM wallet_tokens WHERE wallet_id IN (${placeholders}) AND CAST(balance AS REAL) > 0
+     GROUP BY UPPER(symbol)`,
+    walletIds
+  );
+
+  const updatedPositions = [];
+  const WALLET_TOKEN_NOTE = 'wallet-synced | erc20-token';
+
+  for (const token of allTokens) {
+    // Map token symbol to Yahoo ticker (e.g. LINK → LINK-USD)
+    const symbol = `${token.symbol.toUpperCase()}-USD`;
+    const totalBalance = token.total_balance || 0;
+    if (totalBalance <= 0) continue;
+
+    // Skip stablecoins as positions (they're just cash equivalents)
+    if (['USDT', 'USDC', 'DAI'].includes(token.symbol.toUpperCase())) continue;
+
+    const existing = dbGet(
+      'SELECT * FROM positions WHERE portfolio_id = ? AND symbol = ?',
+      [portfolioId, symbol]
+    );
+
+    if (existing) {
+      dbRun(
+        'UPDATE positions SET quantity = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [totalBalance, WALLET_TOKEN_NOTE, existing.id]
+      );
+      updatedPositions.push({ id: existing.id, symbol, quantity: totalBalance, action: 'updated' });
+    } else {
+      const result = dbRun(
+        `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type, notes)
+         VALUES (?, ?, ?, 0, 'crypto', ?)`,
+        [portfolioId, symbol, totalBalance, WALLET_TOKEN_NOTE]
+      );
+      updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+    }
+  }
+
+  // Clean up: remove token positions where all wallets no longer hold that token
+  const existingTokenPositions = dbAll(
+    "SELECT * FROM positions WHERE portfolio_id = ? AND notes LIKE '%erc20-token%'",
+    [portfolioId]
+  );
+  for (const pos of existingTokenPositions) {
+    const stillHeld = allTokens.find(t => `${t.symbol.toUpperCase()}-USD` === pos.symbol && t.total_balance > 0);
+    if (!stillHeld) {
+      dbRun('DELETE FROM positions WHERE id = ?', [pos.id]);
+      updatedPositions.push({ id: pos.id, symbol: pos.symbol, action: 'deleted' });
     }
   }
 
@@ -948,6 +1017,7 @@ router.post('/:id/sync', idParamValidation, async (req, res) => {
     );
     const totalBalance = allWalletsForChain.reduce((sum, w) => sum + (w.balance || 0), 0);
     const positionUpdates = syncPositionsFromWallets(req.user.id, { [wallet.chain]: totalBalance });
+    syncTokenPositionsFromWallets(req.user.id);
 
     const tokens = getWalletTokens(wallet.id);
     const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
@@ -1039,6 +1109,7 @@ router.post('/sync-all', async (req, res) => {
       chainBalances[w.chain] = (chainBalances[w.chain] || 0) + (w.balance || 0);
     }
     const positionUpdates = syncPositionsFromWallets(req.user.id, chainBalances);
+    const tokenPositionUpdates = syncTokenPositionsFromWallets(req.user.id);
 
     res.json({
       synced: results.length - errors.length,
