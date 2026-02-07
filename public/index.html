@@ -3176,9 +3176,11 @@
                             </div>
                         </div>`;
 
-                // Collapsible ERC-20 token list
+                html += `</div></div>`;
+
+                // Collapsible ERC-20 token list (OUTSIDE swipe-container)
                 if (isEvm && tokens.length > 0) {
-                    html += `<div id="wallet-tokens-${w.id}" style="display:none;margin-top:8px;margin-left:52px;border-top:1px solid var(--border-color);padding-top:8px;">`;
+                    html += `<div id="wallet-tokens-${w.id}" style="display:none;margin-left:52px;border-top:1px solid var(--border-color);padding:8px 0;">`;
                     html += `<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">ERC-20 Tokens — ${fc(w.tokens_usd_value || 0)}</div>`;
                     for (const t of tokens) {
                         const tBal = parseFloat(t.balance) || 0;
@@ -3197,8 +3199,6 @@
                     }
                     html += `</div>`;
                 }
-
-                html += `</div></div>`;
             }
 
             el.innerHTML = html;
