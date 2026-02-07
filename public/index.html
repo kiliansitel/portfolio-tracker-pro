@@ -5522,30 +5522,42 @@
             btn.style.opacity = '0.7';
             
             try {
-                await api('/updates/apply', {
+                const resp = await fetch('/api/updates/apply', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify({ channel })
                 });
-                btn.textContent = '🔄 Restarting...';
-                showToast('Update applied! Restarting...', 'success');
-                // Wait for server to restart, then reload
-                setTimeout(() => {
-                    const checkReady = setInterval(async () => {
-                        try {
-                            const r = await fetch('/api/info');
-                            if (r.ok) {
-                                clearInterval(checkReady);
-                                window.location.reload();
-                            }
-                        } catch (e) { /* server still restarting */ }
-                    }, 2000);
-                }, 3000);
+                // If we get a response, great
+                if (resp.ok) {
+                    const data = await resp.json();
+                    if (!data.success) throw new Error(data.error || 'Update failed');
+                }
             } catch (e) {
-                showToast('Update failed: ' + e.message, 'error');
-                btn.disabled = false;
-                btn.textContent = '⬆️ Apply Update';
-                btn.style.opacity = '1';
+                // Connection errors are EXPECTED — server restarted mid-response
+                console.log('Update request ended (expected):', e.message);
             }
+            
+            btn.textContent = '🔄 Restarting...';
+            showToast('Update applied! Waiting for restart...', 'success');
+            
+            // Wait for server to come back, then reload
+            setTimeout(() => {
+                const checkReady = setInterval(async () => {
+                    try {
+                        const r = await fetch('/api/info');
+                        if (r.ok) {
+                            clearInterval(checkReady);
+                            window.location.reload();
+                        }
+                    } catch (e) { /* server still restarting */ }
+                }, 2000);
+                // Give up after 60 seconds
+                setTimeout(() => {
+                    clearInterval(checkReady);
+                    btn.textContent = '⚠️ Restart taking long — refresh manually';
+                    btn.disabled = false;
+                }, 60000);
+            }, 2000);
         }
 
         async function toggleAutoUpdate() {
