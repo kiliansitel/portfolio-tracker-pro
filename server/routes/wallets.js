@@ -7,6 +7,25 @@ const { logger } = require('../utils/logger');
 
 const router = express.Router();
 
+// ---- Chain configuration for all 13 supported chains ----
+const CHAIN_CONFIG = {
+  btc:   { ticker: 'BTC-USD',  name: 'Bitcoin',    decimals: 8  },
+  eth:   { ticker: 'ETH-USD',  name: 'Ethereum',   decimals: 18 },
+  sol:   { ticker: 'SOL-USD',  name: 'Solana',     decimals: 9  },
+  bnb:   { ticker: 'BNB-USD',  name: 'BNB',        decimals: 18 },
+  avax:  { ticker: 'AVAX-USD', name: 'Avalanche',  decimals: 18 },
+  matic: { ticker: 'MATIC-USD',name: 'Polygon',    decimals: 18 },
+  arb:   { ticker: 'ARB-USD',  name: 'Arbitrum',   decimals: 18 },
+  op:    { ticker: 'OP-USD',   name: 'Optimism',   decimals: 18 },
+  ltc:   { ticker: 'LTC-USD',  name: 'Litecoin',   decimals: 8  },
+  doge:  { ticker: 'DOGE-USD', name: 'Dogecoin',   decimals: 8  },
+  xrp:   { ticker: 'XRP-USD',  name: 'Ripple',     decimals: 6  },
+  ada:   { ticker: 'ADA-USD',  name: 'Cardano',    decimals: 6  },
+  dot:   { ticker: 'DOT-USD',  name: 'Polkadot',   decimals: 10 },
+};
+
+const ALL_CHAINS = Object.keys(CHAIN_CONFIG);
+
 // ---- Auto-sync interval ----
 const MIN_SYNC_INTERVAL = 2 * 60 * 1000; // 2 minutes minimum
 const DEFAULT_SYNC_INTERVAL = 5 * 60 * 1000; // 5 minutes default
@@ -88,8 +107,8 @@ const walletValidation = [
   body('chain')
     .trim()
     .toLowerCase()
-    .isIn(['btc', 'eth', 'sol'])
-    .withMessage('Chain must be btc, eth, or sol'),
+    .isIn(ALL_CHAINS)
+    .withMessage(`Chain must be one of: ${ALL_CHAINS.join(', ')}`),
   body('address')
     .trim()
     .isLength({ min: 20, max: 128 })
@@ -111,18 +130,11 @@ async function fetchBtcBalance(address) {
   if (!res.ok) throw new Error(`BTC balance fetch failed: ${res.status}`);
   const satoshis = parseInt(await res.text(), 10);
   if (isNaN(satoshis)) throw new Error('Invalid BTC balance response');
-  return satoshis / 1e8; // Convert satoshis to BTC
+  return satoshis / 1e8;
 }
 
 async function fetchEthBalance(address) {
-  const url = `https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest`;
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) throw new Error(`ETH balance fetch failed: ${res.status}`);
-  const data = await res.json();
-  if (data.status !== '1' && data.message !== 'OK') {
-    throw new Error(`Etherscan error: ${data.message || data.result}`);
-  }
-  return parseInt(data.result, 10) / 1e18; // Convert wei to ETH
+  return fetchEvmRpcBalance(address, 'https://ethereum-rpc.publicnode.com', 'ETH');
 }
 
 async function fetchSolBalance(address) {
@@ -141,27 +153,112 @@ async function fetchSolBalance(address) {
   if (!res.ok) throw new Error(`SOL balance fetch failed: ${res.status}`);
   const data = await res.json();
   if (data.error) throw new Error(`Solana RPC error: ${data.error.message}`);
-  return (data.result?.value || 0) / 1e9; // Convert lamports to SOL
+  return (data.result?.value || 0) / 1e9;
+}
+
+// Reusable EVM JSON-RPC balance fetcher
+async function fetchEvmRpcBalance(address, rpcUrl, label) {
+  const res = await fetch(rpcUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_getBalance',
+      params: [address, 'latest']
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`${label} balance fetch failed: ${res.status}`);
+  const data = await res.json();
+  if (data.error) throw new Error(`${label} RPC error: ${data.error.message}`);
+  return parseInt(data.result, 16) / 1e18;
+}
+
+// EVM chain RPC URLs
+const EVM_RPC_URLS = {
+  bnb:   'https://bsc-dataseed.binance.org',
+  avax:  'https://api.avax.network/ext/bc/C/rpc',
+  matic: 'https://polygon-rpc.com',
+  arb:   'https://arb1.arbitrum.io/rpc',
+  op:    'https://mainnet.optimism.io',
+};
+
+async function fetchLtcBalance(address) {
+  const url = `https://api.blockcypher.com/v1/ltc/main/addrs/${address}/balance`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`LTC balance fetch failed: ${res.status}`);
+  const data = await res.json();
+  return (data.final_balance || 0) / 1e8;
+}
+
+async function fetchDogeBalance(address) {
+  const url = `https://api.blockcypher.com/v1/doge/main/addrs/${address}/balance`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`DOGE balance fetch failed: ${res.status}`);
+  const data = await res.json();
+  return (data.final_balance || 0) / 1e8;
+}
+
+async function fetchXrpBalance(address) {
+  const url = `https://api.xrpscan.com/api/v1/account/${address}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`XRP balance fetch failed: ${res.status}`);
+  const data = await res.json();
+  return parseFloat(data.xrpBalance) || 0;
+}
+
+async function fetchAdaBalance(address) {
+  const url = 'https://api.koios.rest/api/v1/address_info';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ _addresses: [address] }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`ADA balance fetch failed: ${res.status}`);
+  const data = await res.json();
+  const balance = data?.[0]?.balance || 0;
+  return parseInt(balance, 10) / 1e6; // lovelace to ADA
+}
+
+async function fetchDotBalance(address) {
+  const url = 'https://polkadot.api.subscan.io/api/v2/scan/search';
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key: address }),
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`DOT balance fetch failed: ${res.status}`);
+  const data = await res.json();
+  const balance = data?.data?.account?.balance || 0;
+  return parseFloat(balance) / 1e10;
 }
 
 const CHAIN_FETCHERS = {
-  btc: fetchBtcBalance,
-  eth: fetchEthBalance,
-  sol: fetchSolBalance,
+  btc:   fetchBtcBalance,
+  eth:   fetchEthBalance,
+  sol:   fetchSolBalance,
+  bnb:   (addr) => fetchEvmRpcBalance(addr, EVM_RPC_URLS.bnb,   'BNB'),
+  avax:  (addr) => fetchEvmRpcBalance(addr, EVM_RPC_URLS.avax,  'AVAX'),
+  matic: (addr) => fetchEvmRpcBalance(addr, EVM_RPC_URLS.matic, 'MATIC'),
+  arb:   (addr) => fetchEvmRpcBalance(addr, EVM_RPC_URLS.arb,   'ARB'),
+  op:    (addr) => fetchEvmRpcBalance(addr, EVM_RPC_URLS.op,    'OP'),
+  ltc:   fetchLtcBalance,
+  doge:  fetchDogeBalance,
+  xrp:   fetchXrpBalance,
+  ada:   fetchAdaBalance,
+  dot:   fetchDotBalance,
 };
 
-// Yahoo ticker symbols for crypto price lookup
-const CHAIN_TICKERS = {
-  btc: 'BTC-USD',
-  eth: 'ETH-USD',
-  sol: 'SOL-USD',
-};
-
-const CHAIN_NAMES = {
-  btc: 'Bitcoin',
-  eth: 'Ethereum',
-  sol: 'Solana',
-};
+// Derive CHAIN_TICKERS and CHAIN_NAMES from CHAIN_CONFIG
+const CHAIN_TICKERS = {};
+const CHAIN_NAMES = {};
+for (const [chain, cfg] of Object.entries(CHAIN_CONFIG)) {
+  CHAIN_TICKERS[chain] = cfg.ticker;
+  CHAIN_NAMES[chain] = cfg.name;
+}
 
 // Fetch current USD price for a chain
 async function getChainPrice(chain) {
@@ -224,10 +321,8 @@ function syncPositionsFromWallets(userId, chainBalances) {
     );
 
     if (existing) {
-      // Update quantity from on-chain balance and mark as wallet-synced
-      const notes = existing.notes && existing.notes.includes('wallet-synced')
-        ? existing.notes
-        : `wallet-synced | ${WALLET_SYNCED_NOTE}`;
+      // Always update quantity and mark as wallet-synced (even if it was a manual position)
+      const notes = `wallet-synced | ${WALLET_SYNCED_NOTE}`;
       dbRun(
         'UPDATE positions SET quantity = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
         [totalBalance, notes, existing.id]
@@ -251,9 +346,19 @@ function syncPositionsFromWallets(userId, chainBalances) {
 
 // Block explorer URLs
 const EXPLORER_TX = {
-  btc: 'https://mempool.space/tx/',
-  eth: 'https://etherscan.io/tx/',
-  sol: 'https://solscan.io/tx/',
+  btc:   'https://mempool.space/tx/',
+  eth:   'https://etherscan.io/tx/',
+  sol:   'https://solscan.io/tx/',
+  bnb:   'https://bscscan.com/tx/',
+  avax:  'https://snowtrace.io/tx/',
+  matic: 'https://polygonscan.com/tx/',
+  arb:   'https://arbiscan.io/tx/',
+  op:    'https://optimistic.etherscan.io/tx/',
+  ltc:   'https://blockchair.com/litecoin/transaction/',
+  doge:  'https://blockchair.com/dogecoin/transaction/',
+  xrp:   'https://xrpscan.com/tx/',
+  ada:   'https://cardanoscan.io/transaction/',
+  dot:   'https://subscan.io/extrinsic/',
 };
 
 async function fetchBtcTransactions(address, sinceBlockHeight = 0) {
@@ -367,10 +472,23 @@ async function fetchSolTransactions(/* address, sinceBlockHeight */) {
   return [];
 }
 
+// Only BTC/ETH have tx history fetchers; new chains return empty arrays
+async function fetchNoopTransactions() { return []; }
+
 const CHAIN_TX_FETCHERS = {
-  btc: fetchBtcTransactions,
-  eth: fetchEthTransactions,
-  sol: fetchSolTransactions,
+  btc:   fetchBtcTransactions,
+  eth:   fetchEthTransactions,
+  sol:   fetchSolTransactions,
+  bnb:   fetchNoopTransactions,
+  avax:  fetchNoopTransactions,
+  matic: fetchNoopTransactions,
+  arb:   fetchNoopTransactions,
+  op:    fetchNoopTransactions,
+  ltc:   fetchNoopTransactions,
+  doge:  fetchNoopTransactions,
+  xrp:   fetchNoopTransactions,
+  ada:   fetchNoopTransactions,
+  dot:   fetchNoopTransactions,
 };
 
 // Fetch transactions from chain and store in DB, also create main app transactions
@@ -516,8 +634,35 @@ router.delete('/:id', idParamValidation, (req, res) => {
       return res.status(404).json({ error: 'Wallet not found' });
     }
 
+    const deletedChain = wallet.chain;
+    const deletedUserId = wallet.user_id;
+
     dbRun('DELETE FROM wallet_transactions WHERE wallet_id = ?', [id]);
     dbRun('DELETE FROM wallets WHERE id = ?', [id]);
+
+    // Position cleanup: check if other wallets remain for this chain
+    const remainingWallets = dbAll(
+      'SELECT * FROM wallets WHERE user_id = ? AND chain = ?',
+      [deletedUserId, deletedChain]
+    );
+
+    const symbol = CHAIN_TICKERS[deletedChain];
+    const portfolioId = getUserPortfolioId(deletedUserId);
+
+    if (symbol && portfolioId) {
+      if (remainingWallets.length === 0) {
+        // No more wallets for this chain — delete the wallet-synced position
+        dbRun(
+          "DELETE FROM positions WHERE portfolio_id = ? AND symbol = ? AND notes LIKE '%wallet-synced%'",
+          [portfolioId, symbol]
+        );
+      } else {
+        // Recalculate position quantity from remaining wallet balances
+        const totalBalance = remainingWallets.reduce((sum, w) => sum + (w.balance || 0), 0);
+        syncPositionsFromWallets(deletedUserId, { [deletedChain]: totalBalance });
+      }
+    }
+
     res.json({ message: 'Wallet deleted' });
   } catch (error) {
     logger.error('Error deleting wallet:', error);

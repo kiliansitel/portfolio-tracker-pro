@@ -265,12 +265,43 @@ async function initDatabase() {
   db.run('CREATE INDEX IF NOT EXISTS idx_alerts_user ON alerts(user_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_snapshots_portfolio_date ON portfolio_snapshots(portfolio_id, date)');
 
-  // Wallets table for on-chain wallet tracking
+  // Wallets table for on-chain wallet tracking (13 chains)
+  // Migration: if existing table has old CHECK constraint, recreate it
+  try {
+    const tableInfo = db.exec("SELECT sql FROM sqlite_master WHERE type='table' AND name='wallets'");
+    const createSql = tableInfo?.[0]?.values?.[0]?.[0] || '';
+    if (createSql && createSql.includes("IN ('btc', 'eth', 'sol')") && !createSql.includes("'bnb'")) {
+      // Old 3-chain constraint detected — migrate to 13 chains
+      logger.info('Migrating wallets table to support 13 chains...');
+      db.run(`ALTER TABLE wallets RENAME TO wallets_old`);
+      db.run(`
+        CREATE TABLE wallets (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          chain TEXT NOT NULL CHECK (chain IN ('btc','eth','sol','bnb','avax','matic','arb','op','ltc','doge','xrp','ada','dot')),
+          address TEXT NOT NULL,
+          label TEXT,
+          balance REAL DEFAULT 0,
+          last_synced TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (user_id) REFERENCES users(id),
+          UNIQUE(user_id, chain, address)
+        )
+      `);
+      db.run(`INSERT INTO wallets (id, user_id, chain, address, label, balance, last_synced, created_at)
+              SELECT id, user_id, chain, address, label, balance, last_synced, created_at FROM wallets_old`);
+      db.run(`DROP TABLE wallets_old`);
+      logger.info('Wallets table migrated successfully');
+    }
+  } catch (e) {
+    // Table might not exist yet, that's fine
+  }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS wallets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
-      chain TEXT NOT NULL CHECK (chain IN ('btc', 'eth', 'sol')),
+      chain TEXT NOT NULL CHECK (chain IN ('btc','eth','sol','bnb','avax','matic','arb','op','ltc','doge','xrp','ada','dot')),
       address TEXT NOT NULL,
       label TEXT,
       balance REAL DEFAULT 0,

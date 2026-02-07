@@ -678,11 +678,73 @@
 
         /* Position Cards */
         .positions-list { display: flex; flex-direction: column; gap: 8px; }
+        /* ---- Position Summary Bar ---- */
+        .pos-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+            padding: 14px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+        }
+        .pos-summary-item { text-align: center; }
+        .pos-summary-label { font-size: 0.7rem; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px; }
+        .pos-summary-value { font-size: 1rem; font-weight: 700; }
+
+        /* ---- Position Group Headers ---- */
+        .pos-group-header {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 4px;
+            margin-top: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+        }
+        .pos-group-header:hover { background: var(--border-color); }
+        .pos-group-header::after {
+            content: '▼';
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+        .pos-group-header.collapsed::after {
+            transform: rotate(-90deg);
+        }
+        .pos-group-items {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        /* ---- Position Card (redesigned) ---- */
         .position-card {
             background: var(--bg-secondary);
             border-radius: 8px;
             padding: 12px;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 10px;
+            align-items: center;
         }
+        .pos-left { display: flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0; }
+        .pos-left-info { min-width: 0; }
+        .pos-left-info .pos-symbol { font-weight: 600; font-size: 1rem; color: var(--accent-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pos-left-info .pos-name { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pos-center { text-align: center; min-width: 80px; }
+        .pos-price { font-size: 1.35rem; font-weight: 700; }
+        .pos-change { font-size: 0.8rem; margin-top: 2px; }
+        .pos-qty { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
+        .pos-right { text-align: right; min-width: 80px; }
+        .pos-value { font-size: 1rem; font-weight: 600; }
+        .pos-pnl { font-size: 0.85rem; margin-top: 2px; }
+        .pos-entry { font-size: 0.65rem; color: var(--text-secondary); margin-top: 2px; }
+
         .position-pnl {
             font-weight: 600;
             font-size: 1rem;
@@ -814,6 +876,8 @@
 
         @media (max-width: 480px) {
             .position-details { grid-template-columns: repeat(2, 1fr); }
+            .pos-summary { grid-template-columns: repeat(2, 1fr); }
+            .pos-summary-value { font-size: 0.85rem; }
         }
 
         /* Swipeable rows */
@@ -1716,6 +1780,16 @@
                             <option value="btc">₿ Bitcoin (BTC)</option>
                             <option value="eth">⟠ Ethereum (ETH)</option>
                             <option value="sol">◎ Solana (SOL)</option>
+                            <option value="bnb">🟡 BNB (BNB)</option>
+                            <option value="avax">🔺 Avalanche (AVAX)</option>
+                            <option value="matic">🟣 Polygon (MATIC)</option>
+                            <option value="arb">🔵 Arbitrum (ARB)</option>
+                            <option value="op">🔴 Optimism (OP)</option>
+                            <option value="ltc">🪙 Litecoin (LTC)</option>
+                            <option value="doge">🐕 Dogecoin (DOGE)</option>
+                            <option value="xrp">💧 Ripple (XRP)</option>
+                            <option value="ada">🔷 Cardano (ADA)</option>
+                            <option value="dot">⚪ Polkadot (DOT)</option>
                         </select>
                     </div>
                     <div class="form-group">
@@ -3535,6 +3609,35 @@
         }
         
         // ============ RENDER ============
+        
+        // Toggle position group collapse (same pattern as watchlist toggleCategory)
+        function togglePosGroup(group) {
+            const header = event.currentTarget;
+            const items = document.getElementById(`pos-group-${group}`);
+            const isCollapsed = header.classList.toggle('collapsed');
+
+            if (isCollapsed) {
+                items.style.maxHeight = items.scrollHeight + 'px';
+                requestAnimationFrame(() => {
+                    items.style.maxHeight = '0px';
+                });
+            } else {
+                items.style.maxHeight = items.scrollHeight + 'px';
+                items.addEventListener('transitionend', function handler() {
+                    items.style.maxHeight = 'none';
+                    items.removeEventListener('transitionend', handler);
+                }, { once: true });
+            }
+
+            let collapsed = JSON.parse(localStorage.getItem('collapsedPosGroups') || '[]');
+            if (isCollapsed) {
+                if (!collapsed.includes(group)) collapsed.push(group);
+            } else {
+                collapsed = collapsed.filter(c => c !== group);
+            }
+            localStorage.setItem('collapsedPosGroups', JSON.stringify(collapsed));
+        }
+        
         function renderPositions() {
             const el = document.getElementById('positionsList');
             if (positions.length === 0) {
@@ -3542,13 +3645,10 @@
                 return;
             }
             
-            // Use cards for mobile-friendly layout
-            let html = '<div class="positions-list">';
-            
-            for (const pos of positions) {
+            // Pre-compute values for all positions
+            const enriched = positions.map(pos => {
                 let currentPrice;
                 if (pos.type === 'option') {
-                    // Try to get option price from cache (using constructed symbol)
                     const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
                     const optQuote = optSym ? priceCache[optSym] : null;
                     currentPrice = optQuote?.price || pos.current_price || pos.entry_price;
@@ -3556,39 +3656,114 @@
                     const q = priceCache[pos.symbol];
                     currentPrice = q?.price || pos.entry_price;
                 }
+                const q = priceCache[pos.symbol] || {};
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 const cost = pos.entry_price * pos.quantity * mult;
                 const value = currentPrice * pos.quantity * mult;
                 const pnl = value - cost;
                 const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
-                
-                const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
-                const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
-                const isWalletSynced = pos.notes && pos.notes.includes('wallet-synced');
-                const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-color);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗 on-chain</span>' : '';
-                
-                html += `<div class="swipe-container" data-id="${pos.id}" data-type="position">
-                    <div class="swipe-actions">
-                        <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
-                        <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
-                    </div>
-                    <div class="swipe-content position-card">
-                        <div class="position-header">
-                            <div class="position-symbol ticker-with-logo" onclick="selectTicker('${pos.symbol}')">${logoHtml(pos.symbol, 28)}${pos.symbol}${optionInfo}<span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}</div>
-                            <div class="position-pnl ${pnl >= 0 ? 'positive' : 'negative'}">${pnl >= 0 ? '+' : ''}${fc(pnl)}</div>
-                        </div>
-                        <div class="position-details">
-                            <div class="position-stat"><span class="stat-label">Qty</span><span>${pos.quantity}${pos.type === 'option' ? 'x' : ''}</span></div>
-                            <div class="position-stat"><span class="stat-label">Entry</span><span>${fp(pos.entry_price)}</span></div>
-                            <div class="position-stat"><span class="stat-label">Current</span><span>${fp(currentPrice)}</span></div>
-                            <div class="position-stat"><span class="stat-label">P&L %</span><span class="${pnlPct >= 0 ? 'positive' : 'negative'}">${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</span></div>
-                        </div>
-                        ${pos.notes ? `<div class="position-notes">${pos.notes}</div>` : ''}
-                    </div>
-                </div>`;
+                const changePct = q.changePercent || 0;
+                return { ...pos, currentPrice, value, cost, pnl, pnlPct, changePct, mult };
+            });
+            
+            // Summary calculations
+            const totalValue = enriched.reduce((s, p) => s + p.value, 0);
+            const totalPnl = enriched.reduce((s, p) => s + p.pnl, 0);
+            const totalCost = enriched.reduce((s, p) => s + p.cost, 0);
+            const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+            const todaysChange = enriched.reduce((s, p) => {
+                const prevVal = p.value / (1 + (p.changePct / 100));
+                return s + (p.value - prevVal);
+            }, 0);
+            const cash = currentPortfolio?.cash || 0;
+            
+            let html = '';
+            
+            // Summary bar
+            html += `<div class="pos-summary">
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Portfolio Value</div>
+                    <div class="pos-summary-value">${fc(totalValue + cash)}</div>
+                </div>
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Total P&L</div>
+                    <div class="pos-summary-value ${totalPnl >= 0 ? 'positive' : 'negative'}">${totalPnl >= 0 ? '+' : ''}${fc(totalPnl)} (${totalPnlPct >= 0 ? '+' : ''}${totalPnlPct.toFixed(1)}%)</div>
+                </div>
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Today's Change</div>
+                    <div class="pos-summary-value ${todaysChange >= 0 ? 'positive' : 'negative'}">${todaysChange >= 0 ? '+' : ''}${fc(todaysChange)}</div>
+                </div>
+                <div class="pos-summary-item">
+                    <div class="pos-summary-label">Cash</div>
+                    <div class="pos-summary-value">${fc(cash)}</div>
+                </div>
+            </div>`;
+            
+            // Group by type
+            const groups = {
+                crypto:  { label: '🪙 Crypto',  items: [] },
+                stock:   { label: '📈 Stocks',  items: [] },
+                option:  { label: '📋 Options', items: [] },
+            };
+            
+            for (const p of enriched) {
+                const g = groups[p.type] || groups.stock;
+                g.items.push(p);
             }
             
-            html += '</div>';
+            // Sort each group by value (largest first)
+            for (const g of Object.values(groups)) {
+                g.items.sort((a, b) => b.value - a.value);
+            }
+            
+            const collapsedGroups = JSON.parse(localStorage.getItem('collapsedPosGroups') || '[]');
+            
+            for (const [groupKey, group] of Object.entries(groups)) {
+                if (group.items.length === 0) continue;
+                
+                const groupValue = group.items.reduce((s, p) => s + p.value, 0);
+                const isCollapsed = collapsedGroups.includes(groupKey);
+                
+                html += `<div class="pos-group-header ${isCollapsed ? 'collapsed' : ''}" onclick="togglePosGroup('${groupKey}')">
+                    <span>${group.label} (${group.items.length}) — ${fc(groupValue)}</span>
+                </div>`;
+                html += `<div class="pos-group-items" id="pos-group-${groupKey}" style="max-height: ${isCollapsed ? '0px' : 'none'};">`;
+                
+                for (const pos of group.items) {
+                    const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
+                    const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
+                    const isWalletSynced = pos.notes && pos.notes.includes('wallet-synced');
+                    const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-color);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
+                    
+                    html += `<div class="swipe-container" data-id="${pos.id}" data-type="position">
+                        <div class="swipe-actions">
+                            <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
+                            <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
+                        </div>
+                        <div class="swipe-content position-card" onclick="selectTicker('${pos.symbol}')">
+                            <div class="pos-left">
+                                ${logoHtml(pos.symbol, 32)}
+                                <div class="pos-left-info">
+                                    <div class="pos-symbol">${pos.symbol}${optionInfo} <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}</div>
+                                    <div class="pos-name">${pos.name || ''}</div>
+                                </div>
+                            </div>
+                            <div class="pos-center">
+                                <div class="pos-price">${fp(pos.currentPrice)}</div>
+                                <div class="pos-change ${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</div>
+                                <div class="pos-qty">${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</div>
+                            </div>
+                            <div class="pos-right">
+                                <div class="pos-value">${fc(pos.value)}</div>
+                                <div class="pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                
+                html += '</div>'; // close pos-group-items
+            }
+            
             el.innerHTML = html;
             setupSwipeHandlers();
         }
