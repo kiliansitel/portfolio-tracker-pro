@@ -10,102 +10,115 @@ const router = express.Router();
 // ---- EVM chains that support ERC-20 tokens ----
 const EVM_CHAINS = ['eth', 'bnb', 'avax', 'matic', 'arb', 'op'];
 
-// ---- Etherscan-compatible block explorer API endpoints for token discovery ----
-const EXPLORER_API = {
-  eth: 'https://api.etherscan.io/api',
+// ---- Top ERC-20 tokens to check (no API key needed, uses RPC) ----
+const POPULAR_ERC20 = [
+  { contract: '0xdac17f958d2ee523a2206206994597c13d831ec7', symbol: 'USDT',  name: 'Tether USD',     decimals: 6 },
+  { contract: '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48', symbol: 'USDC',  name: 'USD Coin',       decimals: 6 },
+  { contract: '0x6b175474e89094c44da98b954eedeac495271d0f', symbol: 'DAI',   name: 'Dai Stablecoin',  decimals: 18 },
+  { contract: '0x514910771af9ca656af840dff83e8264ecf986ca', symbol: 'LINK',  name: 'Chainlink',       decimals: 18 },
+  { contract: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984', symbol: 'UNI',   name: 'Uniswap',         decimals: 18 },
+  { contract: '0x7fc66500c84a76ad7e9c93437bfc5ac33e2ddae9', symbol: 'AAVE',  name: 'Aave',            decimals: 18 },
+  { contract: '0x95ad61b0a150d79219dcf64e1e6cc01f0b64c4ce', symbol: 'SHIB',  name: 'Shiba Inu',       decimals: 18 },
+  { contract: '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599', symbol: 'WBTC',  name: 'Wrapped BTC',     decimals: 8 },
+  { contract: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2', symbol: 'WETH',  name: 'Wrapped Ether',   decimals: 18 },
+  { contract: '0x7d1afa7b718fb893db30a3abc0cfc608aacfebb0', symbol: 'MATIC', name: 'Polygon',         decimals: 18 },
+  { contract: '0x4d224452801aced8b2f0aebe155379bb5d594381', symbol: 'APE',   name: 'ApeCoin',         decimals: 18 },
+  { contract: '0x6982508145454ce325ddbe47a25d4ec3d2311933', symbol: 'PEPE',  name: 'Pepe',            decimals: 18 },
+  { contract: '0x5a98fcbea516cf06857215779fd812ca3bef1b32', symbol: 'LDO',   name: 'Lido DAO',        decimals: 18 },
+  { contract: '0xae7ab96520de3a18e5e111b5eaab095312d7fe84', symbol: 'stETH', name: 'Lido Staked ETH', decimals: 18 },
+  { contract: '0xbe9895146f7af43049ca1c1ae358b0541ea49704', symbol: 'cbETH', name: 'Coinbase Staked ETH', decimals: 18 },
+  { contract: '0xa0b73e1ff0b80914ab6fe0444e65848c4c34450b', symbol: 'CRO',   name: 'Cronos',          decimals: 8 },
+  { contract: '0x75231f58b43240c9718dd58b4967c5114342a86c', symbol: 'OKB',   name: 'OKB',             decimals: 18 },
+  { contract: '0x4e15361fd6b4bb609fa63c81a2be19d873717870', symbol: 'FTM',   name: 'Fantom',          decimals: 18 },
+  { contract: '0x3845badade8e6dff049820680d1f14bd3903a5d0', symbol: 'SAND',  name: 'The Sandbox',     decimals: 18 },
+  { contract: '0x0f5d2fb29fb7d3cfee444a200298f468908cc942', symbol: 'MANA',  name: 'Decentraland',    decimals: 18 },
+];
+
+const ETH_RPC = 'https://ethereum-rpc.publicnode.com';
+const BALANCE_OF_SELECTOR = '0x70a08231';
+
+// Fetch ERC-20 balance via direct RPC eth_call (no API key needed)
+async function fetchErc20BalanceRPC(walletAddress, contractAddress) {
+  const paddedAddr = '000000000000000000000000' + walletAddress.replace('0x', '').toLowerCase();
+  const data = BALANCE_OF_SELECTOR + paddedAddr;
+
+  try {
+    const res = await fetch(ETH_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'eth_call',
+        params: [{ to: contractAddress, data }, 'latest'],
+        id: 1,
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!res.ok) return '0';
+    const result = await res.json();
+    if (!result.result || result.result === '0x' || result.result === '0x0') return '0';
+    return BigInt(result.result).toString();
+  } catch (e) {
+    logger.error(`RPC balanceOf failed for ${contractAddress}:`, e.message);
+    return '0';
+  }
+}
+
+// Discover tokens by checking popular ERC-20 balances via RPC
+async function fetchErc20Tokens(address) {
+  const found = [];
+  // Check all popular tokens in parallel (batches of 5)
+  for (let i = 0; i < POPULAR_ERC20.length; i += 5) {
+    const batch = POPULAR_ERC20.slice(i, i + 5);
+    const results = await Promise.allSettled(
+      batch.map(async (tok) => {
+        const bal = await fetchErc20BalanceRPC(address, tok.contract);
+        if (bal !== '0') {
+          return { ...tok, contract_address: tok.contract, balance_raw: bal };
+        }
+        return null;
+      })
+    );
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) found.push(r.value);
+    }
+    // Small delay between batches
+    if (i + 5 < POPULAR_ERC20.length) await new Promise(r => setTimeout(r, 200));
+  }
+  return found;
+}
+
+// Fetch a single ERC-20 token balance via RPC
+async function fetchErc20Balance(address, contractAddress) {
+  return fetchErc20BalanceRPC(address, contractAddress);
+}
+
+// Map token symbols to Yahoo Finance tickers for pricing
+const TOKEN_YAHOO_TICKERS = {
+  'USDT': 'USDT-USD', 'USDC': 'USDC-USD', 'DAI': 'DAI-USD',
+  'LINK': 'LINK-USD', 'UNI': 'UNI-USD', 'AAVE': 'AAVE-USD',
+  'SHIB': 'SHIB-USD', 'WBTC': 'WBTC-USD', 'WETH': 'WETH-USD',
+  'MATIC': 'MATIC-USD', 'APE': 'APE-USD', 'PEPE': 'PEPE-USD',
+  'LDO': 'LDO-USD', 'stETH': 'STETH-USD', 'cbETH': 'CBETH-USD',
+  'CRO': 'CRO-USD', 'OKB': 'OKB-USD', 'FTM': 'FTM-USD',
+  'SAND': 'SAND-USD', 'MANA': 'MANA-USD',
 };
 
-// Simple rate limiter for Etherscan (5 calls/sec free tier)
-let lastEtherscanCall = 0;
-async function etherscanThrottle() {
-  const now = Date.now();
-  const elapsed = now - lastEtherscanCall;
-  if (elapsed < 220) { // ~4.5 calls/sec to stay safe
-    await new Promise(r => setTimeout(r, 220 - elapsed));
-  }
-  lastEtherscanCall = Date.now();
-}
+// Fetch token USD prices via Yahoo Finance (same as rest of app)
+async function fetchTokenPrices(tokens) {
+  const prices = {}; // keyed by contract_address
 
-// Fetch ERC-20 token list for an ETH address via Etherscan tokentx
-async function fetchErc20Tokens(address) {
-  const apiKey = process.env.ETHERSCAN_API_KEY || '';
-  await etherscanThrottle();
-
-  let url = `${EXPLORER_API.eth}?module=account&action=tokentx&address=${address}&startblock=0&endblock=99999999&sort=desc&page=1&offset=200`;
-  if (apiKey) url += `&apikey=${apiKey}`;
-
-  const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-  if (!res.ok) throw new Error(`Etherscan tokentx fetch failed: ${res.status}`);
-  const data = await res.json();
-
-  if (data.status !== '1' && data.message !== 'OK') {
-    if (data.message === 'No transactions found') return [];
-    if (data.result && typeof data.result === 'string' && data.result.includes('rate limit')) {
-      throw new Error('Etherscan rate limited');
-    }
-    return []; // No token transactions
-  }
-
-  const txList = Array.isArray(data.result) ? data.result : [];
-  // Discover unique tokens from transfer history
-  const tokenMap = new Map();
-  for (const tx of txList) {
-    const contract = (tx.contractAddress || '').toLowerCase();
-    if (!contract || tokenMap.has(contract)) continue;
-    tokenMap.set(contract, {
-      contract_address: contract,
-      symbol: tx.tokenSymbol || 'UNKNOWN',
-      name: tx.tokenName || 'Unknown Token',
-      decimals: parseInt(tx.tokenDecimal || '18', 10),
-    });
-  }
-
-  return Array.from(tokenMap.values());
-}
-
-// Fetch a single ERC-20 token balance via Etherscan
-async function fetchErc20Balance(address, contractAddress) {
-  const apiKey = process.env.ETHERSCAN_API_KEY || '';
-  await etherscanThrottle();
-
-  let url = `${EXPLORER_API.eth}?module=account&action=tokenbalance&contractaddress=${contractAddress}&address=${address}&tag=latest`;
-  if (apiKey) url += `&apikey=${apiKey}`;
-
-  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-  if (!res.ok) return '0';
-  const data = await res.json();
-  if (data.status !== '1') return '0';
-  return data.result || '0';
-}
-
-// Fetch token USD prices from CoinGecko (batch up to 100 addresses)
-async function fetchTokenPrices(contractAddresses) {
-  if (!contractAddresses || contractAddresses.length === 0) return {};
-
-  // CoinGecko allows comma-separated contract addresses
-  const batchSize = 50;
-  const prices = {};
-
-  for (let i = 0; i < contractAddresses.length; i += batchSize) {
-    const batch = contractAddresses.slice(i, i + batchSize);
-    const addrParam = batch.join(',');
+  for (const token of tokens) {
+    const yahooTicker = TOKEN_YAHOO_TICKERS[token.symbol];
+    if (!yahooTicker) continue;
 
     try {
-      const url = `https://api.coingecko.com/api/v3/simple/token_price/ethereum?contract_addresses=${addrParam}&vs_currencies=usd`;
-      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-      if (res.ok) {
-        const data = await res.json();
-        for (const [addr, priceObj] of Object.entries(data)) {
-          prices[addr.toLowerCase()] = priceObj?.usd || 0;
-        }
+      const quote = await fetchYahooPrice(yahooTicker);
+      if (quote && quote.price) {
+        prices[token.contract_address.toLowerCase()] = quote.price;
       }
     } catch (e) {
-      logger.error('CoinGecko token price fetch error:', e.message);
-    }
-
-    // Small delay between batches
-    if (i + batchSize < contractAddresses.length) {
-      await new Promise(r => setTimeout(r, 500));
+      logger.error(`Yahoo price fetch for ${token.symbol}:`, e.message);
     }
   }
 
@@ -117,24 +130,22 @@ async function syncWalletTokens(wallet) {
   if (wallet.chain !== 'eth') return []; // ETH only for now
 
   try {
-    // 1. Discover tokens via tokentx
+    // 1. Discover tokens with non-zero balances via RPC
     const discoveredTokens = await fetchErc20Tokens(wallet.address);
     if (discoveredTokens.length === 0) return [];
 
-    // 2. Fetch balances for each discovered token (rate-limited)
+    // 2. Convert raw balances to human-readable
     const tokensWithBalance = [];
     for (const token of discoveredTokens) {
       try {
-        const rawBalance = await fetchErc20Balance(wallet.address, token.contract_address);
-        const balanceBigInt = BigInt(rawBalance);
-        if (balanceBigInt === 0n) continue; // Skip zero balances
+        const balanceBigInt = BigInt(token.balance_raw || '0');
+        if (balanceBigInt === 0n) continue;
 
-        // Convert to human-readable balance
         const decimals = token.decimals || 18;
         const divisor = BigInt(10) ** BigInt(decimals);
         const wholePart = balanceBigInt / divisor;
         const fracPart = balanceBigInt % divisor;
-        const fracStr = fracPart.toString().padStart(decimals, '0').slice(0, 8); // 8 decimal places max
+        const fracStr = fracPart.toString().padStart(decimals, '0').slice(0, 8);
         const humanBalance = `${wholePart}.${fracStr}`.replace(/0+$/, '').replace(/\.$/, '');
 
         tokensWithBalance.push({
@@ -142,15 +153,14 @@ async function syncWalletTokens(wallet) {
           balance: humanBalance || '0',
         });
       } catch (e) {
-        logger.error(`Failed to fetch balance for token ${token.symbol} (${token.contract_address}):`, e.message);
+        logger.error(`Failed to parse balance for token ${token.symbol}:`, e.message);
       }
     }
 
     if (tokensWithBalance.length === 0) return [];
 
-    // 3. Fetch USD prices from CoinGecko
-    const contractAddresses = tokensWithBalance.map(t => t.contract_address);
-    const prices = await fetchTokenPrices(contractAddresses);
+    // 3. Fetch USD prices via Yahoo Finance
+    const prices = await fetchTokenPrices(tokensWithBalance);
 
     // 4. Store in DB — upsert each token
     const now = new Date().toISOString();
