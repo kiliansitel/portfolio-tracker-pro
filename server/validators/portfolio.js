@@ -164,9 +164,14 @@ const transactionValidation = [
     .matches(/^[A-Za-z0-9\-\.\^=]+$/)
     .withMessage('Invalid symbol format'),
   
-  body('type')
+  body('action')
     .isIn(['buy', 'sell'])
-    .withMessage('Type must be "buy" or "sell"'),
+    .withMessage('Action must be "buy" or "sell"'),
+  
+  body('type')
+    .optional()
+    .isIn(['stock', 'crypto', 'etf', 'option', 'bond', 'commodity'])
+    .withMessage('Invalid asset type'),
   
   body('quantity')
     .isFloat({ min: 0.00000001, max: 999999999 })
@@ -176,7 +181,7 @@ const transactionValidation = [
     .isFloat({ min: 0, max: 999999999 })
     .withMessage('Price must be positive'),
   
-  body('date')
+  body('executed_at')
     .optional()
     .isISO8601()
     .withMessage('Invalid date format'),

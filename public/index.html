@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Portfolio Tracker Pro - Beta v3</title>
+    <title>Portfolio Tracker Pro</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
     <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Portfolio Pro&quot;,&quot;display&quot;:&quot;standalone&quot;}">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -777,9 +777,6 @@
             overflow: hidden;
             transition: max-height 0.3s ease;
         }
-        .category-items.collapsed {
-            max-height: 0 !important;
-        }
         .watchlist-item {
             display: flex;
             align-items: center;
@@ -1090,7 +1087,7 @@
     <!-- Main App -->
     <header class="header">
         <div class="header-left">
-            <h1><img src="logo.svg" alt="" class="header-logo">Portfolio Pro</h1>
+            <h1><img src="logo.svg" alt="" class="header-logo"><span class="app-title">Portfolio Pro</span></h1>
         </div>
         <div class="user-menu">
             <span class="user-name" id="userName">Guest</span>
@@ -1248,7 +1245,10 @@
             <div class="page" id="page-watchlist">
                 <div class="card">
                     <div class="card-header">
-                        <span>👁️ Watchlist</span>
+                        <span style="display:inline-flex;align-items:center;gap:6px;">👁️ <div id="watchlistDropdown" style="position:relative;display:inline-block;">
+                            <div id="watchlistSelected" onclick="toggleWatchlistDropdown()" style="cursor:pointer;font-weight:600;font-size:0.95rem;display:flex;align-items:center;gap:4px;"><span id="watchlistLabel">Watchlist</span> <span style="font-size:0.7rem;opacity:0.6;">▼</span></div>
+                            <div id="watchlistOptions" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;min-width:220px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;"></div>
+                        </div></span>
                         <button class="btn-add" onclick="showAddWatchlistModal()" title="Add Ticker">+</button>
                     </div>
                     <div class="card-body">
@@ -1750,6 +1750,7 @@
         let portfolioId = null;
         let currentPortfolio = null;
         let watchlistId = null;
+        let allWatchlists = [];
         let positions = [];
         let watchlist = [];
         let alerts = [];
@@ -2327,15 +2328,39 @@
             if (!token) return;
             try {
                 const wls = await api('/watchlists');
+                allWatchlists = wls;
                 if (wls.length > 0) {
-                    watchlistId = wls[0].id;
-                    watchlist = wls[0].items || [];
+                    // Prefer "Main Watchlist", fall back to first
+                    const main = wls.find(w => w.name === 'Main Watchlist') || wls[0];
+                    watchlistId = main.id;
+                    watchlist = main.items || [];
                     renderWatchlist();
                 }
             } catch (e) {
                 console.error('Load watchlist error:', e);
             }
         }
+
+        function switchWatchlist(id) {
+            const wl = allWatchlists.find(w => w.id === Number(id));
+            if (wl) {
+                watchlistId = wl.id;
+                watchlist = wl.items || [];
+                renderWatchlist();
+            }
+        }
+
+        function toggleWatchlistDropdown() {
+            const opts = document.getElementById('watchlistOptions');
+            opts.style.display = opts.style.display === 'none' ? 'block' : 'none';
+        }
+        function closeWatchlistDropdown() {
+            document.getElementById('watchlistOptions').style.display = 'none';
+        }
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#watchlistDropdown')) closeWatchlistDropdown();
+        });
 
         // ============ TICKER AUTOCOMPLETE ============
         let autocompleteTimeout = null;
@@ -3261,6 +3286,17 @@
         }
 
         function renderWatchlist() {
+            // Update watchlist dropdown
+            const label = document.getElementById('watchlistLabel');
+            const opts = document.getElementById('watchlistOptions');
+            if (label && opts && allWatchlists.length > 0) {
+                const current = allWatchlists.find(w => w.id === watchlistId);
+                label.textContent = (current?.name || 'Watchlist') + ' (' + (current?.items?.length || 0) + ')';
+                opts.innerHTML = allWatchlists.map(w =>
+                    `<div onclick="switchWatchlist(${w.id});closeWatchlistDropdown()" style="padding:10px 14px;cursor:pointer;font-size:0.9rem;color:var(--text-primary);${w.id === watchlistId ? 'background:var(--accent);color:#fff;font-weight:600;' : ''}" onmouseover="if(${w.id}!==${watchlistId})this.style.background='var(--hover)'" onmouseout="if(${w.id}!==${watchlistId})this.style.background='transparent'">${w.name} (${(w.items||[]).length})</div>`
+                ).join('');
+            }
+            
             const el = document.getElementById('watchlistItems');
             if (watchlist.length === 0) {
                 el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👁️</div><div class="empty-state-text">Watchlist empty</div><button class="btn btn-primary" onclick="showAddWatchlistModal()">Add Ticker</button></div>';
@@ -3299,7 +3335,7 @@
                     <div class="category-header ${isCollapsed ? 'collapsed' : ''}" onclick="toggleCategory('${cat}')">
                         <span>${categoryNames[cat] || cat} (${count})</span>
                     </div>
-                    <div class="category-items ${isCollapsed ? 'collapsed' : ''}" id="cat-${cat}" style="max-height: ${isCollapsed ? 0 : count * 80}px;">`;
+                    <div class="category-items" id="cat-${cat}" style="max-height: ${isCollapsed ? '0px' : 'none'};">`;
                 
                 for (const item of categories[cat]) {
                     const q = priceCache[item.symbol];
@@ -3347,7 +3383,24 @@
             const header = event.currentTarget;
             const items = document.getElementById(`cat-${cat}`);
             const isCollapsed = header.classList.toggle('collapsed');
-            items.classList.toggle('collapsed');
+            
+            if (isCollapsed) {
+                // Collapse: set current height first, then animate to 0
+                items.style.maxHeight = items.scrollHeight + 'px';
+                requestAnimationFrame(() => {
+                    items.style.maxHeight = '0px';
+                    items.classList.add('collapsed');
+                });
+            } else {
+                // Expand: animate from 0 to scrollHeight
+                items.classList.remove('collapsed');
+                items.style.maxHeight = items.scrollHeight + 'px';
+                // After transition, remove fixed max-height so content can grow
+                items.addEventListener('transitionend', function handler() {
+                    items.style.maxHeight = 'none';
+                    items.removeEventListener('transitionend', handler);
+                }, { once: true });
+            }
             
             // Save state
             let collapsedCats = JSON.parse(localStorage.getItem('collapsedCategories') || '[]');
@@ -4787,6 +4840,14 @@
         loadTheme();
         
         async function initApp() {
+            // Set app title from server (production vs beta)
+            try {
+                const info = await fetch('/api/info').then(r => r.json());
+                document.title = info.name;
+                const appTitle = document.querySelector('.app-title');
+                if (appTitle) appTitle.textContent = info.name;
+            } catch(e) {}
+            
             // Load caches immediately for instant display
             loadPriceCache();
             loadChartCache();

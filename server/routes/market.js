@@ -132,6 +132,7 @@ const VALID_INTERVALS = ['1m', '2m', '5m', '15m', '30m', '60m', '90m', '1h', '1d
 
 // Popular tickers for suggestions
 const POPULAR_TICKERS = [
+  // US Tech Giants
   { symbol: 'AAPL', name: 'Apple Inc.' },
   { symbol: 'MSFT', name: 'Microsoft Corporation' },
   { symbol: 'GOOGL', name: 'Alphabet Inc.' },
@@ -140,22 +141,86 @@ const POPULAR_TICKERS = [
   { symbol: 'TSLA', name: 'Tesla Inc.' },
   { symbol: 'META', name: 'Meta Platforms Inc.' },
   { symbol: 'AMD', name: 'Advanced Micro Devices' },
+  
+  // AI & Semiconductors
   { symbol: 'ASML', name: 'ASML Holding N.V.' },
+  { symbol: 'TSM', name: 'Taiwan Semiconductor' },
+  { symbol: 'AVGO', name: 'Broadcom Inc.' },
+  { symbol: 'ARM', name: 'Arm Holdings' },
+  { symbol: 'MU', name: 'Micron Technology' },
+  { symbol: 'MRVL', name: 'Marvell Technology' },
+  
+  // ETFs & Indices
   { symbol: 'QQQ', name: 'Invesco QQQ Trust' },
   { symbol: 'SPY', name: 'SPDR S&P 500 ETF' },
-  { symbol: 'BTC-USD', name: 'Bitcoin USD' },
-  { symbol: 'ETH-USD', name: 'Ethereum USD' },
-  { symbol: 'GC=F', name: 'Gold Futures' },
-  { symbol: 'CL=F', name: 'Crude Oil Futures' },
   { symbol: 'TLT', name: 'iShares 20+ Year Treasury' },
   { symbol: 'ROBO', name: 'Robo Global Robotics ETF' },
+  { symbol: 'VTI', name: 'Vanguard Total Stock Market ETF' },
+  { symbol: 'ARKK', name: 'ARK Innovation ETF' },
+  
+  // Robotics & Automation
   { symbol: 'ISRG', name: 'Intuitive Surgical Inc.' },
   { symbol: 'SYM', name: 'Symbotic Inc.' },
+  { symbol: 'TER', name: 'Teradyne Inc.' },
+  { symbol: 'ROK', name: 'Rockwell Automation' },
+  
+  // Crypto
+  { symbol: 'BTC-USD', name: 'Bitcoin USD' },
+  { symbol: 'ETH-USD', name: 'Ethereum USD' },
+  { symbol: 'SOL-USD', name: 'Solana USD' },
+  { symbol: 'COIN', name: 'Coinbase Global' },
+  { symbol: 'MSTR', name: 'MicroStrategy Inc.' },
+  
+  // Precious Metals & Commodities
+  { symbol: 'GC=F', name: 'Gold Futures' },
+  { symbol: 'SI=F', name: 'Silver Futures' },
+  { symbol: 'SLV', name: 'iShares Silver Trust' },
+  { symbol: 'GLD', name: 'SPDR Gold Trust' },
+  { symbol: 'PSLV', name: 'Sprott Physical Silver Trust' },
+  { symbol: 'SIVR', name: 'Aberdeen Silver ETF' },
+  { symbol: 'CL=F', name: 'Crude Oil Futures' },
+  { symbol: 'NG=F', name: 'Natural Gas Futures' },
+  
+  // Nuclear & Energy
+  { symbol: 'CCJ', name: 'Cameco Corporation' },
+  { symbol: 'OKLO', name: 'Oklo Inc.' },
+  { symbol: 'URA', name: 'Global X Uranium ETF' },
+  { symbol: 'URNM', name: 'North Shore Global Uranium ETF' },
+  
+  // European Stocks (Belgium & Netherlands)
+  { symbol: 'KBC.BR', name: 'KBC Group (Brussels)' },
+  { symbol: 'UCB.BR', name: 'UCB SA (Brussels)' },
+  { symbol: 'SOLB.BR', name: 'Solvay SA (Brussels)' },
+  { symbol: 'ASML.AS', name: 'ASML Holding (Amsterdam)' },
+  { symbol: 'RDSA.AS', name: 'Royal Dutch Shell (Amsterdam)' },
+  { symbol: 'UNA.AS', name: 'Unilever NV (Amsterdam)' },
+  
+  // Space & Defense
+  { symbol: 'RKLB', name: 'Rocket Lab USA' },
+  { symbol: 'ASTS', name: 'AST SpaceMobile' },
+  { symbol: 'LMT', name: 'Lockheed Martin' },
+  { symbol: 'NOC', name: 'Northrop Grumman' },
+  { symbol: 'LHX', name: 'L3Harris Technologies' },
+  { symbol: 'BA', name: 'Boeing Company' },
+  
+  // Market Indices
   { symbol: '^GSPC', name: 'S&P 500' },
   { symbol: '^IXIC', name: 'NASDAQ Composite' },
   { symbol: '^DJI', name: 'Dow Jones Industrial' },
   { symbol: '^VIX', name: 'CBOE Volatility Index' },
   { symbol: '^RUT', name: 'Russell 2000' },
+  { symbol: '^AEX', name: 'Amsterdam Exchange Index' },
+  { symbol: '^BFX', name: 'BEL 20 Index (Belgium)' },
+  
+  // Other Popular Stocks
+  { symbol: 'PLTR', name: 'Palantir Technologies' },
+  { symbol: 'IONQ', name: 'IonQ Inc.' },
+  { symbol: 'PATH', name: 'UiPath Inc.' },
+  { symbol: 'SNOW', name: 'Snowflake Inc.' },
+  { symbol: 'CRWD', name: 'CrowdStrike Holdings' },
+  { symbol: 'NET', name: 'Cloudflare Inc.' },
+  { symbol: 'DDOG', name: 'Datadog Inc.' },
+  { symbol: 'SHOP', name: 'Shopify Inc.' },
 ];
 
 // Get single price

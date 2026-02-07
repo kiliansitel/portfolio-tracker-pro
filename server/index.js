@@ -63,6 +63,16 @@ app.use((req, res, next) => {
 app.use('/api/auth', authLimiter);
 app.use('/api', apiLimiter);
 
+// App info endpoint (public)
+const pkg = require('./package.json');
+app.get('/api/info', (req, res) => {
+  res.json({
+    version: pkg.version,
+    env: process.env.APP_ENV || 'production',
+    name: process.env.APP_ENV === 'beta' ? `Portfolio Pro Beta v${pkg.version}` : 'Portfolio Pro'
+  });
+});
+
 // Route handlers
 app.use('/api/auth', authRouter);
 

@@ -31,3 +31,10 @@ logs/
 coverage/
 playwright-report/
 test-results/
+BETA_UX_FIXES_REPORT.md
+debug_issues.js
+frontend_debug_patch.js
+test_frontend_issues.js
+test_transaction_fix.sh
+transaction_fix.patch
+verify_frontend_fixes.js
