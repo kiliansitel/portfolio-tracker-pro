@@ -1050,11 +1050,13 @@
             border-radius: 50%;
             transition: all 0.25s ease;
         }
-        .toggle-switch input:checked + .toggle-slider {
+        .toggle-switch input:checked + .toggle-slider,
+        .toggle-switch.active .toggle-slider {
             background: var(--accent-blue);
             border-color: var(--accent-blue);
         }
-        .toggle-switch input:checked + .toggle-slider::before {
+        .toggle-switch input:checked + .toggle-slider::before,
+        .toggle-switch.active .toggle-slider::before {
             transform: translateX(20px);
             background: #fff;
         }
@@ -5476,7 +5478,9 @@
 
                 // Auto-update toggle
                 const autoBtn = document.getElementById('autoUpdateToggle');
-                autoBtn.checked = !!status.settings?.autoUpdate;
+                const isAutoOn = !!status.settings?.autoUpdate;
+                autoBtn.checked = isAutoOn;
+                autoBtn.closest('.toggle-switch').classList.toggle('active', isAutoOn);
 
                 // Last check time
                 if (status.lastCheckTime) {
@@ -5598,14 +5602,18 @@
 
         async function toggleAutoUpdate() {
             const cb = document.getElementById('autoUpdateToggle');
+            const label = cb.closest('.toggle-switch');
+            const isOn = cb.checked;
+            label.classList.toggle('active', isOn);
             try {
                 await api('/updates/settings', {
                     method: 'POST',
-                    body: JSON.stringify({ autoUpdate: cb.checked })
+                    body: JSON.stringify({ autoUpdate: isOn })
                 });
-                showToast(cb.checked ? 'Auto-update enabled' : 'Auto-update disabled', cb.checked ? 'success' : 'info');
+                showToast(isOn ? 'Auto-update enabled' : 'Auto-update disabled', isOn ? 'success' : 'info');
             } catch (e) {
-                cb.checked = !cb.checked; // revert on failure
+                cb.checked = !isOn;
+                label.classList.toggle('active', !isOn);
                 showToast('Failed to update setting', 'error');
             }
         }
