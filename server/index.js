@@ -29,6 +29,7 @@ const dataRouter = require('./routes/data');
 const historyRouter = require('./routes/history');
 const { router: pushRouter } = require('./routes/push');
 const walletsRouter = require('./routes/wallets');
+const updatesRouter = require('./routes/updates');
 
 // Currency utilities
 const { fetchExchangeRates, SUPPORTED_CURRENCIES } = require('./utils/currency');
@@ -111,6 +112,7 @@ app.use('/api/push', authenticateToken, pushRouter);
 app.use('/api/wallets', authenticateToken, walletsRouter);
 app.use('/api/history/collect', authenticateToken, strictLimiter); // Stricter rate limit for collection
 app.use('/api/history', authenticateToken, historyRouter);
+app.use('/api/updates', authenticateToken, updatesRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {

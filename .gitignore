@@ -9,6 +9,9 @@ node_modules/
 .env
 .env.local
 
+# Update settings (local per-install)
+server/update-settings.json
+
 # Logs
 *.log
 npm-debug.log*
