@@ -391,6 +391,25 @@ function getDb() {
   return db;
 }
 
+function replaceDb(uint8Array) {
+  const SQL = db.constructor ? { Database: db.constructor } : null;
+  if (!SQL) {
+    throw new Error('Cannot determine SQL.Database constructor');
+  }
+  const newDb = new SQL.Database(uint8Array);
+  // Verify it has expected tables
+  const tables = newDb.exec("SELECT name FROM sqlite_master WHERE type='table'");
+  const tableNames = tables[0]?.values.map(v => v[0]) || [];
+  if (!tableNames.includes('users') || !tableNames.includes('portfolios')) {
+    newDb.close();
+    throw new Error('Invalid backup: missing required tables');
+  }
+  db.close();
+  db = newDb;
+  saveDatabaseImmediate(); // persist immediately
+  return tableNames;
+}
+
 module.exports = {
   initDatabase,
   saveDatabase,
@@ -398,5 +417,6 @@ module.exports = {
   dbRun,
   dbGet,
   dbAll,
-  getDb
+  getDb,
+  replaceDb
 };
