@@ -13,6 +13,9 @@ node_modules/
 # Update settings (local per-install)
 server/update-settings.json
 
+# Internal scripts (not for users)
+scripts/
+
 # Logs
 *.log
 npm-debug.log*
