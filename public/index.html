@@ -7521,7 +7521,12 @@
                 localStorage.setItem('aiModel', aiSelectedModel);
             }
 
+            // Validate cached model exists in the selected provider's model list
             const p = aiProviders.find(p => p.id === aiSelectedProvider);
+            if (p && p.models?.length && aiSelectedModel && !p.models.find(m => m.id === aiSelectedModel)) {
+                aiSelectedModel = p.modelPreference || p.models[0]?.id || '';
+                localStorage.setItem('aiModel', aiSelectedModel);
+            }
             const modelName = aiSelectedModel ?
                 (p?.models?.find(m => m.id === aiSelectedModel)?.name || aiSelectedModel.split('/').pop()) :
                 'default';
