@@ -7860,6 +7860,8 @@
 
                 // Parse and show dynamic suggestions
                 parseSuggestions(aiMessage);
+                // Refresh conversation sidebar (new or continued conversation)
+                loadAiConversations();
 
             } catch (e) {
                 appendAiError('Failed to connect: ' + e.message);
@@ -8043,6 +8045,8 @@
                 }
 
                 parseSuggestions(aiMessage);
+                // Refresh conversation sidebar so analysis appears
+                loadAiConversations();
 
             } catch (e) {
                 appendAiError('Failed to connect: ' + e.message);
