@@ -612,14 +612,20 @@
 
         /* Sort dropdown inline */
         .sort-dropdown {
-            padding: 8px 10px;
+            padding: 8px 6px;
             background: var(--bg-tertiary);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             color: var(--text-primary);
             font-size: 0.85rem;
             cursor: pointer;
-            min-width: 130px;
+            min-width: 0;
+            width: auto;
+            max-width: 90px;
+            flex-shrink: 0;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
         }
 
         /* News Styles */
@@ -977,8 +983,6 @@
             bottom: 0;
             display: flex;
             align-items: stretch;
-            opacity: 0;
-            pointer-events: none;
         }
         .swipe-action {
             width: 70px;
@@ -1011,14 +1015,12 @@
         @media (pointer: fine) {
             .swipe-actions {
                 opacity: 0;
+                pointer-events: none;
                 transition: opacity 0.2s ease;
             }
             .swipe-container:hover .swipe-actions {
                 opacity: 1;
                 pointer-events: auto;
-            }
-            .swipe-container:hover .swipe-content {
-                transform: none;
             }
         }
 
@@ -2163,8 +2165,8 @@
                             <input type="text" id="positionSearchInput" placeholder="🔍 Search positions..." 
                                 oninput="filterPositions(this.value)"
                                 style="flex:1;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);font-size:0.9rem;box-sizing:border-box;">
-                            <select id="positionSortSelect" class="sort-dropdown" onchange="onPositionSortChange(this.value)">
-                                <option value="default">Sort by...</option>
+                            <select id="positionSortSelect" class="sort-dropdown" style="max-width:90px;padding-right:4px;" onchange="onPositionSortChange(this.value)">
+                                <option value="default">Sort ▾</option>
                                 <option value="name-asc">Name A-Z</option>
                                 <option value="name-desc">Name Z-A</option>
                                 <option value="value-desc">Value ↓</option>
@@ -3371,26 +3373,8 @@
             };
         });
 
-        // Feature 10: Session timeout warning
-        let sessionTimeoutId = null;
-        function setupSessionTimeout(jwt) {
-            try {
-                const payload = JSON.parse(atob(jwt.split('.')[1]));
-                if (payload.exp) {
-                    const expiresMs = payload.exp * 1000;
-                    const warnMs = expiresMs - Date.now() - (60 * 60 * 1000); // 1 hour before
-                    if (sessionTimeoutId) clearTimeout(sessionTimeoutId);
-                    if (warnMs > 0) {
-                        sessionTimeoutId = setTimeout(() => {
-                            showToast('⏰ Your session expires soon. Please re-login to continue.', 'info');
-                        }, warnMs);
-                    } else if (expiresMs > Date.now()) {
-                        // Less than 1 hour left, warn immediately
-                        showToast('⏰ Your session expires soon. Please re-login to continue.', 'info');
-                    }
-                }
-            } catch (e) { console.warn('Failed to decode JWT for timeout:', e); }
-        }
+        // Session timeout now handled by scheduleSessionWarning() at bottom of file
+        function setupSessionTimeout(jwt) { /* no-op, handled globally */ }
 
         document.getElementById('loginForm').onsubmit = async (e) => {
             e.preventDefault();
@@ -7433,11 +7417,27 @@
             }, 60000);
         }
 
-        // Start
+        // Start — validate token server-side before trusting it
         if (token) {
-            hideAuth();
-            setupSessionTimeout(token);
-            initApp();
+            fetch(`${API_BASE}/auth/me`, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(r => {
+                    if (r.ok) {
+                        hideAuth();
+                        setupSessionTimeout(token);
+                        initApp();
+                    } else {
+                        // Token invalid (e.g. server secret rotated) — clear silently and show login
+                        localStorage.removeItem('token');
+                        token = null;
+                        showAuth();
+                    }
+                })
+                .catch(() => {
+                    // Network error — try loading anyway with cached token
+                    hideAuth();
+                    setupSessionTimeout(token);
+                    initApp();
+                });
         } else {
             showAuth();
         }
@@ -8264,7 +8264,9 @@
         });
 
         // ============ SESSION TIMEOUT ============
-        (function checkSessionExpiry() {
+        // Server-side validation handles expired/invalid tokens on API calls.
+        // Only show client-side warning when token is genuinely close to expiry.
+        (function scheduleSessionWarning() {
             if (!token) return;
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));
@@ -8272,29 +8274,20 @@
                 const now = Date.now();
                 const oneHour = 60 * 60 * 1000;
                 
-                if (exp - now < oneHour && exp > now) {
+                if (exp <= now) {
+                    // Already expired — logout silently, server will reject anyway
+                    logout();
+                } else if (exp - now < oneHour) {
+                    // Less than 1 hour left — schedule a single warning
                     showToast('⏰ Session expires soon. Re-login to continue.', 'warning');
-                } else if (exp <= now) {
-                    showToast('Session expired. Redirecting to login...', 'error');
-                    setTimeout(() => logout(), 2000);
                 } else {
-                    // Check again 1 hour before expiry
-                    const checkIn = Math.max(exp - now - oneHour, 60000);
-                    setTimeout(checkSessionExpiry, checkIn);
+                    // Schedule warning for 1 hour before expiry
+                    setTimeout(() => {
+                        showToast('⏰ Session expires soon. Re-login to continue.', 'warning');
+                    }, exp - now - oneHour);
                 }
             } catch(e) { /* ignore parse errors */ }
         })();
-
-        // Handle 401 responses globally
-        const originalFetch = window.fetch;
-        window.fetch = async function(...args) {
-            const res = await originalFetch.apply(this, args);
-            if (res.status === 401 && token && !args[0]?.toString().includes('/auth/login')) {
-                showToast('Session expired. Please login again.', 'error');
-                setTimeout(() => logout(), 1500);
-            }
-            return res;
-        };
 
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {

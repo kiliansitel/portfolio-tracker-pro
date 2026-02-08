@@ -63,6 +63,8 @@ function buildSystemPrompt(userId, context) {
   let systemContent = `You are an AI financial assistant integrated into Portfolio Tracker Pro. ` +
     `You help users analyze their investments, understand market trends, and make informed decisions. ` +
     `Be concise, data-driven, and specific. Always include relevant numbers when available. ` +
+    `Keep responses under 500 words — use bullet points and tables for clarity. ` +
+    `Only go longer if the user explicitly asks for a detailed/full analysis. ` +
     `Disclaimer: You provide analysis, not financial advice.\n\n`;
 
   if (!context || context === 'general') {
@@ -262,7 +264,9 @@ router.post('/chat', async (req, res) => {
       'SELECT role, content FROM ai_messages WHERE conversation_id = ? ORDER BY id',
       [convId]
     );
-    conversationMessages = prevMsgs.map(m => ({ role: m.role, content: m.content }));
+    // Keep last 20 messages to limit context size
+    const recentMsgs = prevMsgs.slice(-20);
+    conversationMessages = recentMsgs.map(m => ({ role: m.role, content: m.content }));
     // Update conversation timestamp
     dbRun('UPDATE ai_conversations SET updated_at = CURRENT_TIMESTAMP WHERE id = ?', [convId]);
   } else {
@@ -304,7 +308,7 @@ router.post('/chat', async (req, res) => {
   let fullResponse = '';
 
   try {
-    const stream = instance.chat(apiMessages, { model: selectedModel });
+    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
 
     for await (const chunk of stream) {
       fullResponse += chunk;
@@ -451,7 +455,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
   let fullResponse = '';
 
   try {
-    const stream = instance.chat(apiMessages, { model: selectedModel });
+    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
 
     for await (const chunk of stream) {
       fullResponse += chunk;
