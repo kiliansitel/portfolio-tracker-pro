@@ -48,6 +48,12 @@ function getProviderForUser(userId, providerName) {
     }
   }
 
+  // Auto-detect OpenClaw gateway token from environment
+  if (providerName === 'openclaw' && !config.apiKey && process.env.OPENCLAW_GATEWAY_TOKEN) {
+    config.apiKey = process.env.OPENCLAW_GATEWAY_TOKEN;
+    config.baseUrl = `http://127.0.0.1:${process.env.OPENCLAW_GATEWAY_PORT || 18789}/v1`;
+  }
+
   return new AIProvider(providerName, config);
 }
 
@@ -94,10 +100,15 @@ router.get('/providers', (req, res) => {
     keyMap[k.provider] = k;
   }
 
+  // Auto-detect OpenClaw gateway
+  const openclawDetected = !!process.env.OPENCLAW_GATEWAY_TOKEN;
+
   const providers = Object.entries(PROVIDER_DEFS).map(([id, def]) => ({
     id,
     name: def.name,
-    configured: !!keyMap[id],
+    description: def.description || null,
+    configured: id === 'openclaw' ? (!!keyMap[id] || openclawDetected) : !!keyMap[id],
+    autoDetected: id === 'openclaw' && openclawDetected && !keyMap[id],
     requiresKey: def.requiresKey,
     models: def.models,
     modelPreference: keyMap[id]?.model_preference || null,

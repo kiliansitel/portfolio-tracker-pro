@@ -38,7 +38,8 @@ const PROVIDER_DEFS = {
       { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
       { id: 'o1', name: 'o1' }
     ],
-    requiresKey: true
+    requiresKey: true,
+    description: 'Requires an API key from platform.openai.com'
   },
   anthropic: {
     name: 'Anthropic',
@@ -47,7 +48,8 @@ const PROVIDER_DEFS = {
       { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
       { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' }
     ],
-    requiresKey: true
+    requiresKey: true,
+    description: 'Requires an API key from console.anthropic.com (not setup-tokens)'
   },
   google: {
     name: 'Google',
