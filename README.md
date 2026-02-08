@@ -158,6 +158,12 @@ A pre-loaded demo portfolio is included for exploration:
 ### Wallet Tokens
 ![Wallet Tokens](screenshots/wallet-tokens.jpg)
 
+### Oracle AI Assistant
+![Oracle AI](screenshots/oracle-ai.jpg)
+
+### Oracle AI (Mobile)
+![Oracle AI Mobile](screenshots/oracle-ai-mobile.jpg)
+
 ### Settings
 ![Settings](screenshots/settings.jpg)
 

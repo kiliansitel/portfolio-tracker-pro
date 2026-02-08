@@ -818,6 +818,8 @@ When an update is available, the app shows how many commits are ahead and a butt
 
 ## 13. Oracle AI
 
+![Oracle AI](../screenshots/oracle-ai.jpg)
+
 Oracle AI connects your portfolio tracker to any LLM provider for intelligent analysis, chat, and insights — all without your data leaving your server.
 
 ### 13.1 Setting Up AI Providers
