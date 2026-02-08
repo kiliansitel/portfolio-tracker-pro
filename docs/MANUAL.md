@@ -708,6 +708,8 @@ Toggle between **Dark mode** 🌙 and **Light mode** ☀️. The theme affects:
 
 ### 12.2 Change Password
 
+![Account & Change Password](../screenshots/settings-account.jpg)
+
 Change your password from the Settings page:
 
 1. Enter your **Current Password** for verification.
@@ -773,6 +775,8 @@ Controls:
 Click the import button and select a `.csv` file. The app parses and adds the items to your portfolio or watchlist.
 
 ### 12.9 Backup & Restore
+
+![Backup & Restore](../screenshots/settings-backup.jpg)
 
 Full database backup and restore for disaster recovery or migration:
 
