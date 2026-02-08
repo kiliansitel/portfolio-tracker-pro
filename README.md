@@ -122,6 +122,15 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 | **v0.20.1** | Password change, backup/restore, PWA, smart broker CSV import |
 | **v0.20.0** "Compass" | Position source tracking, compact numbers, demo database, DeFi tracking |
 
+## Roadmap
+
+- [ ] Oracle follow-up chat within analysis results
+- [ ] AI-powered news digest for holdings
+- [ ] Portfolio rebalance suggestions
+- [ ] Entry/exit signals on watchlist
+- [ ] Export/share AI insights as PDF
+- [ ] Voice input for Oracle
+
 ## License
 
 MIT — Use it, fork it, self-host it.
