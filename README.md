@@ -132,7 +132,12 @@ Open http://localhost:8080
 ### Options Chain
 ![Options Chain](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/options-chain.jpg)
 
-### Settings
+### Wallets
+![Wallets](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/wallets.jpg)
+
+### Wallet Tokens
+![Wallet Tokens](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/wallet-tokens.jpg)
+
 ### Settings
 ![Settings](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/settings.jpg)
 
