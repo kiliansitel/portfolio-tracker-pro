@@ -7760,6 +7760,8 @@
             }
 
             appendAiMessage(message, 'user');
+            // Show typing indicator immediately (before API call)
+            const thinkingMsg = appendAiMessage('', 'assistant', true);
             aiIsStreaming = true;
             updateAiSendButton();
 
@@ -7791,6 +7793,7 @@
                         const errData = await response.json();
                         errMsg = errData.error || errMsg;
                     } catch {}
+                    if (thinkingMsg) thinkingMsg.remove();
                     appendAiError(errMsg);
                     aiIsStreaming = false;
                     updateAiSendButton();
@@ -7823,16 +7826,16 @@
                             }
 
                             if (data.type === 'chunk' && data.content) {
-                                if (!streamingStarted) {
-                                    appendAiMessage('', 'assistant', true);
-                                    streamingStarted = true;
-                                }
+                                streamingStarted = true;
                                 aiMessage += data.content;
+                                // Reuse the thinking bubble (already showing dots)
                                 updateLastAiMessage(aiMessage);
                             }
 
                             if (data.type === 'error') {
                                 if (!streamingStarted) {
+                                    // Replace thinking dots with error
+                                    if (thinkingMsg) thinkingMsg.remove();
                                     appendAiError(data.error || 'An error occurred');
                                 } else {
                                     aiMessage += '\n\n⚠️ ' + (data.error || 'Stream error');
@@ -7851,6 +7854,7 @@
 
                 // If nothing was streamed at all
                 if (!streamingStarted && !aiMessage) {
+                    if (thinkingMsg) thinkingMsg.remove();
                     appendAiError('No response received from AI provider.');
                 }
 
@@ -7957,6 +7961,8 @@
             }
 
             appendAiMessage(userLabel, 'user');
+            // Show thinking dots immediately
+            const thinkingMsg = appendAiMessage('', 'assistant', true);
             aiIsStreaming = true;
             updateAiSendButton();
 
@@ -7980,6 +7986,7 @@
                 if (!response.ok) {
                     let errMsg = 'Request failed';
                     try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch {}
+                    if (thinkingMsg) thinkingMsg.remove();
                     appendAiError(errMsg);
                     aiIsStreaming = false;
                     updateAiSendButton();
@@ -8012,16 +8019,14 @@
                             }
 
                             if (data.type === 'chunk' && data.content) {
-                                if (!streamingStarted) {
-                                    appendAiMessage('', 'assistant', true);
-                                    streamingStarted = true;
-                                }
+                                streamingStarted = true;
                                 aiMessage += data.content;
                                 updateLastAiMessage(aiMessage);
                             }
 
                             if (data.type === 'error') {
                                 if (!streamingStarted) {
+                                    if (thinkingMsg) thinkingMsg.remove();
                                     appendAiError(data.error || 'An error occurred');
                                 } else {
                                     aiMessage += '\n\n⚠️ ' + (data.error || 'Stream error');
@@ -8033,6 +8038,7 @@
                 }
 
                 if (!streamingStarted && !aiMessage) {
+                    if (thinkingMsg) thinkingMsg.remove();
                     appendAiError('No response received from AI provider.');
                 }
 
@@ -8253,6 +8259,8 @@
             const endpoint = `/ai/analyze/position/${symbol}`;
 
             appendAiMessage(userLabel, 'user');
+            // Show thinking dots immediately
+            const thinkingMsg = appendAiMessage('', 'assistant', true);
             aiIsStreaming = true;
             updateAiSendButton();
 
@@ -8275,6 +8283,7 @@
                 if (!response.ok) {
                     let errMsg = 'Request failed';
                     try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch {}
+                    if (thinkingMsg) thinkingMsg.remove();
                     appendAiError(errMsg);
                     aiIsStreaming = false;
                     updateAiSendButton();
@@ -8305,15 +8314,13 @@
                                 loadAiConversations();
                             }
                             if (data.type === 'chunk' && data.content) {
-                                if (!streamingStarted) {
-                                    appendAiMessage('', 'assistant', true);
-                                    streamingStarted = true;
-                                }
+                                streamingStarted = true;
                                 aiMessage += data.content;
                                 updateLastAiMessage(aiMessage);
                             }
                             if (data.type === 'error') {
                                 if (!streamingStarted) {
+                                    if (thinkingMsg) thinkingMsg.remove();
                                     appendAiError(data.error || 'An error occurred');
                                 } else {
                                     aiMessage += '\n\n⚠️ ' + (data.error || 'Stream error');
