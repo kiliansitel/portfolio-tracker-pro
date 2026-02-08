@@ -191,6 +191,11 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Blockchain wallet tracking (13 chains, auto-sync)
 - [x] On-chain transaction history (BTC, ETH)
 - [x] Positions page redesign (grouped, sorted, summary bar)
+- [x] ERC-20 token tracking (20 popular tokens via RPC)
+- [x] Token → position sync (auto-create portfolio positions from wallet tokens)
+- [x] Self-update system (check updates, switch channels, one-click apply)
+- [x] Comprehensive product manual (16 chapters)
+- [x] Automated screenshot generation
 
 ### 🚧 In Progress
 
@@ -211,8 +216,10 @@ The killer feature: connect any LLM to analyze your portfolio.
 - [x] Auto-sync balances from on-chain data (every 5 min)
 - [x] Transaction history from block explorers (BTC, ETH)
 - [x] Multi-wallet aggregation (sum per chain)
+- [x] ERC-20 token tracking (20 popular tokens, direct RPC)
+- [x] Token → position sync (wallet tokens auto-create positions)
 - [ ] DeFi position tracking
-- [ ] ERC-20/SPL token tracking
+- [ ] SPL token tracking (Solana)
 
 ### 🏦 Broker Integrations
 - [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)
