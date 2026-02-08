@@ -8305,25 +8305,36 @@
                                 loadAiConversations();
                             }
                             if (data.type === 'chunk' && data.content) {
-                                if (!streamingStarted) { streamingStarted = true; }
+                                if (!streamingStarted) {
+                                    appendAiMessage('', 'assistant', true);
+                                    streamingStarted = true;
+                                }
                                 aiMessage += data.content;
                                 updateLastAiMessage(aiMessage);
                             }
-                            if (data.type === 'done') {
-                                finalizeAiMessage(aiMessage);
-                            }
                             if (data.type === 'error') {
-                                appendAiError(data.error);
+                                if (!streamingStarted) {
+                                    appendAiError(data.error || 'An error occurred');
+                                } else {
+                                    aiMessage += '\n\n⚠️ ' + (data.error || 'Stream error');
+                                    updateLastAiMessage(aiMessage);
+                                }
+                            }
+                            if (data.type === 'done') {
+                                // Stream complete
                             }
                         } catch {}
                     }
                 }
 
-                if (!streamingStarted) {
+                if (!streamingStarted && !aiMessage) {
                     appendAiError('No response received from AI provider.');
                 }
+
+                parseSuggestions(aiMessage);
+
             } catch (err) {
-                appendAiError(err.message || 'Failed to connect');
+                appendAiError('Failed to connect: ' + err.message);
             }
 
             aiIsStreaming = false;

@@ -436,11 +436,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
     return res.status(400).json({ error: `No API key configured for ${selectedProvider}` });
   }
 
-  // For quick analysis, prefer Sonnet (faster) over Opus unless user explicitly chose a model
-  let selectedModel = model || instance.getDefaultModel();
-  if (!model && selectedProvider === 'openclaw' && selectedModel.includes('opus')) {
-    selectedModel = 'anthropic/claude-sonnet-4-20250514';
-  }
+  const selectedModel = model || instance.getDefaultModel();
 
   const systemContent = `You are an expert financial analyst integrated into Portfolio Tracker Pro. ` +
     `Provide thorough, data-driven analysis with specific numbers and actionable insights. ` +
