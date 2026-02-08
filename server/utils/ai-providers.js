@@ -524,27 +524,44 @@ function buildPortfolioContext(userId, dbAll, dbGet) {
       continue;
     }
 
-    md += '| Symbol | Qty | Entry Price | Current Price | P&L |\n';
-    md += '|--------|-----|------------|---------------|-----|\n';
-
+    // Calculate values and sort by value (descending) for better context
     let totalValue = pf.cash || 0;
     let totalCost = 0;
-
-    for (const pos of positions) {
+    const enriched = positions.map(pos => {
       const currentPrice = pos.current_price || pos.entry_price;
       const value = pos.quantity * currentPrice;
       const cost = pos.quantity * pos.entry_price;
       const pnl = value - cost;
       const pnlPct = cost > 0 ? ((pnl / cost) * 100).toFixed(1) : '0.0';
-
-      md += `| ${pos.symbol} | ${pos.quantity} | $${pos.entry_price.toFixed(2)} | $${currentPrice.toFixed(2)} | $${pnl.toFixed(2)} (${pnlPct}%) |\n`;
-
       totalValue += value;
       totalCost += cost;
+      return { ...pos, currentPrice, value, cost, pnl, pnlPct };
+    }).sort((a, b) => b.value - a.value);
+
+    // Show top 15 positions in detail, summarize the rest
+    const TOP_N = 15;
+    const top = enriched.slice(0, TOP_N);
+    const rest = enriched.slice(TOP_N);
+
+    md += '| Symbol | Qty | Entry | Current | Value | P&L |\n';
+    md += '|--------|-----|-------|---------|-------|-----|\n';
+
+    for (const pos of top) {
+      md += `| ${pos.symbol} | ${pos.quantity} | $${pos.entry_price.toFixed(2)} | $${pos.currentPrice.toFixed(2)} | $${pos.value.toFixed(0)} | ${pos.pnlPct}% |\n`;
+    }
+
+    if (rest.length > 0) {
+      const restValue = rest.reduce((s, p) => s + p.value, 0);
+      md += `| _${rest.length} more_ | | | | _$${restValue.toFixed(0)}_ | |\n`;
+      md += `\n<details><summary>All ${rest.length} smaller positions</summary>\n\n`;
+      for (const pos of rest) {
+        md += `- ${pos.symbol}: ${pos.quantity} @ $${pos.currentPrice.toFixed(2)} = $${pos.value.toFixed(0)}\n`;
+      }
+      md += '</details>\n';
     }
 
     const totalPnL = totalValue - totalCost - (pf.cash || 0);
-    md += `\n**Total Value:** $${totalValue.toFixed(2)} | **Total P&L:** $${totalPnL.toFixed(2)}\n\n`;
+    md += `\n**${positions.length} positions | Total Value:** $${totalValue.toFixed(2)} | **Total P&L:** $${totalPnL.toFixed(2)}\n\n`;
   }
 
   return md;
