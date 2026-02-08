@@ -722,28 +722,65 @@
             transition: max-height 0.3s ease;
         }
 
-        /* ---- Position Card (redesigned) ---- */
+        /* ---- Position Card (2-row mobile layout) ---- */
         .position-card {
             background: var(--bg-secondary);
             border-radius: 8px;
             padding: 12px;
-            display: grid;
-            grid-template-columns: 1fr auto auto;
-            gap: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            cursor: pointer;
+        }
+        .pos-row-main {
+            display: flex;
+            justify-content: space-between;
             align-items: center;
         }
-        .pos-left { display: flex; align-items: center; gap: 10px; cursor: pointer; min-width: 0; }
+        .pos-row-sub {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .pos-row-main .pos-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            min-width: 0;
+        }
         .pos-left-info { min-width: 0; }
-        .pos-left-info .pos-symbol { font-weight: 600; font-size: 1rem; color: var(--accent-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pos-left-info .pos-name { font-size: 0.75rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .pos-center { text-align: center; min-width: 80px; }
-        .pos-price { font-size: 1.35rem; font-weight: 700; }
-        .pos-change { font-size: 0.8rem; margin-top: 2px; }
-        .pos-qty { font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px; }
-        .pos-right { text-align: right; min-width: 80px; }
-        .pos-value { font-size: 1rem; font-weight: 600; }
-        .pos-pnl { font-size: 0.85rem; margin-top: 2px; }
-        .pos-entry { font-size: 0.65rem; color: var(--text-secondary); margin-top: 2px; }
+        .pos-left-info .pos-symbol { font-weight: 600; font-size: 0.95rem; color: var(--accent-blue); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pos-value { font-weight: 600; font-size: 1rem; white-space: nowrap; }
+        .pos-sub-left { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; min-width: 0; }
+        .pos-sub-right { white-space: nowrap; text-align: right; font-weight: 600; }
+        .pos-pnl { font-size: 0.8rem; }
+        .location-badge {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        /* Position detail modal */
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label { color: var(--text-secondary); font-size: 0.9rem; }
+        .detail-value { font-weight: 600; text-align: right; }
+        .detail-section {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--border-color);
+        }
+        .detail-section:first-child { margin-top: 0; border-top: none; }
 
         .position-pnl {
             font-weight: 600;
@@ -1695,6 +1732,24 @@
                         <label>Notes</label>
                         <textarea name="notes" rows="2" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);"></textarea>
                     </div>
+                    <div class="form-group">
+                        <label>Location / Exchange</label>
+                        <input type="text" name="location" list="locationSuggestions" placeholder="e.g. Binance, Kraken, Ledger, Cold Storage" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                        <datalist id="locationSuggestions">
+                            <option value="Binance">
+                            <option value="Coinbase">
+                            <option value="Kraken">
+                            <option value="Bybit">
+                            <option value="OKX">
+                            <option value="Ledger">
+                            <option value="Trezor">
+                            <option value="Cold Storage">
+                            <option value="MetaMask">
+                            <option value="Phantom">
+                            <option value="Keytrade Bank">
+                            <option value="Interactive Brokers">
+                        </datalist>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addPositionModal')">Cancel</button>
@@ -1846,6 +1901,25 @@
                         <label>Notes</label>
                         <input type="text" name="notes" placeholder="e.g. Averaging down">
                     </div>
+                    <div class="form-group">
+                        <label>Exchange / Location</label>
+                        <input type="text" name="location" list="txLocationSuggestions" placeholder="e.g. Binance, Kraken, Coinbase">
+                        <datalist id="txLocationSuggestions">
+                            <option value="Binance">
+                            <option value="Coinbase">
+                            <option value="Kraken">
+                            <option value="Bybit">
+                            <option value="OKX">
+                            <option value="Ledger">
+                            <option value="Trezor">
+                            <option value="Cold Storage">
+                            <option value="MetaMask">
+                            <option value="Phantom">
+                            <option value="Keytrade Bank">
+                            <option value="Interactive Brokers">
+                            <option value="On-Chain">
+                        </datalist>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addTransactionModal')">Cancel</button>
@@ -1971,6 +2045,29 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="walletTxFetchBtn" style="display:none;" onclick="fetchWalletTxFromChain()">🔄 Fetch from Chain</button>
                 <button class="btn btn-primary" onclick="closeModal('walletTxModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Position Detail Modal -->
+    <div class="modal-overlay" id="positionDetailModal">
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <span id="posDetailLogo"></span>
+                    <div>
+                        <h2 id="posDetailSymbol" style="margin:0;"></h2>
+                        <div id="posDetailName" style="color:var(--text-secondary);font-size:0.85rem;"></div>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="closeModal('positionDetailModal')">&times;</button>
+            </div>
+            <div class="modal-body" id="posDetailBody">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="posDetailChartBtn">📊 Chart</button>
+                <button class="btn btn-secondary" id="posDetailEditBtn">✏️ Edit</button>
+                <button class="btn btn-danger" id="posDetailDeleteBtn">🗑️ Delete</button>
             </div>
         </div>
     </div>
@@ -2116,7 +2213,7 @@
                 if (saved) {
                     const parsed = JSON.parse(saved);
                     Object.assign(priceCache, parsed);
-                    console.log(`📦 Loaded ${Object.keys(parsed).length} cached prices`);
+                    // Price cache loaded
                 }
             } catch (e) {}
         }
@@ -2466,7 +2563,7 @@
             // Render content when switching pages
             if (page === 'alerts') renderAlerts();
             if (page === 'history') {
-                console.log('🔄 Switching to history page, calling renderTransactions');
+                // Switching to history page
                 renderTransactions();
             }
             if (page === 'news') loadNews();
@@ -2895,7 +2992,8 @@
                 strike_price: form.strike_price.value ? parseFloat(form.strike_price.value) : null,
                 expiry_date: form.expiry_date.value || null,
                 current_price: form.current_price?.value ? parseFloat(form.current_price.value) : null,
-                multiplier: form.multiplier.value ? parseFloat(form.multiplier.value) : 1
+                multiplier: form.multiplier.value ? parseFloat(form.multiplier.value) : 1,
+                location: form.location.value.trim() || null
             };
             
             try {
@@ -3420,7 +3518,7 @@
 
         async function loadTransactions() {
             if (!token || !currentPortfolio) {
-                console.log('Missing token or portfolio for transactions');
+                // Missing token or portfolio for transactions
                 return false;
             }
             
@@ -3438,7 +3536,7 @@
                 
                 const data = await response.json();
                 transactions = data.transactions || [];
-                console.log('Loaded ' + transactions.length + ' transactions');
+                // Transactions loaded
                 return true;
             } catch (error) {
                 console.error('Error loading transactions:', error);
@@ -3505,8 +3603,13 @@
                         html += ' (' + tx.type + ')';
                     }
                     html += '</div>';
-                    if (tx.notes) {
+                    if (tx.location) {
+                        html += '<div style="font-size:0.7rem;"><span style="color:var(--text-secondary);background:var(--bg-tertiary);padding:1px 5px;border-radius:3px;">' + tx.location + '</span></div>';
+                    } else if (tx.notes && !tx.notes.startsWith('wallet-tx:')) {
                         html += '<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">' + tx.notes + '</div>';
+                    }
+                    if (tx.source === 'wallet') {
+                        html += '<div style="font-size:0.65rem;color:var(--accent-color);">🔗 On-Chain</div>';
                     }
                     html += '</div>';
                     html += '</div>';
@@ -3522,7 +3625,7 @@
                 
                 el.innerHTML = html;
                 setupSwipeHandlers();
-                console.log('Rendered ' + transactions.length + ' transactions');
+                // Transactions rendered
             } catch (err) {
                 console.error('renderTransactions error:', err);
                 el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💥</div><div class="empty-state-text">Error: ' + err.message + '</div></div>';
@@ -3550,7 +3653,8 @@
                 price: parseFloat(form.price.value),
                 fees: form.fees.value ? parseFloat(form.fees.value) : 0,
                 notes: form.notes.value || null,
-                executed_at: form.executed_at.value ? new Date(form.executed_at.value).toISOString() : new Date().toISOString()
+                executed_at: form.executed_at.value ? new Date(form.executed_at.value).toISOString() : new Date().toISOString(),
+                location: form.location.value.trim() || null
             };
             
             try {
@@ -3578,7 +3682,7 @@
         async function deletePosition(id) {
             if (!confirm('Delete this position?')) return;
             try {
-                await api(`/positions/${id}`, { method: 'DELETE' });
+                await api(`/portfolios/positions/${id}`, { method: 'DELETE' });
                 await loadPortfolio();
             } catch (e) {
                 alert(e.message);
@@ -3588,7 +3692,7 @@
         async function deleteWatchlistItem(id) {
             if (!confirm('Remove from watchlist?')) return;
             try {
-                await api(`/watchlist-items/${id}`, { method: 'DELETE' });
+                await api(`/watchlists/items/${id}`, { method: 'DELETE' });
                 await loadWatchlists();
             } catch (e) {
                 alert(e.message);
@@ -3627,7 +3731,7 @@
             try {
                 const data = await fetch('/api/exchange-rates').then(r => r.json());
                 exchangeRates = data.rates;
-                console.log('Exchange rates loaded');
+                // Exchange rates loaded
             } catch (e) {
                 console.warn('Failed to load exchange rates:', e);
             }
@@ -3645,10 +3749,25 @@
             return rate ? price * rate : price;
         }
         
-        function formatCurrency(amount, currency) {
+        // Compact large numbers: 1.5M, 2.3B, 456K
+        function compactNumber(num) {
+            const abs = Math.abs(num);
+            if (abs >= 1e12)      return (num / 1e12).toFixed(1) + 'T';
+            if (abs >= 1e9)       return (num / 1e9).toFixed(1) + 'B';
+            if (abs >= 1e6)       return (num / 1e6).toFixed(1) + 'M';
+            if (abs >= 100000)    return (num / 1e3).toFixed(0) + 'K';
+            return null; // Not large enough for compact
+        }
+
+        function formatCurrency(amount, currency, forceCompact) {
             const cur = currency || userCurrency;
             const sym = CURRENCY_SYMBOLS[cur] || cur + ' ';
             const converted = convertPrice(Number(amount), cur);
+            // Compact format for very large amounts
+            const compact = compactNumber(converted);
+            if (compact && (forceCompact || Math.abs(converted) >= 1e6)) {
+                return sym + compact;
+            }
             if (Math.abs(converted) >= 1000) {
                 return sym + converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
@@ -3659,6 +3778,11 @@
         function formatNative(amount, nativeCurrency) {
             const cur = nativeCurrency || 'USD';
             const sym = CURRENCY_SYMBOLS[cur] || cur + ' ';
+            // Compact for very large prices
+            const compact = compactNumber(amount);
+            if (compact && Math.abs(amount) >= 1e6) {
+                return sym + compact;
+            }
             if (Math.abs(amount) >= 1000) {
                 return sym + amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
@@ -3914,30 +4038,37 @@
                 for (const pos of group.items) {
                     const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
                     const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
-                    const isWalletSynced = pos.notes && pos.notes.includes('wallet-synced');
-                    const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-color);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
+                    const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
+                    const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-orange);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
+                    
+                    const qtyInfo = pos.quantity > 0 && pos.entry_price > 0 ? `<span style="margin-left:4px">· ${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</span>` : '';
+                    const locBadge = pos.location ? `<span class="location-badge">${pos.location}</span>` : '';
+                    const pnlDisplay = pos.cost > 0 ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : fc(pos.value);
                     
                     html += `<div class="swipe-container" data-id="${pos.id}" data-type="position">
                         <div class="swipe-actions">
                             <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
                             <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
                         </div>
-                        <div class="swipe-content position-card" onclick="selectTicker('${pos.symbol}')">
-                            <div class="pos-left">
-                                ${logoHtml(pos.symbol, 32)}
-                                <div class="pos-left-info">
-                                    <div class="pos-symbol">${pos.symbol}${optionInfo} <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}</div>
-                                    <div class="pos-name">${pos.name || ''}</div>
+                        <div class="swipe-content position-card" onclick="showPositionDetail(${pos.id})">
+                            <div class="pos-row-main">
+                                <div class="pos-left">
+                                    ${logoHtml(pos.symbol, 32)}
+                                    <div class="pos-left-info">
+                                        <span class="pos-symbol">${pos.symbol}${optionInfo}</span>
+                                        <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}
+                                    </div>
                                 </div>
-                            </div>
-                            <div class="pos-center">
-                                <div class="pos-price">${fp(pos.currentPrice)}</div>
-                                <div class="pos-change ${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</div>
-                                <div class="pos-qty">${pos.quantity}${pos.type === 'option' ? 'x' : ''}${pos.entry_price > 0 ? ` @ ${fp(pos.entry_price)}` : ''}</div>
-                            </div>
-                            <div class="pos-right">
                                 <div class="pos-value">${fc(pos.value)}</div>
-                                <div class="pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pos.cost > 0 ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : fc(pos.value)}</div>
+                            </div>
+                            <div class="pos-row-sub">
+                                <div class="pos-sub-left">
+                                    <span>${fp(pos.currentPrice)}</span>
+                                    <span class="${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</span>
+                                    ${qtyInfo}
+                                    ${locBadge}
+                                </div>
+                                <div class="pos-sub-right pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pnlDisplay}</div>
                             </div>
                         </div>
                     </div>`;
@@ -3952,6 +4083,144 @@
                 console.error('renderPositions error:', err);
                 el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💥</div><div class="empty-state-text">Error: ' + err.message + '</div></div>';
             }
+        }
+        
+        let currentDetailId = null;
+        let currentDetailSymbol = null;
+        
+        function showPositionDetail(posId) {
+            const pos = positions.find(p => p.id === posId);
+            if (!pos) { console.error('Position not found for detail:', posId); return; }
+            
+            // Enrich the position data (same logic as renderPositions)
+            let currentPrice;
+            if (pos.type === 'option') {
+                const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
+                const optQuote = optSym ? priceCache[optSym] : null;
+                currentPrice = optQuote?.price || pos.current_price || pos.entry_price;
+            } else {
+                const q = priceCache[pos.symbol];
+                currentPrice = q?.price || pos.entry_price;
+            }
+            const q = priceCache[pos.symbol] || {};
+            const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+            const cost = pos.entry_price * pos.quantity * mult;
+            const value = currentPrice * pos.quantity * mult;
+            const pnl = value - cost;
+            const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+            const changePct = q.changePercent || 0;
+            
+            currentDetailId = posId;
+            currentDetailSymbol = pos.symbol;
+            
+            // Set header
+            document.getElementById('posDetailLogo').innerHTML = logoHtml(pos.symbol, 40);
+            document.getElementById('posDetailSymbol').textContent = pos.symbol;
+            document.getElementById('posDetailName').textContent = pos.name || pos.type;
+            
+            // Build detail body
+            const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
+            const changeClass = changePct >= 0 ? 'positive' : 'negative';
+            const pnlClass = pnl >= 0 ? 'positive' : 'negative';
+            const pnlDisplay = cost > 0 ? `${pnl >= 0 ? '+' : ''}${fc(pnl)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)` : fc(value);
+            
+            let bodyHtml = '';
+            
+            // Section 1: Price info
+            bodyHtml += `<div class="detail-row">
+                <span class="detail-label">Current Price</span>
+                <span class="detail-value">${fp(currentPrice)} <span class="${changeClass}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span></span>
+            </div>`;
+            
+            // Section 2: Position info
+            bodyHtml += `<div class="detail-section">`;
+            bodyHtml += `<div class="detail-row">
+                <span class="detail-label">Position Value</span>
+                <span class="detail-value">${fc(value)}</span>
+            </div>`;
+            bodyHtml += `<div class="detail-row">
+                <span class="detail-label">Entry Price</span>
+                <span class="detail-value">${fp(pos.entry_price)}</span>
+            </div>`;
+            bodyHtml += `<div class="detail-row">
+                <span class="detail-label">Quantity</span>
+                <span class="detail-value">${pos.quantity}${pos.type === 'option' ? ' contracts' : ''}</span>
+            </div>`;
+            if (pos.type === 'option' && mult > 1) {
+                bodyHtml += `<div class="detail-row">
+                    <span class="detail-label">Multiplier</span>
+                    <span class="detail-value">${mult}x</span>
+                </div>`;
+            }
+            bodyHtml += `<div class="detail-row">
+                <span class="detail-label">P&L</span>
+                <span class="detail-value ${pnlClass}">${pnlDisplay}</span>
+            </div>`;
+            bodyHtml += `</div>`;
+            
+            // Section 3: Metadata
+            bodyHtml += `<div class="detail-section">`;
+            if (isWalletSynced) {
+                bodyHtml += `<div class="detail-row">
+                    <span class="detail-label">Source</span>
+                    <span class="detail-value">🔗 Wallet</span>
+                </div>`;
+            }
+            if (pos.location) {
+                bodyHtml += `<div class="detail-row">
+                    <span class="detail-label">Location</span>
+                    <span class="detail-value">${pos.location}</span>
+                </div>`;
+            }
+            bodyHtml += `<div class="detail-row">
+                <span class="detail-label">Type</span>
+                <span class="detail-value">${pos.type.charAt(0).toUpperCase() + pos.type.slice(1)}</span>
+            </div>`;
+            if (pos.type === 'option') {
+                if (pos.strike_price) {
+                    bodyHtml += `<div class="detail-row">
+                        <span class="detail-label">Strike Price</span>
+                        <span class="detail-value">${fp(pos.strike_price)}</span>
+                    </div>`;
+                }
+                if (pos.expiry_date) {
+                    bodyHtml += `<div class="detail-row">
+                        <span class="detail-label">Expiry Date</span>
+                        <span class="detail-value">${pos.expiry_date}</span>
+                    </div>`;
+                }
+            }
+            if (pos.entry_date) {
+                bodyHtml += `<div class="detail-row">
+                    <span class="detail-label">Entry Date</span>
+                    <span class="detail-value">${pos.entry_date}</span>
+                </div>`;
+            }
+            if (pos.notes) {
+                bodyHtml += `<div class="detail-row">
+                    <span class="detail-label">Notes</span>
+                    <span class="detail-value" style="max-width:60%;word-break:break-word;font-size:0.85rem;">${pos.notes}</span>
+                </div>`;
+            }
+            bodyHtml += `</div>`;
+            
+            document.getElementById('posDetailBody').innerHTML = bodyHtml;
+            
+            // Wire up footer buttons
+            document.getElementById('posDetailChartBtn').onclick = function() {
+                closeModal('positionDetailModal');
+                selectTicker(currentDetailSymbol);
+            };
+            document.getElementById('posDetailEditBtn').onclick = function() {
+                closeModal('positionDetailModal');
+                editPosition(currentDetailId);
+            };
+            document.getElementById('posDetailDeleteBtn').onclick = function() {
+                closeModal('positionDetailModal');
+                deletePosition(currentDetailId);
+            };
+            
+            showModal('positionDetailModal');
         }
         
         function editPosition(id) {
@@ -3969,11 +4238,14 @@
             form.querySelector('[name="quantity"]').value = pos.quantity || '';
             form.querySelector('[name="entry_price"]').value = pos.entry_price || '';
             form.querySelector('[name="entry_date"]').value = pos.entry_date || '';
-            form.querySelector('[name="notes"]').value = pos.notes || '';
+            // Filter out internal wallet-synced notes from display
+            const displayNotes = (pos.notes || '').replace(/^wallet-synced \|.*$/i, '').replace(/^Was wallet-synced.*$/i, '').replace(/^Converted from wallet.*$/i, '').trim();
+            form.querySelector('[name="notes"]').value = displayNotes;
             form.querySelector('[name="strike_price"]').value = pos.strike_price || '';
             form.querySelector('[name="expiry_date"]').value = pos.expiry_date || '';
             form.querySelector('[name="current_price"]').value = pos.current_price || '';
             form.querySelector('[name="multiplier"]').value = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+            form.querySelector('[name="location"]').value = pos.location || '';
             
             // Show option fields if editing an option
             document.getElementById('optionFields').style.display = pos.type === 'option' ? 'block' : 'none';
@@ -4512,7 +4784,7 @@
                 performanceSeries = performanceChart.addAreaSeries({ 
                     topColor: 'rgba(38,166,154,0.4)', bottomColor: 'rgba(38,166,154,0)', 
                     lineColor: '#26a69a', lineWidth: 2,
-                    priceFormat: { type: 'custom', formatter: (price) => cs() + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+                    priceFormat: { type: 'custom', formatter: (price) => { const c = compactNumber(price); return c ? cs() + c : cs() + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }); } }
                 });
                 new ResizeObserver(entries => {
                     const r = entries[0].contentRect;
@@ -5311,9 +5583,9 @@
                     <a href="${item.link}" target="_blank" class="news-item">
                         <div class="news-icon">${icon}</div>
                         <div class="news-content">
-                            <div class="news-title">${escapeHtml(item.title)}</div>
+                            <div class="news-title">${item.title}</div>
                             <div class="news-meta">
-                                <span class="news-source">${escapeHtml(item.source || 'News')}</span>
+                                <span class="news-source">${item.source || 'News'}</span>
                                 <span>${item.timeAgo}</span>
                             </div>
                         </div>
@@ -5645,7 +5917,7 @@
                 }
             } catch (e) {
                 // Connection errors are EXPECTED — server restarted mid-response
-                console.log('Update request ended (expected):', e.message);
+                // Update request ended (expected during restart)
             }
             
             btn.textContent = '🔄 Restarting...';

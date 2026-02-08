@@ -3,6 +3,7 @@ node_modules/
 
 # Database
 *.db
+!server/demo-portfolio.db
 *.db.backup*
 
 # Environment

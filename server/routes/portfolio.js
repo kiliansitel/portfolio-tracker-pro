@@ -67,7 +67,7 @@ router.get('/:id/positions', (req, res) => {
 // Add position
 router.post('/:id/positions', positionValidation, (req, res) => {
   const { id } = req.params;
-  const { symbol, quantity, avg_cost, entry_price } = req.body;
+  const { symbol, quantity, avg_cost, entry_price, location } = req.body;
   
   const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
   if (!portfolio) {
@@ -88,8 +88,15 @@ router.post('/:id/positions', positionValidation, (req, res) => {
     const newQuantity = existingPosition.quantity + quantity;
     const newAvgCost = ((existingPosition.quantity * existingPosition.entry_price) + (quantity * price)) / newQuantity;
     
-    dbRun('UPDATE positions SET quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
-      [newQuantity, newAvgCost, existingPosition.id]);
+    const updateFields = ['quantity = ?', 'entry_price = ?', 'updated_at = CURRENT_TIMESTAMP'];
+    const updateParams = [newQuantity, newAvgCost];
+    if (location !== undefined) {
+      updateFields.push('location = ?');
+      updateParams.push(location || null);
+    }
+    updateParams.push(existingPosition.id);
+    
+    dbRun(`UPDATE positions SET ${updateFields.join(', ')} WHERE id = ?`, updateParams);
     
     res.json({
       id: existingPosition.id,
@@ -99,9 +106,10 @@ router.post('/:id/positions', positionValidation, (req, res) => {
       entry_price: newAvgCost
     });
   } else {
-    // Create new position
-    const result = dbRun('INSERT INTO positions (portfolio_id, symbol, quantity, entry_price) VALUES (?, ?, ?, ?)', 
-      [id, symbol.toUpperCase(), quantity, price]);
+    // Create new position (source defaults to 'manual')
+    const result = dbRun(
+      "INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, source, location) VALUES (?, ?, ?, ?, 'manual', ?)", 
+      [id, symbol.toUpperCase(), quantity, price, location || null]);
     
     res.json({
       id: result.lastInsertRowid,
@@ -116,7 +124,7 @@ router.post('/:id/positions', positionValidation, (req, res) => {
 // Update position
 router.put('/positions/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
-  const { symbol, quantity, avg_cost, entry_price } = req.body;
+  const { symbol, quantity, avg_cost, entry_price, location } = req.body;
   
   const position = dbGet(`
     SELECT p.* FROM positions p 
@@ -129,8 +137,8 @@ router.put('/positions/:id', idParamValidation, (req, res) => {
   }
   
   const price = entry_price || avg_cost || position.entry_price;
-  dbRun('UPDATE positions SET symbol = ?, quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
-    [symbol?.toUpperCase() || position.symbol, quantity ?? position.quantity, price, id]);
+  dbRun('UPDATE positions SET symbol = ?, quantity = ?, entry_price = ?, location = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
+    [symbol?.toUpperCase() || position.symbol, quantity ?? position.quantity, price, location !== undefined ? (location || null) : position.location, id]);
   
   res.json({ message: 'Position updated' });
 });

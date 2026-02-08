@@ -476,7 +476,7 @@ function startAutoSync() {
         }
       }
 
-      console.log(`Auto-sync: synced ${synced} wallets`);
+      logger.info(`Auto-sync: synced ${synced} wallets`);
     } catch (err) {
       logger.error('Auto-sync error:', err.message);
     }
@@ -711,24 +711,24 @@ function syncPositionsFromWallets(userId, chainBalances) {
     const symbol = CHAIN_TICKERS[chain];
     if (!symbol) continue;
 
+    // First try wallet-synced position, then fall back to any position (upgrade manual → wallet)
     const existing = dbGet(
-      'SELECT * FROM positions WHERE portfolio_id = ? AND symbol = ?',
+      "SELECT * FROM positions WHERE portfolio_id = ? AND symbol = ?",
       [portfolioId, symbol]
     );
 
     if (existing) {
-      // Always update quantity and mark as wallet-synced (even if it was a manual position)
       const notes = `wallet-synced | ${WALLET_SYNCED_NOTE}`;
+      const wasManual = existing.source === 'manual';
       dbRun(
-        'UPDATE positions SET quantity = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [totalBalance, notes, existing.id]
+        "UPDATE positions SET quantity = ?, notes = ?, source = 'wallet', location = COALESCE(?, location), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [totalBalance, notes, wasManual ? 'On-Chain Wallet' : null, existing.id]
       );
-      updatedPositions.push({ id: existing.id, symbol, quantity: totalBalance, action: 'updated' });
+      updatedPositions.push({ id: existing.id, symbol, quantity: totalBalance, action: wasManual ? 'upgraded' : 'updated' });
     } else if (totalBalance > 0) {
-      // Create new position
       const result = dbRun(
-        `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type, notes)
-         VALUES (?, ?, ?, 0, 'crypto', ?)`,
+        `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type, notes, source, location)
+         VALUES (?, ?, ?, 0, 'crypto', ?, 'wallet', 'On-Chain Wallet')`,
         [portfolioId, symbol, totalBalance, `wallet-synced | ${WALLET_SYNCED_NOTE}`]
       );
       updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
@@ -769,37 +769,47 @@ function syncTokenPositionsFromWallets(userId) {
     // Skip stablecoins as positions (they're just cash equivalents)
     if (['USDT', 'USDC', 'DAI'].includes(token.symbol.toUpperCase())) continue;
 
+    // Look for any existing position (wallet or manual — wallet upgrades manual)
     const existing = dbGet(
-      'SELECT * FROM positions WHERE portfolio_id = ? AND symbol = ?',
+      "SELECT * FROM positions WHERE portfolio_id = ? AND symbol = ?",
       [portfolioId, symbol]
     );
 
     if (existing) {
+      const wasManual = existing.source === 'manual';
       dbRun(
-        'UPDATE positions SET quantity = ?, notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [totalBalance, WALLET_TOKEN_NOTE, existing.id]
+        "UPDATE positions SET quantity = ?, notes = ?, source = 'wallet', location = COALESCE(?, location), updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [totalBalance, WALLET_TOKEN_NOTE, wasManual ? 'On-Chain Wallet' : null, existing.id]
       );
-      updatedPositions.push({ id: existing.id, symbol, quantity: totalBalance, action: 'updated' });
+      updatedPositions.push({ id: existing.id, symbol, quantity: totalBalance, action: wasManual ? 'upgraded' : 'updated' });
     } else {
-      const result = dbRun(
-        `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type, notes)
-         VALUES (?, ?, ?, 0, 'crypto', ?)`,
-        [portfolioId, symbol, totalBalance, WALLET_TOKEN_NOTE]
-      );
-      updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+      try {
+        const result = dbRun(
+          `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type, notes, source, location)
+           VALUES (?, ?, ?, 0, 'crypto', ?, 'wallet', 'On-Chain Wallet')`,
+          [portfolioId, symbol, totalBalance, WALLET_TOKEN_NOTE]
+        );
+        updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+      } catch (e) {
+        logger.info(`Failed to create wallet token position for ${symbol}: ${e.message}`);
+      }
     }
   }
 
-  // Clean up: remove token positions where all wallets no longer hold that token
+  // Clean up: remove wallet-synced token positions where all wallets no longer hold that token
   const existingTokenPositions = dbAll(
-    "SELECT * FROM positions WHERE portfolio_id = ? AND notes LIKE '%erc20-token%'",
+    "SELECT * FROM positions WHERE portfolio_id = ? AND source = 'wallet' AND notes LIKE '%erc20-token%'",
     [portfolioId]
   );
   for (const pos of existingTokenPositions) {
     const stillHeld = allTokens.find(t => `${t.symbol.toUpperCase()}-USD` === pos.symbol && t.total_balance > 0);
     if (!stillHeld) {
-      dbRun('DELETE FROM positions WHERE id = ?', [pos.id]);
-      updatedPositions.push({ id: pos.id, symbol: pos.symbol, action: 'deleted' });
+      // Convert back to manual instead of deleting — user keeps last known quantity
+      dbRun(
+        "UPDATE positions SET source = 'manual', notes = 'Formerly on-chain token — no longer held in wallet', updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [pos.id]
+      );
+      updatedPositions.push({ id: pos.id, symbol: pos.symbol, action: 'converted_to_manual' });
     }
   }
 
@@ -1009,8 +1019,8 @@ async function fetchAndStoreTransactions(wallet) {
           const executedAt = tx.block_time || new Date().toISOString();
 
           dbRun(
-            `INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, notes, executed_at)
-             VALUES (?, ?, 'crypto', ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, notes, executed_at, source, location)
+             VALUES (?, ?, 'crypto', ?, ?, ?, ?, ?, ?, 'wallet', 'On-Chain')`,
             [portfolioId, ticker, action, tx.amount, price, tx.fee || 0, noteTag, executedAt]
           );
           appTxCreated++;
@@ -1126,11 +1136,21 @@ router.delete('/:id', idParamValidation, (req, res) => {
 
     if (symbol && portfolioId) {
       if (remainingWallets.length === 0) {
-        // No more wallets for this chain — delete the wallet-synced position
+        // No more wallets for this chain — convert wallet position back to manual (don't delete)
         dbRun(
-          "DELETE FROM positions WHERE portfolio_id = ? AND symbol = ? AND notes LIKE '%wallet-synced%'",
+          "UPDATE positions SET source = 'manual', notes = 'Converted from wallet — wallet disconnected', updated_at = CURRENT_TIMESTAMP WHERE portfolio_id = ? AND symbol = ? AND source = 'wallet'",
           [portfolioId, symbol]
         );
+
+        // Check if the user has ANY wallets remaining at all
+        const anyWalletsLeft = dbGet('SELECT COUNT(*) as cnt FROM wallets WHERE user_id = ?', [deletedUserId]);
+        if (!anyWalletsLeft || anyWalletsLeft.cnt === 0) {
+          // No wallets at all — convert ALL wallet-synced positions (including tokens) back to manual
+          dbRun(
+            "UPDATE positions SET source = 'manual', notes = 'Converted from wallet — all wallets disconnected', updated_at = CURRENT_TIMESTAMP WHERE portfolio_id = ? AND source = 'wallet'",
+            [portfolioId]
+          );
+        }
       } else {
         // Recalculate position quantity from remaining wallet balances
         const totalBalance = remainingWallets.reduce((sum, w) => sum + (w.balance || 0), 0);
