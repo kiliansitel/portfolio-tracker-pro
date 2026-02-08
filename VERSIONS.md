@@ -1,5 +1,23 @@
 # Portfolio Tracker Pro — Version History
-## v0.20.3 (2026-02-08) ← CURRENT
+## v0.21.0 "Oracle" — AI Intelligence Layer (2026-02-08)
+- 🧠 Multi-provider AI chat (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw, Custom)
+- 🔗 OpenClaw auto-detection — zero config when running alongside OpenClaw gateway
+- 🔑 Anthropic setup-token support — Claude Pro/Max users need no API key
+- 🔒 Encrypted API key storage per user
+- 💬 Streaming SSE chat with markdown rendering
+- 📋 Conversation persistence — save, list, load, delete conversations
+- 📊 Context injection — toggle Portfolio, Watchlist, Market data into prompts
+- 🔍 Quick analysis — Portfolio Review, Watchlist Signals, Position Deep Dive
+- 💡 Dynamic follow-up suggestions after each AI response
+- 📱 Mobile-responsive chat layout with safe-area support
+- 🔧 Sort dropdown compact redesign
+- 🛡️ Stable JWT secrets — sessions survive restarts
+- 🗜️ AI responses capped at 2048 tokens, conversation history limited to 20 messages
+- ♻️ Service worker cache versioning for instant updates
+
+---
+
+## v0.20.3 (2026-02-08)
 Visual polish pass from full QA audit.
 
 - 🎨 4-char fallback logos (AAPL not AAP) with auto-scaling font

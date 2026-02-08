@@ -1,6 +1,6 @@
 {
   "name": "portfolio-tracker-server",
-  "version": "0.20.3",
+  "version": "0.21.0",
   "description": "Portfolio tracker backend with user auth and portfolio management",
   "main": "index.js",
   "scripts": {

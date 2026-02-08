@@ -4,7 +4,7 @@
   <img src="../logo.svg" alt="Portfolio Tracker Pro" width="96" height="96">
 </p>
 
-> **Version:** 0.20.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
+> **Version:** 0.21.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
 
 ---
 
@@ -82,7 +82,14 @@
   - [12.8 Import Data](#128-import-data)
   - [12.9 Backup & Restore](#129-backup--restore)
   - [12.10 App Updates](#1210-app-updates)
-- [13. API Reference](#13-api-reference)
+- [13. Oracle AI](#13-oracle-ai)
+  - [13.1 Setting Up AI Providers](#131-setting-up-ai-providers)
+  - [13.2 Using the Chat](#132-using-the-chat)
+  - [13.3 Context Chips](#133-context-chips)
+  - [13.4 Quick Actions](#134-quick-actions)
+  - [13.5 Conversation Management](#135-conversation-management)
+  - [13.6 OpenClaw Integration](#136-openclaw-integration)
+- [14. API Reference](#14-api-reference)
   - [13.1 Authentication](#131-authentication)
   - [13.2 Auth Endpoints](#132-auth-endpoints)
   - [13.3 Portfolio Endpoints](#133-portfolio-endpoints)
@@ -99,17 +106,17 @@
   - [13.14 Utility Endpoints](#1314-utility-endpoints)
   - [13.15 Rate Limiting](#1315-rate-limiting)
   - [13.16 Error Format](#1316-error-format)
-- [14. Self-Hosting](#14-self-hosting)
+- [15. Self-Hosting](#15-self-hosting)
   - [14.1 Installation](#141-installation)
   - [14.2 Environment Variables](#142-environment-variables)
   - [14.3 Database Management](#143-database-management)
   - [14.4 Backup and Restore](#144-backup-and-restore)
   - [14.5 Systemd Service](#145-systemd-service)
-- [15. Mobile Gestures & Power Tips](#15-mobile-gestures--power-tips)
+- [16. Mobile Gestures & Power Tips](#16-mobile-gestures--power-tips)
   - [15.1 Swipe Actions](#151-swipe-actions)
   - [15.2 Desktop Hover Actions](#152-desktop-hover-actions)
   - [15.3 Power User Tips](#153-power-user-tips)
-- [16. Troubleshooting](#16-troubleshooting)
+- [17. Troubleshooting](#17-troubleshooting)
   - [16.1 Common Issues](#161-common-issues)
   - [16.2 Password Reset](#162-password-reset)
   - [16.3 Database Recovery](#163-database-recovery)
@@ -809,11 +816,107 @@ When an update is available, the app shows how many commits are ahead and a butt
 
 ---
 
-## 13. API Reference
+## 13. Oracle AI
+
+Oracle AI connects your portfolio tracker to any LLM provider for intelligent analysis, chat, and insights — all without your data leaving your server.
+
+### 13.1 Setting Up AI Providers
+
+Navigate to **Settings → AI Providers** (or the ⚙️ icon on the AI page).
+
+**Supported Providers:**
+
+| Provider | API Key Required | Notes |
+|----------|-----------------|-------|
+| **OpenClaw** | No (auto-detected) | Zero config when OpenClaw gateway runs on same machine |
+| **Anthropic** | Yes (or setup-token) | Claude Pro/Max users can use setup-token instead of API key |
+| **OpenAI** | Yes | GPT-4o, GPT-4, GPT-3.5 |
+| **Google** | Yes | Gemini models |
+| **Ollama** | No | Local models, specify base URL (default: `http://localhost:11434`) |
+| **OpenRouter** | Yes | Access 100+ models through one key |
+| **Custom** | Yes | Any OpenAI-compatible API — set base URL and model name |
+
+**To add a provider:**
+1. Open the AI page (🧠 icon in navigation)
+2. Click the ⚙️ settings icon
+3. Select a provider from the dropdown
+4. Enter your API key (encrypted at rest)
+5. Click **Save**
+
+API keys are encrypted with AES-256 before storage — they never appear in logs or API responses.
+
+### 13.2 Using the Chat
+
+The AI chat is a full conversational interface:
+
+1. Navigate to the **AI** page (🧠 tab)
+2. Type your question in the input box
+3. Press **Send** or hit Enter
+4. Responses stream in real-time via SSE with full markdown rendering
+
+**Tips:**
+- Ask about your portfolio: *"How diversified am I?"*
+- Get market analysis: *"What's the outlook for tech stocks?"*
+- Request strategies: *"Suggest a hedging strategy for my NVDA position"*
+- Follow-up questions maintain conversation context
+
+Responses are capped at **2048 tokens** to keep them focused. Conversation history is limited to the **last 20 messages** sent to the AI for context.
+
+### 13.3 Context Chips
+
+Context chips inject live data from your portfolio into the AI prompt. Toggle them above the chat input:
+
+| Chip | What it sends |
+|------|---------------|
+| **📊 Portfolio** | All positions with current prices, P&L, cost basis |
+| **👀 Watchlist** | Active watchlist items with prices and change % |
+| **📈 Market** | Market indices and overall sentiment |
+
+**How it works:** When a chip is active (highlighted), the AI receives your real portfolio data alongside your message. This lets it give personalized analysis rather than generic advice.
+
+Toggle chips on/off at any time — they affect only the next message sent.
+
+### 13.4 Quick Actions
+
+Quick actions are one-tap analysis shortcuts that appear at the top of the AI page:
+
+- **📊 Portfolio Review** — Comprehensive analysis of your holdings, diversification, risk exposure, and suggestions
+- **👀 Watchlist Signals** — Scans your watchlist for entry/exit signals and momentum patterns
+- **🔍 Position Deep Dive** — In-depth analysis of a specific position (prompts you for the ticker)
+
+Quick actions automatically enable the relevant context chips and send a pre-crafted prompt.
+
+### 13.5 Conversation Management
+
+Conversations are persisted so you can revisit past analyses:
+
+- **Save** — Click the 💾 save icon to store the current conversation
+- **Load** — Click the 📂 folder icon to browse saved conversations
+- **Delete** — Swipe left on a conversation in the list, or use the delete icon
+- **New** — Click the ➕ icon to start a fresh conversation
+
+Each conversation stores the full message history, provider used, and timestamp.
+
+### 13.6 OpenClaw Integration
+
+If you're running Portfolio Tracker Pro alongside **OpenClaw**, AI is available with zero configuration:
+
+1. OpenClaw gateway must be running on the same machine
+2. The app auto-detects it at startup (checks common ports)
+3. The "OpenClaw" provider appears automatically in settings
+4. No API key needed — it uses the gateway's configured model
+
+This is the easiest way to get AI features: install OpenClaw, start the gateway, and the Oracle AI page just works.
+
+**Anthropic setup-token:** If you have a Claude Pro or Max subscription, you can use your Anthropic setup-token instead of an API key. Enter it in the API key field for the Anthropic provider.
+
+---
+
+## 14. API Reference
 
 All API endpoints are served under `/api/`. Authentication is required for most endpoints.
 
-### 13.1 Authentication
+### 14.1 Authentication
 
 Portfolio Tracker Pro uses **JWT (JSON Web Tokens)** for authentication:
 
@@ -830,7 +933,7 @@ Cookie: auth_token=<jwt_token>
 Authorization: Bearer <jwt_token>
 ```
 
-### 13.2 Auth Endpoints
+### 14.2 Auth Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -892,7 +995,7 @@ PUT /api/auth/settings
 → { "message": "Settings updated" }
 ```
 
-### 13.3 Portfolio Endpoints
+### 14.3 Portfolio Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -918,7 +1021,7 @@ POST /api/portfolios/1/positions
 
 **Duplicate handling:** If a position for `NVDA` already exists, the quantity is summed and entry price is recalculated as a weighted average.
 
-### 13.4 Watchlist Endpoints
+### 14.4 Watchlist Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -929,7 +1032,7 @@ POST /api/portfolios/1/positions
 | `PUT` | `/api/watchlists/items/:id` | ✅ | Update watchlist item |
 | `DELETE` | `/api/watchlists/items/:id` | ✅ | Delete watchlist item |
 
-### 13.5 Alert Endpoints
+### 14.5 Alert Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -951,7 +1054,7 @@ POST /api/alerts
 
 **Alert check** (`GET /api/alerts/check`) is an internal endpoint used by the cron job. It requires the `X-API-Key` header matching `ALERT_API_KEY` from your `.env` file.
 
-### 13.6 Market Data Endpoints
+### 14.6 Market Data Endpoints
 
 These are **public** (no auth required):
 
@@ -975,7 +1078,7 @@ These are **public** (no auth required):
 - `query`: Free-text search (e.g., `AI earnings`).
 - `limit`: Max results (default 10).
 
-### 13.7 Transaction Endpoints
+### 14.7 Transaction Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1000,7 +1103,7 @@ POST /api/portfolios/1/transactions
 }
 ```
 
-### 13.8 Wallet Endpoints
+### 14.8 Wallet Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1043,7 +1146,7 @@ POST /api/wallets
 }
 ```
 
-### 13.9 Push Notification Endpoints
+### 14.9 Push Notification Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1052,7 +1155,7 @@ POST /api/wallets
 | `POST` | `/api/push/unsubscribe` | ✅ | Unsubscribe |
 | `POST` | `/api/push/test` | ✅ | Send test notification |
 
-### 13.10 History Endpoints
+### 14.10 History Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1076,7 +1179,7 @@ POST /api/wallets
 }
 ```
 
-### 13.11 Data & Performance Endpoints
+### 14.11 Data & Performance Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1099,7 +1202,7 @@ POST /api/wallets
 }
 ```
 
-### 13.12 Update Endpoints
+### 14.12 Update Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1108,7 +1211,7 @@ POST /api/wallets
 | `POST` | `/api/updates/apply` | ✅ | Apply update (git pull + npm ci + restart) |
 | `POST` | `/api/updates/settings` | ✅ | Update auto-update settings |
 
-### 13.13 Backup Endpoints
+### 14.13 Backup Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1130,7 +1233,35 @@ Body: raw binary database file
 → { "message": "Database restored successfully", "tables": ["users", "portfolios", ...] }
 ```
 
-### 13.14 Utility Endpoints
+### 14.14 AI Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/ai/providers` | ✅ | List configured AI providers |
+| `POST` | `/api/ai/providers` | ✅ | Save provider config (API key encrypted) |
+| `DELETE` | `/api/ai/providers/:provider` | ✅ | Remove provider API key |
+| `POST` | `/api/ai/chat` | ✅ | Send chat message (SSE streaming response) |
+| `POST` | `/api/ai/analyze/portfolio` | ✅ | Quick portfolio review |
+| `POST` | `/api/ai/analyze/watchlist` | ✅ | Quick watchlist signals |
+| `POST` | `/api/ai/analyze/position` | ✅ | Quick position deep dive |
+| `GET` | `/api/ai/conversations` | ✅ | List saved conversations |
+| `POST` | `/api/ai/conversations` | ✅ | Save conversation |
+| `GET` | `/api/ai/conversations/:id` | ✅ | Load conversation |
+| `DELETE` | `/api/ai/conversations/:id` | ✅ | Delete conversation |
+
+**Chat request body:**
+```json
+{
+  "message": "How diversified is my portfolio?",
+  "provider": "openclaw",
+  "context": ["portfolio", "watchlist"],
+  "conversationHistory": []
+}
+```
+
+The response is a Server-Sent Events (SSE) stream. Each event contains a `data` field with a chunk of the AI response.
+
+### 14.15 Utility Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1146,7 +1277,7 @@ Body: raw binary database file
 }
 ```
 
-### 13.15 Rate Limiting
+### 14.16 Rate Limiting
 
 The API enforces rate limits to prevent abuse:
 
@@ -1159,7 +1290,7 @@ The API enforces rate limits to prevent abuse:
 
 Exceeding the limit returns `429 Too Many Requests`.
 
-### 13.16 Error Format
+### 14.17 Error Format
 
 All errors follow a consistent JSON format:
 
@@ -1189,9 +1320,9 @@ HTTP status codes used:
 
 ---
 
-## 14. Self-Hosting
+## 15. Self-Hosting
 
-### 14.1 Installation
+### 17.1 Installation
 
 For detailed installation instructions (Docker, Docker Compose, Node.js, reverse proxy), see the **[Installation Guide](INSTALL.md)**.
 
@@ -1207,7 +1338,7 @@ cd portfolio-tracker-pro/server
 npm install && npm start
 ```
 
-### 14.2 Environment Variables
+### 17.2 Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -1228,7 +1359,7 @@ npm install && npm start
 npx web-push generate-vapid-keys
 ```
 
-### 14.3 Database Management
+### 17.3 Database Management
 
 Portfolio Tracker Pro uses **SQLite** (via sql.js, an in-memory SQLite compiled to WebAssembly):
 
@@ -1239,7 +1370,7 @@ Portfolio Tracker Pro uses **SQLite** (via sql.js, an in-memory SQLite compiled 
 
 > **⚠️ Important:** The database is loaded into memory on startup. If you need to edit the database file directly, **stop the service first**, make your changes, then restart. Otherwise the in-memory copy will overwrite your changes on the next save.
 
-### 14.4 Backup and Restore
+### 17.4 Backup and Restore
 
 **Backup:**
 ```bash
@@ -1262,7 +1393,7 @@ cp backup-20260207.db /path/to/server/portfolio.db
 sudo systemctl start portfolio-tracker.service
 ```
 
-### 14.5 Systemd Service
+### 17.5 Systemd Service
 
 For running on a Linux server with automatic restart:
 
@@ -1301,9 +1432,9 @@ journalctl -u portfolio-tracker.service -f
 
 ---
 
-## 15. Mobile Gestures & Power Tips
+## 16. Mobile Gestures & Power Tips
 
-### 15.1 Swipe Actions
+### 17.1 Swipe Actions
 
 On **mobile** (touch devices), swipe left on list items to reveal action buttons:
 
@@ -1317,11 +1448,11 @@ On **mobile** (touch devices), swipe left on list items to reveal action buttons
 
 Swipe ~80px to the left to reveal buttons, then release. Tap the revealed button to perform the action.
 
-### 15.2 Desktop Hover Actions
+### 17.2 Desktop Hover Actions
 
 On **desktop**, hover over any list item to reveal the same action buttons on the right side. No swiping needed — just hover and click.
 
-### 15.3 Power User Tips
+### 17.3 Power User Tips
 
 - **Quick chart access:** Click any ticker symbol (in watchlist, positions, or markets grid) to instantly open a full chart.
 - **Autocomplete everywhere:** The ticker search in add-position, add-watchlist, and add-alert modals all support autocomplete with 90+ pre-loaded symbols.
@@ -1333,9 +1464,9 @@ On **desktop**, hover over any list item to reveal the same action buttons on th
 
 ---
 
-## 16. Troubleshooting
+## 17. Troubleshooting
 
-### 16.1 Common Issues
+### 17.1 Common Issues
 
 **Port already in use:**
 ```bash
@@ -1361,7 +1492,7 @@ PORT=3000 npm start    # Use a different port
 **"Sessions will NOT survive restarts" warning:**
 - Set `JWT_SECRET` in your `.env` file. Without it, a random secret is generated on each start, invalidating all existing sessions.
 
-### 16.2 Password Reset
+### 17.2 Password Reset
 
 **If you know your current password:** Use the **Change Password** feature in Settings (see [§12.2](#122-change-password)). Go to ⚙️ Settings → 🔒 Change Password, enter your current and new password, and click the button.
 
@@ -1384,7 +1515,7 @@ argon2.hash('NewPassword123', { type: argon2.argon2id, memoryCost: 19456, timeCo
 sudo systemctl start portfolio-tracker.service
 ```
 
-### 16.3 Database Recovery
+### 17.3 Database Recovery
 
 If the database becomes corrupted:
 
@@ -1397,7 +1528,7 @@ If the database becomes corrupted:
    ```
 4. Re-register and re-add your data.
 
-### 16.4 Service Won't Start
+### 17.4 Service Won't Start
 
 Check the logs:
 ```bash

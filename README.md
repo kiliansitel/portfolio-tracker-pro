@@ -8,12 +8,13 @@
   A TradingView-inspired portfolio tracker with real-time prices, interactive charts, crypto wallet tracking, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.20.3-blue)
+![Version](https://img.shields.io/badge/version-0.21.0-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
 ## Features
 
+- 🧠 **Oracle AI** — Multi-provider AI chat (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw), portfolio review, watchlist signals, position deep dive, streaming SSE with markdown, conversation persistence
 - 📊 **Charts & Analytics** — Interactive area/candlestick charts, MA overlays, allocation donut, performance history
 - 💼 **Portfolio Tracking** — Positions, options, cash, transactions with P&L and source/location tracking
 - 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT
@@ -36,6 +37,7 @@
 - **Auth:** JWT + Argon2id (OWASP recommended)
 - **Notifications:** Web Push (VAPID), Telegram Bot API
 - **CI/CD:** GitHub Actions, Docker (multi-arch amd64/arm64)
+- **AI:** Multi-Provider AI (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw)
 - **Security:** Rate limiting, input validation, CSP, audit logging
 
 ## Quick Start
@@ -106,6 +108,17 @@ A pre-loaded demo portfolio is included for exploration:
 | GET | `/api/backup` | Download full database backup |
 | POST | `/api/backup/restore` | Restore from backup file |
 | GET | `/api/info` | App version & environment |
+| GET | `/api/ai/providers` | List available AI providers |
+| POST | `/api/ai/providers` | Save AI provider config |
+| DELETE | `/api/ai/providers/:provider` | Remove provider API key |
+| POST | `/api/ai/chat` | Send chat message (SSE stream) |
+| POST | `/api/ai/analyze/portfolio` | Quick portfolio review |
+| POST | `/api/ai/analyze/watchlist` | Quick watchlist signals |
+| POST | `/api/ai/analyze/position` | Quick position deep dive |
+| GET | `/api/ai/conversations` | List saved conversations |
+| POST | `/api/ai/conversations` | Save conversation |
+| GET | `/api/ai/conversations/:id` | Load conversation |
+| DELETE | `/api/ai/conversations/:id` | Delete conversation |
 
 ## Screenshots
 
@@ -152,6 +165,7 @@ A pre-loaded demo portfolio is included for exploration:
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.21.0 "Oracle"** — AI Intelligence Layer: multi-provider AI chat, streaming SSE, context injection, conversation persistence, OpenClaw auto-detection
 - **v0.20.3** — Visual polish: 4-char logos, blue ADD buttons, centered empty states, 20-color donut
 - **v0.20.2** — Position/watchlist sorting, empty states, skeletons, smart logo caching, session timeout
 - **v0.20.1** — Password change, email edit, backup/restore, PWA, position search, keyboard shortcuts, smart broker import
@@ -218,18 +232,20 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Loading skeletons, empty states, session timeout warning
 - [x] Smart logo caching (zero 404s)
 
-### 🚧 In Progress
-
-### 🧠 v0.21.0 "Oracle" — AI Intelligence Layer
-The killer feature: connect any LLM to analyze your portfolio.
-- [ ] Multi-provider support (OpenAI, Anthropic, Google, Ollama, OpenClaw)
-- [ ] API key management with encryption
-- [ ] Portfolio review & rebalancing suggestions
-- [ ] Watchlist scanner with entry/exit signals
+### 🧠 v0.21.0 "Oracle" — AI Intelligence Layer ✅
+- [x] Multi-provider support (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw, Custom)
+- [x] API key management with encryption
+- [x] Portfolio review & rebalancing suggestions
+- [x] Watchlist scanner with entry/exit signals
+- [x] Chat interface with streaming SSE and markdown rendering
+- [x] Context injection (Portfolio, Watchlist, Market data)
+- [x] Conversation persistence (save, load, delete)
+- [x] Dynamic follow-up suggestions
+- [x] OpenClaw auto-detection — zero config
+- [x] Anthropic setup-token support
 - [ ] Strategy advisor (options plays, DCA plans, hedging)
 - [ ] Risk & correlation analysis
 - [ ] AI-powered news digest for your holdings
-- [ ] Chat interface for follow-up questions
 - [ ] Scheduled auto-reports (daily/weekly AI briefings)
 
 ### 🔗 Blockchain Integration
