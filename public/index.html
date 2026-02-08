@@ -2219,6 +2219,14 @@
             if (token) headers['Authorization'] = `Bearer ${token}`;
             
             const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
+            
+            // Feature 10: Handle 401 session expired
+            if (res.status === 401) {
+                showToast('Session expired. Please login again.', 'error');
+                setTimeout(() => { logout(); }, 2000);
+                throw new Error('Session expired');
+            }
+            
             const data = await res.json();
             
             if (!res.ok) throw new Error(data.error || 'Request failed');
@@ -2296,11 +2304,17 @@
             return `https://assets.parqet.com/logos/symbol/${clean}`;
         }
         
+        const _failedLogos = new Set([...JSON.parse(localStorage.getItem('failedLogos') || '[]'), 'TEST']);
+        
         function logoHtml(symbol, size = 24) {
+            // If we know this logo fails, skip the network request
+            if (_failedLogos.has(symbol)) {
+                const fb = getFallbackIcon(symbol);
+                return `<img src="${fb}" alt="" class="ticker-logo" style="width:${size}px;height:${size}px;">`;
+            }
             const logo = getTickerLogo(symbol);
-            // SVG data URIs and fallbacks never fail, external URLs might
             const isSvg = logo.startsWith('data:');
-            const errorHandler = isSvg ? '' : `onerror="this.src='${getFallbackIcon(symbol)}'"`;
+            const errorHandler = isSvg ? '' : `onerror="this.onerror=null;_failedLogos.add('${symbol}');try{localStorage.setItem('failedLogos',JSON.stringify([..._failedLogos]))}catch(e){};this.src='${getFallbackIcon(symbol)}'"`;
             return `<img src="${logo}" alt="" class="ticker-logo" style="width:${size}px;height:${size}px;" ${errorHandler}>`;
         }
 
@@ -2366,7 +2380,14 @@
         let activeSource = 0;
         let sourceStats = { success: 0, fail: 0 };
         
+        // DeFi/wrapper tokens that don't have Yahoo price feeds
+        const _skipPriceSymbols = new Set(['AWETH-USD', 'RLBB-USD', 'CETH-USD', 'RETH-USD', 'STETH-USD', 'CBETH-USD', 'AAVE-WETH', 'TEST']);
+        
         async function fetchQuote(symbol) {
+            // Skip symbols we know don't have price feeds
+            if (_skipPriceSymbols.has(symbol)) {
+                return priceCache[symbol] || { symbol, price: 0, change: 0, changePercent: 0, _fetchedAt: Date.now() };
+            }
             // Return cached if fresh
             const cached = priceCache[symbol];
             if (cached && cached._fetchedAt && Date.now() - cached._fetchedAt < FRESH_AGE) {
@@ -2517,6 +2538,27 @@
             };
         });
 
+        // Feature 10: Session timeout warning
+        let sessionTimeoutId = null;
+        function setupSessionTimeout(jwt) {
+            try {
+                const payload = JSON.parse(atob(jwt.split('.')[1]));
+                if (payload.exp) {
+                    const expiresMs = payload.exp * 1000;
+                    const warnMs = expiresMs - Date.now() - (60 * 60 * 1000); // 1 hour before
+                    if (sessionTimeoutId) clearTimeout(sessionTimeoutId);
+                    if (warnMs > 0) {
+                        sessionTimeoutId = setTimeout(() => {
+                            showToast('⏰ Your session expires soon. Please re-login to continue.', 'info');
+                        }, warnMs);
+                    } else if (expiresMs > Date.now()) {
+                        // Less than 1 hour left, warn immediately
+                        showToast('⏰ Your session expires soon. Please re-login to continue.', 'info');
+                    }
+                }
+            } catch (e) { console.warn('Failed to decode JWT for timeout:', e); }
+        }
+
         document.getElementById('loginForm').onsubmit = async (e) => {
             e.preventDefault();
             const form = e.target;
@@ -2529,6 +2571,7 @@
                 user = data.user;
                 localStorage.setItem('token', token);
                 localStorage.setItem('user', JSON.stringify(user));
+                setupSessionTimeout(token);
                 hideAuth();
                 initApp();
             } catch (err) {
@@ -2548,6 +2591,7 @@
                 user = data.user;
                 localStorage.setItem('token', token);
                 localStorage.setItem('user', JSON.stringify(user));
+                setupSessionTimeout(token);
                 hideAuth();
                 initApp();
             } catch (err) {
@@ -6494,6 +6538,10 @@
             updateSummary();
             updateCacheStatus();
             
+            // Feature 3: Remember last page
+            const lastPage = localStorage.getItem('lastPage');
+            if (lastPage) showPage(lastPage);
+            
             // On-chain holdings now flow through positions (wallet sync)
             
             // Load chart (don't await - let it load in background)
@@ -6544,6 +6592,7 @@
         // Start
         if (token) {
             hideAuth();
+            setupSessionTimeout(token);
             initApp();
         } else {
             showAuth();
