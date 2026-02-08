@@ -81,13 +81,13 @@ const PROVIDER_DEFS = {
   },
   openclaw: {
     name: 'OpenClaw',
-    baseUrl: `http://127.0.0.1:${process.env.OPENCLAW_GATEWAY_PORT || 18789}/v1`,
+    baseUrl: 'https://api.anthropic.com',
     models: [
-      { id: 'anthropic/claude-opus-4-6', name: 'Claude Opus 4' },
-      { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' }
+      { id: 'claude-opus-4-6', name: 'Claude Opus 4' },
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' }
     ],
     requiresKey: true,
-    description: 'Route through your local OpenClaw gateway — uses your existing AI subscription'
+    description: 'Uses your OpenClaw Anthropic subscription — auto-detected, zero config'
   },
   custom: {
     name: 'Custom (OpenAI-compatible)',
@@ -125,11 +125,11 @@ class AIProvider {
     switch (this.providerName) {
       case 'openai':
       case 'openrouter':
-      case 'openclaw':
       case 'custom':
         yield* this._chatOpenAICompatible(messages, model, options);
         break;
       case 'anthropic':
+      case 'openclaw':
         yield* this._chatAnthropic(messages, model, options);
         break;
       case 'google':
@@ -160,7 +160,7 @@ class AIProvider {
         case 'openrouter':
           return await this._testOpenRouter();
         case 'openclaw':
-          return await this._testOpenAI();
+          return await this._testAnthropic();
         case 'custom':
           return await this._testCustom();
         default:

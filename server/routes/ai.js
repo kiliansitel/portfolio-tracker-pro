@@ -60,10 +60,21 @@ function getProviderForUser(userId, providerName) {
     }
   }
 
-  // Auto-detect OpenClaw gateway token from environment
+  // Auto-detect OpenClaw: read Anthropic API key from OpenClaw's auth profile
   if (providerName === 'openclaw' && !config.apiKey && process.env.OPENCLAW_GATEWAY_TOKEN) {
-    config.apiKey = process.env.OPENCLAW_GATEWAY_TOKEN;
-    config.baseUrl = `http://127.0.0.1:${process.env.OPENCLAW_GATEWAY_PORT || 18789}/v1`;
+    try {
+      const fs = require('fs');
+      const homeDir = require('os').homedir();
+      const authPath = require('path').join(homeDir, '.openclaw', 'agents', 'main', 'agent', 'auth-profiles.json');
+      const authData = JSON.parse(fs.readFileSync(authPath, 'utf8'));
+      const anthropicProfile = authData?.profiles?.['anthropic:default'];
+      if (anthropicProfile?.token) {
+        config.apiKey = anthropicProfile.token;
+        config.baseUrl = 'https://api.anthropic.com';
+      }
+    } catch (err) {
+      logger.error('Failed to read OpenClaw Anthropic token:', err.message);
+    }
   }
 
   return new AIProvider(providerName, config);
@@ -72,16 +83,24 @@ function getProviderForUser(userId, providerName) {
 // ─── System prompt builder ─────────────────────────────────────────
 
 async function buildSystemPrompt(userId, context) {
-  let systemContent = `You are an AI financial assistant integrated into Portfolio Tracker Pro. ` +
-    `You help users analyze their investments, understand market trends, and make informed decisions. ` +
-    `Be concise, data-driven, and specific. Always include relevant numbers when available. ` +
-    `Keep responses under 500 words — use bullet points and tables for clarity. ` +
-    `Only go longer if the user explicitly asks for a detailed/full analysis. ` +
-    `Disclaimer: You provide analysis, not financial advice.\n\n` +
-    `IMPORTANT: At the very end of every response, suggest 3 natural follow-up questions the user might ask next. ` +
-    `Format them on the last line as: <<<Q1|||Q2|||Q3>>> ` +
-    `Keep each question short (under 8 words). Make them contextual to what you just discussed. ` +
-    `Example: <<<Should I rebalance?|||What's my risk exposure?|||Compare to S&P 500>>>\n\n`;
+  let systemContent = `You are Oracle, a sharp financial assistant built into Portfolio Tracker Pro. ` +
+    `You help users analyze investments, understand markets, and make informed decisions.\n\n` +
+    `## Style Guidelines\n` +
+    `- Be concise and data-driven. Lead with the most important insight.\n` +
+    `- Use tables for comparisons and bullet points for lists.\n` +
+    `- Default to ~300-500 words. Go longer ONLY for explicit deep-dive or analysis requests.\n` +
+    `- For simple questions (greetings, yes/no, definitions), keep it under 50 words.\n` +
+    `- Use bold for key numbers and takeaways.\n` +
+    `- Be direct and opinionated — don't hedge everything. If the data says something, say it.\n` +
+    `- Reference the user's actual portfolio data when available — generic advice is useless.\n` +
+    `- End with a clear takeaway or action item when relevant.\n` +
+    `- Disclaimer: You provide analysis, not financial advice.\n\n` +
+    `## Follow-up Suggestions\n` +
+    `At the very end of every response, suggest 3 follow-up questions on the LAST line.\n` +
+    `Format: <<<Q1|||Q2|||Q3>>>\n` +
+    `Rules: under 8 words each, specific to what you just discussed, actionable.\n` +
+    `Example: <<<Should I trim my BTC?|||Compare to S&P 500|||Set alerts for NVDA>>>\n` +
+    `For simple responses (greetings, etc.), suggest getting-started questions instead.\n\n`;
 
   if (!context || context === 'general') {
     return systemContent;
@@ -438,12 +457,18 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
 
   const selectedModel = model || instance.getDefaultModel();
 
-  const systemContent = `You are an expert financial analyst integrated into Portfolio Tracker Pro. ` +
-    `Provide thorough, data-driven analysis with specific numbers and actionable insights. ` +
-    `Use markdown formatting for readability. Disclaimer: This is analysis, not financial advice.\n\n` +
-    `IMPORTANT: At the very end of every response, suggest 3 natural follow-up questions the user might ask next. ` +
-    `Format them on the last line as: <<<Q1|||Q2|||Q3>>> ` +
-    `Keep each question short (under 8 words). Make them contextual to what you just discussed.\n\n` +
+  const systemContent = `You are Oracle, an expert financial analyst built into Portfolio Tracker Pro.\n\n` +
+    `## Analysis Guidelines\n` +
+    `- Provide data-driven analysis with specific numbers and actionable conclusions.\n` +
+    `- Use markdown tables for data, bold for key takeaways.\n` +
+    `- Be opinionated — give a clear verdict (buy/hold/sell/avoid) with reasoning.\n` +
+    `- Reference the user's actual position data and cost basis when available.\n` +
+    `- For portfolio reviews: highlight concentration risk, top movers, and ONE actionable suggestion.\n` +
+    `- For position deep dives: include technical levels, fundamental value, and a clear recommendation.\n` +
+    `- Keep it focused — aim for 800-1200 words max. Quality over quantity.\n` +
+    `- Disclaimer: Analysis, not financial advice.\n\n` +
+    `## Follow-up Suggestions\n` +
+    `Last line of every response: <<<Q1|||Q2|||Q3>>> (under 8 words each, specific and actionable)\n\n` +
     systemExtra;
 
   const apiMessages = [
@@ -545,23 +570,31 @@ router.post('/analyze/position/:symbol', async (req, res) => {
     WHERE pf.user_id = ? AND p.symbol = ?
   `, [req.user.id, upperSymbol]);
 
+  // Fetch live Yahoo price for this symbol
+  let livePrice = null;
+  try {
+    const { fetchYahooPrice } = require('../utils/yahoo');
+    const priceData = await fetchYahooPrice(upperSymbol);
+    if (priceData?.price) livePrice = priceData.price;
+  } catch (e) { /* fallback to DB price */ }
+
   let positionContext = '';
   if (positions.length) {
     positionContext = `## Position Data for ${upperSymbol}\n\n`;
     for (const pos of positions) {
-      const currentPrice = pos.current_price || pos.entry_price;
+      const currentPrice = livePrice || pos.current_price || pos.entry_price;
       const value = pos.quantity * currentPrice;
       const cost = pos.quantity * pos.entry_price;
       const pnl = value - cost;
       positionContext += `- **Portfolio:** ${pos.portfolio_name}\n`;
       positionContext += `  - Quantity: ${pos.quantity}\n`;
       positionContext += `  - Entry Price: $${pos.entry_price.toFixed(2)}\n`;
-      positionContext += `  - Current Price: $${currentPrice.toFixed(2)}\n`;
+      positionContext += `  - Current Price: $${currentPrice.toFixed(2)}${livePrice ? ' (live)' : ' (last known)'}\n`;
       positionContext += `  - P&L: $${pnl.toFixed(2)} (${cost > 0 ? ((pnl / cost) * 100).toFixed(1) : '0.0'}%)\n`;
       positionContext += `  - Value: $${value.toFixed(2)}\n\n`;
     }
   } else {
-    positionContext = `No position found for ${upperSymbol} in user's portfolios. Analyze based on general knowledge.\n`;
+    positionContext = `No position found for ${upperSymbol} in user's portfolios. Analyze based on general knowledge and current market data.\n`;
   }
 
   const marketData = buildMarketContext();
