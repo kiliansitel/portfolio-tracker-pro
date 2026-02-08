@@ -315,9 +315,9 @@ describe('Context builders', () => {
     expect(ctx.length).toBeGreaterThan(0);
   });
 
-  test('buildWatchlistContext returns markdown', () => {
+  test('buildWatchlistContext returns markdown', async () => {
     const user = dbGet("SELECT id FROM users WHERE username = 'aitest'");
-    const ctx = buildWatchlistContext(user.id, dbAll);
+    const ctx = await buildWatchlistContext(user.id, dbAll);
     expect(typeof ctx).toBe('string');
     expect(ctx.length).toBeGreaterThan(0);
   });

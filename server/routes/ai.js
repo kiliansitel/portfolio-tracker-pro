@@ -129,7 +129,7 @@ async function buildSystemPrompt(userId, context) {
       systemContent += buildMarketContext() + '\n';
     }
     if (contexts.includes('analysis-watchlist')) {
-      systemContent += buildWatchlistContext(userId, dbAll) + '\n';
+      systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
       systemContent += buildMarketContext() + '\n';
     }
     if (contexts.includes('analysis-news')) {
@@ -138,7 +138,7 @@ async function buildSystemPrompt(userId, context) {
     }
     if (contexts.includes('analysis-rebalance')) {
       systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
-      systemContent += buildWatchlistContext(userId, dbAll) + '\n';
+      systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
       systemContent += buildMarketContext() + '\n';
     }
     const posContext = contexts.find(c => c.startsWith('analysis-position:'));
@@ -180,7 +180,7 @@ async function buildSystemPrompt(userId, context) {
     systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
   }
   if (contexts.includes('watchlist')) {
-    systemContent += buildWatchlistContext(userId, dbAll) + '\n';
+    systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
   }
   if (contexts.includes('market')) {
     systemContent += buildMarketContext() + '\n';
@@ -631,16 +631,28 @@ Be specific with numbers from my portfolio data.`;
 
 // POST /analyze/watchlist — watchlist entry/exit signals
 router.post('/analyze/watchlist', async (req, res) => {
-  const watchlistData = buildWatchlistContext(req.user.id, dbAll);
+  const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
   const marketData = buildMarketContext();
 
-  const userPrompt = `Analyze my watchlist items and provide for each:
-1. **Current Assessment** — brief overview of each stock's situation
-2. **Entry Signals** — what conditions might make it a good buy
-3. **Risk Factors** — key concerns or red flags
-4. **Priority Ranking** — rank the watchlist items by attractiveness
+  const userPrompt = `Analyze my watchlist and provide actionable entry/exit signals:
 
-Consider current market conditions and be specific.`;
+1. **Signal Summary Table** — for each watchlist item, show:
+   | Ticker | Signal | Price Target | Confidence | Timeframe |
+   (Signal = Strong Buy / Buy / Hold / Sell / Strong Sell)
+
+2. **Top 3 Entry Opportunities** — the best buys right now:
+   - Entry price zone (specific range)
+   - Stop-loss level
+   - Target price (with upside %)
+   - Catalyst or reason to act NOW
+
+3. **Avoid / Exit Warnings** — any watchlist items showing red flags:
+   - What's wrong (technical breakdown, fundamental deterioration)
+   - If already held, suggested exit strategy
+
+4. **Key Levels to Watch** — for each ticker, the ONE price level that matters most right now (support to buy, resistance to sell)
+
+Be specific with price levels and percentages. No vague "might go up" — give concrete numbers.`;
 
   await runAnalysis(req, res, watchlistData + '\n' + marketData, userPrompt, 'analysis-watchlist');
 });
@@ -756,7 +768,7 @@ Be concise and focus on what's actionable.`;
 // POST /analyze/rebalance — rebalancing suggestions with concrete targets
 router.post('/analyze/rebalance', async (req, res) => {
   const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
-  const watchlistData = buildWatchlistContext(req.user.id, dbAll);
+  const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
   const marketData = buildMarketContext();
 
   const userPrompt = `Analyze my current portfolio allocation and provide a concrete rebalancing plan:
