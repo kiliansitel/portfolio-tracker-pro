@@ -21,4 +21,7 @@ module.exports = {
   },
   testTimeout: 30000,
   verbose: true,
+  // Force Jest to exit after tests complete (avoids hanging on setInterval/setTimeout)
+  forceExit: true,
+  detectOpenHandles: false,
 };
