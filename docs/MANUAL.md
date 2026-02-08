@@ -73,12 +73,15 @@
   - [11.3 Daily OHLCV Data](#113-daily-ohlcv-data)
 - [12. Settings](#12-settings)
   - [12.1 Theme](#121-theme)
-  - [12.2 Currency](#122-currency)
-  - [12.3 Telegram Integration](#123-telegram-integration)
-  - [12.4 Push Notifications](#124-push-notifications)
-  - [12.5 Export Data](#125-export-data)
-  - [12.6 Import Data](#126-import-data)
-  - [12.7 App Updates](#127-app-updates)
+  - [12.2 Change Password](#122-change-password)
+  - [12.3 Edit Email](#123-edit-email)
+  - [12.4 Currency](#124-currency)
+  - [12.5 Telegram Integration](#125-telegram-integration)
+  - [12.6 Push Notifications](#126-push-notifications)
+  - [12.7 Export Data](#127-export-data)
+  - [12.8 Import Data](#128-import-data)
+  - [12.9 Backup & Restore](#129-backup--restore)
+  - [12.10 App Updates](#1210-app-updates)
 - [13. API Reference](#13-api-reference)
   - [13.1 Authentication](#131-authentication)
   - [13.2 Auth Endpoints](#132-auth-endpoints)
@@ -92,9 +95,10 @@
   - [13.10 History Endpoints](#1310-history-endpoints)
   - [13.11 Data & Performance Endpoints](#1311-data--performance-endpoints)
   - [13.12 Update Endpoints](#1312-update-endpoints)
-  - [13.13 Utility Endpoints](#1313-utility-endpoints)
-  - [13.14 Rate Limiting](#1314-rate-limiting)
-  - [13.15 Error Format](#1315-error-format)
+  - [13.13 Backup Endpoints](#1313-backup-endpoints)
+  - [13.14 Utility Endpoints](#1314-utility-endpoints)
+  - [13.15 Rate Limiting](#1315-rate-limiting)
+  - [13.16 Error Format](#1316-error-format)
 - [14. Self-Hosting](#14-self-hosting)
   - [14.1 Installation](#141-installation)
   - [14.2 Environment Variables](#142-environment-variables)
@@ -702,7 +706,28 @@ Toggle between **Dark mode** 🌙 and **Light mode** ☀️. The theme affects:
 - Chart colors (background, grid, line colors).
 - Persists in localStorage across sessions.
 
-### 12.2 Currency
+### 12.2 Change Password
+
+Change your password from the Settings page:
+
+1. Enter your **Current Password** for verification.
+2. Enter a **New Password** (minimum 8 characters, must include uppercase, lowercase, and a number).
+3. Enter the new password again in **Confirm Password**.
+4. Click **🔒 Change Password**.
+
+The app verifies your current password before accepting the change. The new password is hashed with **Argon2id** (OWASP recommended) before storage.
+
+### 12.3 Edit Email
+
+Update your email address:
+
+1. Click the **✏️ Edit** button next to your email in the Account section.
+2. Enter your new email address.
+3. Click **Save** (or **Cancel** to discard).
+
+The app validates the email format and checks for duplicates before saving.
+
+### 12.4 Currency
 
 Choose your display currency from the dropdown:
 
@@ -715,11 +740,11 @@ Choose your display currency from the dropdown:
 
 All prices, values, and P&L figures are converted using **live exchange rates** fetched from Yahoo Finance. The currency preference is saved both locally and on the server so it persists across devices.
 
-### 12.3 Telegram Integration
+### 12.5 Telegram Integration
 
 Set your **Telegram Chat ID** to receive alert notifications via Telegram. The chat ID links your account to a Telegram bot that sends messages when price alerts trigger.
 
-### 12.4 Push Notifications
+### 12.6 Push Notifications
 
 Browser push notifications require:
 - **HTTPS** connection (won't work on plain HTTP).
@@ -730,7 +755,7 @@ Controls:
 - **Test** — sends a test notification to verify the setup.
 - **Disable** — unsubscribes.
 
-### 12.5 Export Data
+### 12.7 Export Data
 
 | Export | Format | Contents |
 |--------|--------|----------|
@@ -738,7 +763,7 @@ Controls:
 | **Watchlist CSV** | `.csv` | Symbol, name, category, alert levels |
 | **Portfolio PDF** | Print dialog | Full portfolio summary (opens browser print) |
 
-### 12.6 Import Data
+### 12.8 Import Data
 
 | Import | Format | Description |
 |--------|--------|-------------|
@@ -747,7 +772,24 @@ Controls:
 
 Click the import button and select a `.csv` file. The app parses and adds the items to your portfolio or watchlist.
 
-### 12.7 App Updates
+### 12.9 Backup & Restore
+
+Full database backup and restore for disaster recovery or migration:
+
+**Download Full Backup:**
+1. Click **💾 Download Full Backup** in the Backup & Restore section.
+2. A complete database file is downloaded as `portfolio-backup-YYYY-MM-DD.db`.
+3. This includes ALL data: users, portfolios, positions, transactions, wallets, alerts, snapshots, OHLCV history.
+
+**Restore from Backup:**
+1. Click **📥 Restore from Backup** and select a `.db` backup file.
+2. A confirmation dialog warns: *"⚠️ This will replace ALL current data with the backup. This cannot be undone."*
+3. Click OK to proceed. The app validates the backup file structure before restoring.
+4. The page reloads automatically after a successful restore.
+
+> **⚠️ Warning:** Restore replaces the entire database. Make sure to download a backup of your current data first!
+
+### 12.10 App Updates
 
 The Settings page includes an **App Updates** section:
 
@@ -792,6 +834,8 @@ Authorization: Bearer <jwt_token>
 | `POST` | `/api/auth/login` | ❌ | Log in and get JWT |
 | `GET` | `/api/auth/me` | ✅ | Get current user info |
 | `PUT` | `/api/auth/settings` | ✅ | Update user settings / currency |
+| `PUT` | `/api/auth/password` | ✅ | Change password |
+| `PUT` | `/api/auth/email` | ✅ | Update email address |
 | `POST` | `/api/auth/logout` | ❌ | Clear auth cookie |
 
 **Register:**
@@ -813,6 +857,25 @@ POST /api/auth/login
   "password": "MySecureP4ss"
 }
 → { "token": "...", "user": { "id": 1, "username": "john", "settings": {} } }
+```
+
+**Change Password:**
+```json
+PUT /api/auth/password
+{
+  "currentPassword": "MySecureP4ss",
+  "newPassword": "MyNewSecureP5ss"
+}
+→ { "message": "Password changed successfully" }
+```
+
+**Update Email:**
+```json
+PUT /api/auth/email
+{
+  "email": "newemail@example.com"
+}
+→ { "message": "Email updated successfully", "email": "newemail@example.com" }
 ```
 
 **Update Settings:**
@@ -1041,7 +1104,29 @@ POST /api/wallets
 | `POST` | `/api/updates/apply` | ✅ | Apply update (git pull + npm ci + restart) |
 | `POST` | `/api/updates/settings` | ✅ | Update auto-update settings |
 
-### 13.13 Utility Endpoints
+### 13.13 Backup Endpoints
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/api/backup` | ✅ | Download full database as binary |
+| `POST` | `/api/backup/restore` | ✅ | Upload and restore from backup file |
+
+**Download Backup:**
+```
+GET /api/backup
+→ Binary SQLite database file (Content-Type: application/octet-stream)
+```
+
+**Restore from Backup:**
+```
+POST /api/backup/restore
+Content-Type: application/octet-stream
+Body: raw binary database file
+
+→ { "message": "Database restored successfully", "tables": ["users", "portfolios", ...] }
+```
+
+### 13.14 Utility Endpoints
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -1057,7 +1142,7 @@ POST /api/wallets
 }
 ```
 
-### 13.14 Rate Limiting
+### 13.15 Rate Limiting
 
 The API enforces rate limits to prevent abuse:
 
@@ -1070,7 +1155,7 @@ The API enforces rate limits to prevent abuse:
 
 Exceeding the limit returns `429 Too Many Requests`.
 
-### 13.15 Error Format
+### 13.16 Error Format
 
 All errors follow a consistent JSON format:
 
