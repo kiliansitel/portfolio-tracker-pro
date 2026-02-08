@@ -1363,14 +1363,15 @@ PORT=3000 npm start    # Use a different port
 
 ### 16.2 Password Reset
 
-There is no built-in password reset UI yet. To reset a password manually:
+**If you know your current password:** Use the **Change Password** feature in Settings (see [§12.2](#122-change-password)). Go to ⚙️ Settings → 🔒 Change Password, enter your current and new password, and click the button.
+
+**If you forgot your password** (admin/CLI reset):
 
 ```bash
 # Stop the service
 sudo systemctl stop portfolio-tracker.service
 
-# Use sqlite3 CLI or a script to update the password
-# The app uses Argon2id hashing, so you'll need to:
+# Generate a new Argon2id hash
 node -e "
 const argon2 = require('argon2');
 argon2.hash('NewPassword123', { type: argon2.argon2id, memoryCost: 19456, timeCost: 2, parallelism: 1 })
