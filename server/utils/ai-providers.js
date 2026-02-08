@@ -121,6 +121,7 @@ class AIProvider {
    */
   async *chat(messages, options = {}) {
     const model = options.model || this.getDefaultModel();
+    this.lastUsage = null;
 
     switch (this.providerName) {
       case 'openai':
@@ -318,6 +319,19 @@ class AIProvider {
       if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
         yield event.delta.text;
       }
+    }
+
+    // Capture usage from final message (Anthropic SDK exposes this after stream ends)
+    try {
+      const finalMsg = await stream.finalMessage();
+      if (finalMsg?.usage) {
+        this.lastUsage = {
+          input: finalMsg.usage.input_tokens || 0,
+          output: finalMsg.usage.output_tokens || 0
+        };
+      }
+    } catch (e) {
+      // Usage capture is best-effort
     }
   }
 

@@ -1480,6 +1480,14 @@
         }
 
         /* Typing indicator */
+        .ai-usage-info {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            opacity: 0.5;
+            padding: 2px 14px 0;
+            margin-top: -4px;
+        }
+
         .ai-typing {
             display: flex;
             gap: 4px;
@@ -7744,6 +7752,22 @@
             container.scrollTop = container.scrollHeight;
         }
 
+        function appendAiUsageInfo(data) {
+            if (!data.model && !data.durationMs) return;
+            const container = document.getElementById('aiMessages');
+            const msgs = container.querySelectorAll('.ai-message.assistant');
+            const lastMsg = msgs[msgs.length - 1];
+            if (!lastMsg) return;
+            const info = document.createElement('div');
+            info.className = 'ai-usage-info';
+            let text = '';
+            if (data.model) text += data.model.replace('anthropic/', '').replace('claude-', 'Claude ').replace(/-/g, ' ');
+            if (data.durationMs) text += ` · ${(data.durationMs / 1000).toFixed(1)}s`;
+            if (data.usage) text += ` · ~${((data.usage.input || 0) + (data.usage.output || 0)).toLocaleString()} tokens`;
+            info.textContent = text;
+            lastMsg.after(info);
+        }
+
         // Send message
         async function sendAiChatMessage() {
             const input = document.getElementById('aiInput');
@@ -7844,7 +7868,7 @@
                             }
 
                             if (data.type === 'done') {
-                                // Stream complete
+                                appendAiUsageInfo(data);
                             }
                         } catch (e) {
                             // Skip malformed SSE lines
@@ -8034,6 +8058,10 @@
                                     aiMessage += '\n\n⚠️ ' + (data.error || 'Stream error');
                                     updateLastAiMessage(aiMessage);
                                 }
+                            }
+
+                            if (data.type === 'done') {
+                                appendAiUsageInfo(data);
                             }
                         } catch (e) {}
                     }
@@ -8332,7 +8360,7 @@
                                 }
                             }
                             if (data.type === 'done') {
-                                // Stream complete
+                                appendAiUsageInfo(data);
                             }
                         } catch {}
                     }

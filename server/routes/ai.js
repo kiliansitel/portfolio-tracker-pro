@@ -397,6 +397,7 @@ router.post('/chat', async (req, res) => {
   res.write(`data: ${JSON.stringify({ type: 'meta', conversationId: convId })}\n\n`);
 
   let fullResponse = '';
+  const startTime = Date.now();
 
   try {
     const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
@@ -431,7 +432,13 @@ router.post('/chat', async (req, res) => {
       }
     }
 
-    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`);
+    // Build done event with usage info
+    const durationMs = Date.now() - startTime;
+    const usage = instance.lastUsage || {
+      input: Math.round(apiMessages.map(m => m.content).join('').length / 4),
+      output: Math.round(fullResponse.length / 4)
+    };
+    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId, model: selectedModel, durationMs, usage })}\n\n`);
   } catch (err) {
     console.error('AI CHAT ERROR:', err.message, err.cause?.message || err.cause, err.code);
     res.write(`data: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
@@ -564,6 +571,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
   res.write(`data: ${JSON.stringify({ type: 'meta', conversationId: convId })}\n\n`);
 
   let fullResponse = '';
+  const startTime = Date.now();
 
   try {
     console.log(`ANALYZE: provider=${selectedProvider} model=${selectedModel} baseUrl=${instance.baseUrl} hasKey=${!!instance.apiKey}`);
@@ -580,7 +588,13 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
       [convId, 'assistant', fullResponse]
     );
 
-    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`);
+    // Build done event with usage info
+    const durationMs = Date.now() - startTime;
+    const usage = instance.lastUsage || {
+      input: Math.round(apiMessages.map(m => m.content).join('').length / 4),
+      output: Math.round(fullResponse.length / 4)
+    };
+    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId, model: selectedModel, durationMs, usage })}\n\n`);
   } catch (err) {
     console.error('AI ANALYSIS ERROR:', err.message, err.cause?.message || err.cause, err.code);
     console.error('AI ANALYSIS STACK:', err.stack);
