@@ -7588,14 +7588,16 @@
                     headers: { 'Authorization': 'Bearer ' + token }
                 });
                 const portfolios = await resp.json();
-                let hasPositions = false;
+                if (!portfolios.length) return true;
+                // Check each portfolio for positions
                 for (const pf of portfolios) {
-                    if (pf.positions && pf.positions.length > 0) {
-                        hasPositions = true;
-                        break;
-                    }
+                    const posResp = await fetch(`${API_BASE}/portfolios/${pf.id}/positions`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const positions = await posResp.json();
+                    if (Array.isArray(positions) && positions.length > 0) return false;
                 }
-                return !hasPositions;
+                return true;
             } catch {
                 return false;
             }
