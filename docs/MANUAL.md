@@ -1,10 +1,10 @@
 # Portfolio Tracker Pro — User Manual
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/logo.svg" alt="Portfolio Tracker Pro" width="96" height="96">
+  <img src="../logo.svg" alt="Portfolio Tracker Pro" width="96" height="96">
 </p>
 
-> **Version:** 0.19.1 · **License:** MIT · **Self-hosted** — your data stays on your machine.
+> **Version:** 0.20.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
 
 ---
 
@@ -119,6 +119,8 @@
 
 When you first open Portfolio Tracker Pro, you'll see the login screen.
 
+![Login & Registration](../screenshots/login.jpg)
+
 1. Click the **Register** tab at the top of the auth box.
 2. Enter a **username**, **email**, and **password** (minimum 8 characters, must include uppercase, lowercase, and a number).
 3. Click **Register**.
@@ -128,7 +130,7 @@ On successful registration, the app automatically:
 - Creates a **Main Watchlist** for you to start tracking tickers.
 - Logs you in with a 30-day session.
 
-![Dashboard](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/dashboard.jpg)
+![Dashboard](../screenshots/dashboard.jpg)
 
 ### 1.2 Login
 
@@ -179,7 +181,7 @@ A "Main Portfolio" is created automatically on registration. To create additiona
 
 ### 2.2 Adding Positions
 
-![Add Position](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/add-position.jpg)
+![Add Position](../screenshots/add-position.jpg)
 
 1. Navigate to the **Portfolio** page (💼).
 2. Click the **+** button in the top-right of the card header.
@@ -243,7 +245,7 @@ Cash is included in total portfolio value and the allocation chart (displayed in
 
 ## 3. Positions Page
 
-![Positions](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/positions.jpg)
+![Positions](../screenshots/positions.jpg)
 
 ### 3.1 Summary Bar
 
@@ -270,6 +272,8 @@ Each group header shows the count of positions in that group. Click the header t
 
 ### 3.3 Position Cards
 
+![Position Detail](../screenshots/position-detail.jpg)
+
 Each position card shows:
 
 | Element | Description |
@@ -295,6 +299,8 @@ Positions created or updated from on-chain wallets display a **🔗** badge next
 ## 4. Blockchain Wallets
 
 ### 4.1 Adding a Wallet
+
+![Wallets Overview](../screenshots/wallets.jpg)
 
 1. Navigate to the **Wallets** page (🔗).
 2. Click the **+** button.
@@ -340,6 +346,8 @@ During sync, the app:
 4. Updates the corresponding portfolio position.
 
 ### 4.4 ERC-20 Token Detection
+
+![Wallet with ERC-20 Tokens & DeFi Positions](../screenshots/wallet-tokens.jpg)
 
 For **Ethereum** wallets, the app automatically discovers ERC-20 tokens:
 
@@ -387,7 +395,7 @@ When a wallet is deleted:
 
 ## 5. Watchlists
 
-![Watchlist](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/watchlist.jpg)
+![Watchlist](../screenshots/watchlist.jpg)
 
 ### 5.1 Creating Watchlists
 
@@ -400,7 +408,7 @@ Body: { "name": "Crypto Watch" }
 
 ### 5.2 Adding Tickers
 
-![Add Watchlist](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/add-watchlist.jpg)
+![Add Watchlist](../screenshots/add-watchlist.jpg)
 
 1. Click the **+** button on the Watchlist page.
 2. In the modal:
@@ -446,7 +454,7 @@ If set, the watchlist item shows a colored **🔔 BUY** or **🔔 SELL** badge.
 
 ## 6. Alerts
 
-![Alerts](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/alerts.jpg)
+![Alerts](../screenshots/alerts.jpg)
 
 ### 6.1 Creating Price Alerts
 
@@ -535,7 +543,7 @@ Select the time range for chart data:
 
 ### 7.5 Full-Screen Chart Detail
 
-![Chart Detail](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/chart-detail.jpg)
+![Chart Detail](../screenshots/chart-detail.jpg)
 
 Click on any ticker (in the markets grid, watchlist, or positions) to open a **full-screen chart detail modal**. This modal provides:
 
@@ -548,7 +556,7 @@ Click on any ticker (in the markets grid, watchlist, or positions) to open a **f
 
 ## 8. Options Chain
 
-![Options Chain](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/options-chain.jpg)
+![Options Chain](../screenshots/options-chain.jpg)
 
 ### 8.1 Opening the Options Chain
 
@@ -584,7 +592,7 @@ Strike prices are filtered to ±15% of the current price to keep the view focuse
 
 ## 9. Transactions
 
-![Transactions](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/transactions.jpg)
+![Transactions](../screenshots/transactions.jpg)
 
 ### 9.1 Transaction History
 
@@ -627,7 +635,7 @@ Sell transactions, combined with your entry prices, allow calculation of **reali
 
 ## 10. News Feed
 
-![News](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/news.jpg)
+![News](../screenshots/news.jpg)
 
 ### 10.1 Market News
 
@@ -654,6 +662,8 @@ Type any keyword into the **Search news...** field and press Enter to search for
 
 ### 11.1 Performance Chart
 
+![Performance Chart](../screenshots/performance.jpg)
+
 The Dashboard features a **Performance Chart** that tracks your portfolio value over time:
 
 - **Timeframe controls:** 1W, 1M, 3M, 1Y, All.
@@ -662,6 +672,8 @@ The Dashboard features a **Performance Chart** that tracks your portfolio value 
 - **Historical reconstruction:** Can rebuild history from your transactions and position data, fetching historical prices from Yahoo Finance.
 
 ### 11.2 Allocation Donut Chart
+
+![Allocation Donut Chart](../screenshots/allocation.jpg)
 
 A **donut chart** on the Dashboard shows portfolio breakdown:
 - Each position gets a unique color slice.
@@ -681,7 +693,7 @@ The app stores daily **Open/High/Low/Close/Volume** data for all tracked symbols
 
 ## 12. Settings
 
-![Settings](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/settings.jpg)
+![Settings](../screenshots/settings.jpg)
 
 ### 12.1 Theme
 
@@ -1039,7 +1051,7 @@ POST /api/wallets
 **Info response:**
 ```json
 {
-  "version": "0.19.1",
+  "version": "0.20.0",
   "env": "production",
   "name": "Portfolio Pro"
 }
