@@ -383,6 +383,51 @@ async function initDatabase() {
     // Column already exists — ignore
   }
 
+  // AI Intelligence Layer tables (v0.21.0)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ai_api_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      provider TEXT NOT NULL,
+      encrypted_key TEXT NOT NULL,
+      model_preference TEXT,
+      base_url TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, provider),
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ai_conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      title TEXT,
+      context TEXT DEFAULT 'general',
+      provider TEXT,
+      model TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    )
+  `);
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ai_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL,
+      role TEXT NOT NULL,
+      content TEXT NOT NULL,
+      tokens_used INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
+    )
+  `);
+
+  db.run('CREATE INDEX IF NOT EXISTS idx_ai_keys_user ON ai_api_keys(user_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id)');
+  db.run('CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages(conversation_id)');
+
   saveDatabaseImmediate(); // Use immediate save for init
   logger.info('📦 Database initialized');
 }

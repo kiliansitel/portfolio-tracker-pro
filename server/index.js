@@ -31,6 +31,7 @@ const { router: pushRouter } = require('./routes/push');
 const walletsRouter = require('./routes/wallets');
 const updatesRouter = require('./routes/updates');
 const backupRouter = require('./routes/backup');
+const aiRouter = require('./routes/ai');
 
 // Currency utilities
 const { fetchExchangeRates, SUPPORTED_CURRENCIES } = require('./utils/currency');
@@ -115,6 +116,7 @@ app.use('/api/history/collect', authenticateToken, strictLimiter); // Stricter r
 app.use('/api/history', authenticateToken, historyRouter);
 app.use('/api/updates', authenticateToken, updatesRouter);
 app.use('/api/backup', authenticateToken, backupRouter);
+app.use('/api/ai', authenticateToken, aiRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {
