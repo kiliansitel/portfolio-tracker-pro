@@ -124,12 +124,14 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 ## Roadmap
 
-- [ ] Oracle follow-up chat within analysis results
-- [ ] AI-powered news digest for holdings
+- [ ] After-hours / pre-market pricing
+- [ ] Live broker API sync (Keytrade, IBKR)
+- [ ] Dividend tracking & income calendar
+- [ ] AI news digest & scheduled reports
 - [ ] Portfolio rebalance suggestions
-- [ ] Entry/exit signals on watchlist
-- [ ] Export/share AI insights as PDF
-- [ ] Voice input for Oracle
+- [ ] Sector & geographic exposure views
+- [ ] Google Cloud Run public demo
+- [ ] Mobile app (React Native / Capacitor)
 
 ## License
 
