@@ -325,6 +325,25 @@ router.post('/chat', async (req, res) => {
       [convId, 'assistant', fullResponse]
     );
 
+    // Auto-rename conversation after first exchange (if title is just the user message)
+    const msgCount = dbGet('SELECT COUNT(*) as cnt FROM ai_messages WHERE conversation_id = ?', [convId]);
+    if (msgCount && msgCount.cnt <= 2) {
+      // Generate a short title from the AI response
+      const cleanResponse = fullResponse.replace(/<<<.*?>>>/g, '').trim();
+      // Extract first heading, bold text, or first sentence
+      const headingMatch = cleanResponse.match(/^#+\s+(.+)/m);
+      const boldMatch = cleanResponse.match(/\*\*(.{5,60}?)\*\*/);
+      const firstSentence = cleanResponse.split(/[.!?\n]/)[0]?.trim();
+      let newTitle = headingMatch ? headingMatch[1] :
+                     boldMatch ? boldMatch[1] :
+                     firstSentence ? firstSentence.slice(0, 60) : null;
+      if (newTitle && newTitle.length > 3) {
+        // Strip markdown artifacts
+        newTitle = newTitle.replace(/[#*_`]/g, '').trim().slice(0, 80);
+        dbRun('UPDATE ai_conversations SET title = ? WHERE id = ?', [newTitle, convId]);
+      }
+    }
+
     res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`);
   } catch (err) {
     logger.error('AI chat error:', err.message);
