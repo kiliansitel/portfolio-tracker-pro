@@ -7759,7 +7759,18 @@
             copyBtn.innerHTML = '📋 Copy';
             copyBtn.onclick = async () => {
                 try {
-                    await navigator.clipboard.writeText(rawMarkdown);
+                    // clipboard API requires HTTPS — fallback for HTTP
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(rawMarkdown);
+                    } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = rawMarkdown;
+                        ta.style.cssText = 'position:fixed;left:-9999px';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }
                     copyBtn.innerHTML = '✅ Copied';
                     setTimeout(() => copyBtn.innerHTML = '📋 Copy', 2000);
                 } catch { showToast('Failed to copy', 'error'); }

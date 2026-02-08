@@ -584,7 +584,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
 
   try {
     console.log(`ANALYZE: provider=${selectedProvider} model=${selectedModel} baseUrl=${instance.baseUrl} hasKey=${!!instance.apiKey}`);
-    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
+    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 4096 });
 
     for await (const chunk of stream) {
       fullResponse += chunk;
