@@ -83,7 +83,8 @@ const PROVIDER_DEFS = {
     name: 'OpenClaw',
     baseUrl: `http://127.0.0.1:${process.env.OPENCLAW_GATEWAY_PORT || 18789}/v1`,
     models: [
-      { id: 'openclaw', name: 'Default (Claude)' }
+      { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+      { id: 'anthropic/claude-opus-4-6', name: 'Claude Opus 4' }
     ],
     requiresKey: true,
     description: 'Route through your local OpenClaw gateway — uses your existing AI subscription'

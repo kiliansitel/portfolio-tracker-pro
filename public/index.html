@@ -7481,8 +7481,9 @@
                 return;
             }
 
-            // Auto-select first configured provider if none selected
-            if (!aiSelectedProvider || !configured.find(p => p.id === aiSelectedProvider)) {
+            // Auto-select first configured provider if none selected or cached one isn't actually configured
+            const cachedProvider = configured.find(p => p.id === aiSelectedProvider);
+            if (!aiSelectedProvider || !cachedProvider || !cachedProvider.configured) {
                 const firstConfigured = configured.find(p => p.configured) || configured[0];
                 aiSelectedProvider = firstConfigured.id;
                 aiSelectedModel = firstConfigured.modelPreference || (firstConfigured.models[0]?.id) || '';

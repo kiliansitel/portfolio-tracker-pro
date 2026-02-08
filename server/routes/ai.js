@@ -22,6 +22,18 @@ const router = express.Router();
 const crypto = require('crypto');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 
+// Find the first configured/available provider for a user
+function findDefaultProvider(userId) {
+  // 1. User's own API keys
+  const userKeys = dbAll('SELECT provider FROM ai_api_keys WHERE user_id = ?', [userId]);
+  if (userKeys.length) return userKeys[0].provider;
+  // 2. OpenClaw gateway (preferred — uses existing AI subscription)
+  if (process.env.OPENCLAW_GATEWAY_TOKEN) return 'openclaw';
+  // 3. Ollama (local, no key needed)
+  if (PROVIDER_DEFS.ollama && !PROVIDER_DEFS.ollama.requiresKey) return 'ollama';
+  return null;
+}
+
 // ─── Helper: get provider instance for user ────────────────────────
 
 function getProviderForUser(userId, providerName) {
@@ -223,16 +235,7 @@ router.post('/chat', async (req, res) => {
   // Determine provider: explicit > first configured > error
   let selectedProvider = providerName;
   if (!selectedProvider) {
-    const userKeys = dbAll(
-      'SELECT provider FROM ai_api_keys WHERE user_id = ?',
-      [req.user.id]
-    );
-    if (userKeys.length) {
-      selectedProvider = userKeys[0].provider;
-    } else {
-      // Try ollama as fallback (no key needed)
-      selectedProvider = 'ollama';
-    }
+    selectedProvider = findDefaultProvider(req.user.id);
   }
 
   if (!PROVIDER_DEFS[selectedProvider]) {
@@ -325,9 +328,28 @@ router.post('/chat', async (req, res) => {
       [convId, 'assistant', fullResponse]
     );
 
+    // Auto-rename conversation after first exchange (if title is just the user message)
+    const msgCount = dbGet('SELECT COUNT(*) as cnt FROM ai_messages WHERE conversation_id = ?', [convId]);
+    if (msgCount && msgCount.cnt <= 2) {
+      // Generate a short title from the AI response
+      const cleanResponse = fullResponse.replace(/<<<.*?>>>/g, '').trim();
+      // Extract first heading, bold text, or first sentence
+      const headingMatch = cleanResponse.match(/^#+\s+(.+)/m);
+      const boldMatch = cleanResponse.match(/\*\*(.{5,60}?)\*\*/);
+      const firstSentence = cleanResponse.split(/[.!?\n]/)[0]?.trim();
+      let newTitle = headingMatch ? headingMatch[1] :
+                     boldMatch ? boldMatch[1] :
+                     firstSentence ? firstSentence.slice(0, 60) : null;
+      if (newTitle && newTitle.length > 3) {
+        // Strip markdown artifacts
+        newTitle = newTitle.replace(/[#*_`]/g, '').trim().slice(0, 80);
+        dbRun('UPDATE ai_conversations SET title = ? WHERE id = ?', [newTitle, convId]);
+      }
+    }
+
     res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`);
   } catch (err) {
-    logger.error('AI chat error:', err.message);
+    console.error('AI CHAT ERROR:', err.message, err.cause?.message || err.cause, err.code);
     res.write(`data: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
   }
 
@@ -398,15 +420,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
   // Determine provider
   let selectedProvider = providerName;
   if (!selectedProvider) {
-    const userKeys = dbAll(
-      'SELECT provider FROM ai_api_keys WHERE user_id = ?',
-      [req.user.id]
-    );
-    if (userKeys.length) {
-      selectedProvider = userKeys[0].provider;
-    } else {
-      selectedProvider = 'ollama';
-    }
+    selectedProvider = findDefaultProvider(req.user.id);
   }
 
   if (!PROVIDER_DEFS[selectedProvider]) {
@@ -462,6 +476,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
   let fullResponse = '';
 
   try {
+    console.log(`ANALYZE: provider=${selectedProvider} model=${selectedModel} baseUrl=${instance.baseUrl} hasKey=${!!instance.apiKey}`);
     const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
 
     for await (const chunk of stream) {
@@ -469,6 +484,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
       res.write(`data: ${JSON.stringify({ type: 'chunk', content: chunk })}\n\n`);
     }
 
+    console.log(`ANALYZE: done, response length=${fullResponse.length}`);
     dbRun(
       'INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, ?, ?)',
       [convId, 'assistant', fullResponse]
@@ -476,7 +492,8 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
 
     res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`);
   } catch (err) {
-    logger.error('AI analysis error:', err.message);
+    console.error('AI ANALYSIS ERROR:', err.message, err.cause?.message || err.cause, err.code);
+    console.error('AI ANALYSIS STACK:', err.stack);
     res.write(`data: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
   }
 
