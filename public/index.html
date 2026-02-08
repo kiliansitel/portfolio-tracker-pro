@@ -5,9 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Portfolio Tracker Pro</title>
     <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-    <link rel="manifest" href="data:application/json,{&quot;name&quot;:&quot;Portfolio Pro&quot;,&quot;display&quot;:&quot;standalone&quot;}">
+    <link rel="manifest" href="/manifest.json">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="theme-color" content="#131722">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Portfolio Pro">
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <meta name="theme-color" content="#0a0e17">
+    <meta name="description" content="TradingView-inspired portfolio tracker with real-time prices, charts, and alerts">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <style>
         :root, [data-theme="dark"] {
@@ -6259,6 +6263,13 @@
             initApp();
         } else {
             showAuth();
+        }
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('SW registered:', reg.scope))
+                .catch(err => console.warn('SW registration failed:', err));
         }
     </script>
 </body>
