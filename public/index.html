@@ -51,6 +51,8 @@
             background: var(--bg-primary);
             color: var(--text-primary);
             min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         /* Auth Overlay */
@@ -277,7 +279,9 @@
         /* Main Layout */
         .main-container {
             display: flex;
-            height: calc(100vh - 52px);
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
         }
 
         .sidebar {
@@ -316,6 +320,8 @@
         /* Pages */
         .page { display: none; }
         .page.active { display: block; }
+        #page-ai.active { display: flex; flex-direction: column; overflow: hidden; height: 100%; }
+        #page-ai .ai-chat-container { flex: 1; min-height: 0; }
 
         /* Cards */
         .card {
@@ -1216,8 +1222,8 @@
         .ai-chat-container {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 60px);
-            max-height: calc(100vh - 60px);
+            height: 100%;
+            max-height: 100%;
             position: relative;
         }
 
@@ -1551,6 +1557,7 @@
             align-items: center;
             gap: 8px;
             padding: 12px 16px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
             flex-shrink: 0;
@@ -1924,9 +1931,10 @@
 
         /* Mobile responsive */
         @media (max-width: 600px) {
+            #page-ai.active { height: 100%; }
             .ai-chat-container {
-                height: calc(100vh - 56px);
-                max-height: calc(100vh - 56px);
+                height: 100%;
+                max-height: 100%;
             }
 
             .ai-message {
@@ -3532,6 +3540,15 @@
             document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
             document.getElementById(`page-${page}`)?.classList.add('active');
             document.getElementById('userDropdown').classList.remove('show');
+            // AI page needs full-height layout without content padding/scroll
+            const contentEl = document.querySelector('.content');
+            if (page === 'ai') {
+                contentEl.style.overflow = 'hidden';
+                contentEl.style.padding = '0';
+            } else {
+                contentEl.style.overflow = '';
+                contentEl.style.padding = '';
+            }
             localStorage.setItem('lastPage', page);
             // Render content when switching pages
             if (page === 'alerts') renderAlerts();
@@ -5530,11 +5547,11 @@
                                     ${target ? `<div class="watch-target">${target}</div>` : ''}
                                 </div>
                             </div>
-                            <div class="watch-price" style="text-align:right;">
+                            <div class="watch-price" style="text-align:right;min-width:70px;">
                                 <div>${price > 0 ? fp(price) : '--'}</div>
                                 <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
                             </div>
-                            <button onclick="event.stopPropagation();quickAddFromWatchlist('${item.symbol}')" title="Add to portfolio" style="margin-left:auto;flex-shrink:0;background:#3b82f6;border:none;color:#fff;font-size:0.7rem;cursor:pointer;padding:5px 10px;border-radius:6px;font-weight:700;letter-spacing:0.3px;">+ ADD</button>
+                            <button onclick="event.stopPropagation();quickAddFromWatchlist('${item.symbol}')" title="Add to portfolio" style="margin-left:12px;flex-shrink:0;background:#3b82f6;border:none;color:#fff;font-size:0.7rem;cursor:pointer;padding:5px 10px;border-radius:6px;font-weight:700;letter-spacing:0.3px;">+ ADD</button>
                         </div>
                     </div>`;
             }
