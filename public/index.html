@@ -1597,26 +1597,29 @@
                             </div>
                         </div>
                         <div class="settings-section">
-                            <h3>Import Data</h3>
-                            <div class="setting-item">
+                            <h3>🏦 Import from Broker</h3>
+                            <div class="setting-item" style="flex-direction:column;align-items:stretch;gap:8px;">
                                 <div>
-                                    <div class="setting-label">Portfolio CSV</div>
-                                    <div class="setting-desc">Import positions from CSV file</div>
+                                    <div class="setting-label">Import Positions from CSV</div>
+                                    <div class="setting-desc">Upload a CSV export from your broker. Auto-detects format for:</div>
+                                    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                                        <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">🇧🇪 Keytrade Bank</span>
+                                        <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">🇺🇸 Interactive Brokers</span>
+                                        <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">🇳🇱 DeGiro</span>
+                                        <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">📄 Generic CSV</span>
+                                    </div>
                                 </div>
-                                <label class="btn btn-secondary" style="cursor:pointer;">
-                                    📥 Import
-                                    <input type="file" accept=".csv" onchange="importPositionsCSV(this)" style="display:none;">
-                                </label>
-                            </div>
-                            <div class="setting-item">
-                                <div>
-                                    <div class="setting-label">Watchlist CSV</div>
-                                    <div class="setting-desc">Import watchlist from CSV file</div>
+                                <div style="display:flex;gap:8px;margin-top:4px;">
+                                    <label class="btn btn-primary" style="cursor:pointer;">
+                                        🏦 Import Positions
+                                        <input type="file" accept=".csv,.txt" onchange="importPositionsCSV(this)" style="display:none;">
+                                    </label>
+                                    <label class="btn btn-secondary" style="cursor:pointer;">
+                                        📋 Import Watchlist
+                                        <input type="file" accept=".csv" onchange="importWatchlistCSV(this)" style="display:none;">
+                                    </label>
                                 </div>
-                                <label class="btn btn-secondary" style="cursor:pointer;">
-                                    📥 Import
-                                    <input type="file" accept=".csv" onchange="importWatchlistCSV(this)" style="display:none;">
-                                </label>
+                                <div class="setting-desc" style="font-size:0.7rem;margin-top:2px;">CSV columns: Symbol, Quantity, Price (required) · Name, Type, Location, Notes (optional)</div>
                             </div>
                         </div>
                         <div class="settings-section">
