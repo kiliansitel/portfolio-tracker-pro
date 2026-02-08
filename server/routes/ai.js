@@ -71,7 +71,7 @@ function getProviderForUser(userId, providerName) {
 
 // ─── System prompt builder ─────────────────────────────────────────
 
-function buildSystemPrompt(userId, context) {
+async function buildSystemPrompt(userId, context) {
   let systemContent = `You are an AI financial assistant integrated into Portfolio Tracker Pro. ` +
     `You help users analyze their investments, understand market trends, and make informed decisions. ` +
     `Be concise, data-driven, and specific. Always include relevant numbers when available. ` +
@@ -90,7 +90,7 @@ function buildSystemPrompt(userId, context) {
   const contexts = context.split(',').map(c => c.trim());
 
   if (contexts.includes('portfolio')) {
-    systemContent += buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+    systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
   }
   if (contexts.includes('watchlist')) {
     systemContent += buildWatchlistContext(userId, dbAll) + '\n';
@@ -287,7 +287,7 @@ router.post('/chat', async (req, res) => {
   }
 
   // Build system prompt with context
-  const systemContent = buildSystemPrompt(req.user.id, context);
+  const systemContent = await buildSystemPrompt(req.user.id, context);
 
   // Construct messages array
   const apiMessages = [
@@ -502,7 +502,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
 
 // POST /analyze/portfolio — full portfolio review
 router.post('/analyze/portfolio', async (req, res) => {
-  const portfolioData = buildPortfolioContext(req.user.id, dbAll, dbGet);
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
   const marketData = buildMarketContext();
 
   const userPrompt = `Please analyze my portfolio and provide:

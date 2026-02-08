@@ -83,8 +83,8 @@ const PROVIDER_DEFS = {
     name: 'OpenClaw',
     baseUrl: `http://127.0.0.1:${process.env.OPENCLAW_GATEWAY_PORT || 18789}/v1`,
     models: [
-      { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
-      { id: 'anthropic/claude-opus-4-6', name: 'Claude Opus 4' }
+      { id: 'anthropic/claude-opus-4-6', name: 'Claude Opus 4' },
+      { id: 'anthropic/claude-sonnet-4-20250514', name: 'Claude Sonnet 4' }
     ],
     requiresKey: true,
     description: 'Route through your local OpenClaw gateway — uses your existing AI subscription'
@@ -504,11 +504,31 @@ class AIProvider {
 
 // ─── Context builders ──────────────────────────────────────────────
 
-function buildPortfolioContext(userId, dbAll, dbGet) {
+async function buildPortfolioContext(userId, dbAll, dbGet) {
   const portfolios = dbAll('SELECT * FROM portfolios WHERE user_id = ? ORDER BY name', [userId]);
 
   if (!portfolios.length) {
     return 'The user has no portfolios yet.';
+  }
+
+  // Fetch live prices for all symbols across portfolios
+  let livePrices = {};
+  try {
+    const { fetchYahooPrice } = require('./yahoo');
+    const allPositions = dbAll(
+      'SELECT DISTINCT p.symbol FROM positions p JOIN portfolios pf ON p.portfolio_id = pf.id WHERE pf.user_id = ?',
+      [userId]
+    );
+    const priceResults = await Promise.allSettled(
+      allPositions.map(p => fetchYahooPrice(p.symbol))
+    );
+    for (const result of priceResults) {
+      if (result.status === 'fulfilled' && result.value?.price) {
+        livePrices[result.value.symbol] = result.value.price;
+      }
+    }
+  } catch (e) {
+    // If price fetching fails, fall back to DB prices
   }
 
   let md = '## User\'s Portfolio Data\n\n';
@@ -529,7 +549,7 @@ function buildPortfolioContext(userId, dbAll, dbGet) {
     let totalValue = pf.cash || 0;
     let totalCost = 0;
     const enriched = positions.map(pos => {
-      const currentPrice = pos.current_price || pos.entry_price;
+      const currentPrice = livePrices[pos.symbol] || pos.current_price || pos.entry_price;
       const value = pos.quantity * currentPrice;
       const cost = pos.quantity * pos.entry_price;
       const pnl = value - cost;
