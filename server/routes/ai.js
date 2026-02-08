@@ -65,7 +65,11 @@ function buildSystemPrompt(userId, context) {
     `Be concise, data-driven, and specific. Always include relevant numbers when available. ` +
     `Keep responses under 500 words — use bullet points and tables for clarity. ` +
     `Only go longer if the user explicitly asks for a detailed/full analysis. ` +
-    `Disclaimer: You provide analysis, not financial advice.\n\n`;
+    `Disclaimer: You provide analysis, not financial advice.\n\n` +
+    `IMPORTANT: At the very end of every response, suggest 3 natural follow-up questions the user might ask next. ` +
+    `Format them on the last line as: <<<Q1|||Q2|||Q3>>> ` +
+    `Keep each question short (under 8 words). Make them contextual to what you just discussed. ` +
+    `Example: <<<Should I rebalance?|||What's my risk exposure?|||Compare to S&P 500>>>\n\n`;
 
   if (!context || context === 'general') {
     return systemContent;

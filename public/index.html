@@ -1328,11 +1328,14 @@
         .ai-messages {
             flex: 1;
             overflow-y: auto;
+            overflow-x: hidden;
             padding: 16px;
             display: flex;
             flex-direction: column;
             gap: 12px;
             scroll-behavior: smooth;
+            max-width: 100%;
+            box-sizing: border-box;
         }
 
         .ai-messages::-webkit-scrollbar {
@@ -1391,6 +1394,8 @@
             line-height: 1.55;
             word-wrap: break-word;
             overflow-wrap: break-word;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .ai-message.assistant .ai-message-bubble {
@@ -1456,7 +1461,10 @@
             border-collapse: collapse;
             width: 100%;
             margin: 8px 0;
-            font-size: 0.83rem;
+            font-size: 0.8rem;
+            display: block;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
         .ai-message-bubble th,
@@ -2278,7 +2286,7 @@
                         </div>
                     </div>
 
-                    <!-- Quick actions -->
+                    <!-- Quick actions / dynamic suggestions -->
                     <div class="ai-quick-actions" id="aiQuickActions">
                         <button class="ai-quick-btn" onclick="aiQuickAction('portfolio')">📊 Review Portfolio</button>
                         <button class="ai-quick-btn" onclick="aiQuickAction('watchlist')">🎯 Watchlist Signals</button>
@@ -2286,6 +2294,7 @@
                         <button class="ai-quick-btn" onclick="aiQuickAction('news')">📰 News Digest</button>
                         <button class="ai-quick-btn" onclick="aiQuickAction('position')">🔍 Analyze Position</button>
                     </div>
+                    <div class="ai-quick-actions" id="aiSuggestions" style="display:none;"></div>
 
                     <!-- Input bar -->
                     <div class="ai-input-bar">
@@ -7718,9 +7727,11 @@
             aiIsStreaming = true;
             updateAiSendButton();
 
-            // Hide quick actions after first message
+            // Hide quick actions and suggestions while streaming
             const qa = document.getElementById('aiQuickActions');
             if (qa) qa.style.display = 'none';
+            const sugBar = document.getElementById('aiSuggestions');
+            if (sugBar) sugBar.style.display = 'none';
 
             try {
                 const response = await fetch(`${API_BASE}/ai/chat`, {
@@ -7807,12 +7818,51 @@
                     appendAiError('No response received from AI provider.');
                 }
 
+                // Parse and show dynamic suggestions
+                parseSuggestions(aiMessage);
+
             } catch (e) {
                 appendAiError('Failed to connect: ' + e.message);
             }
 
             aiIsStreaming = false;
             updateAiSendButton();
+        }
+
+        function parseSuggestions(text) {
+            const sugBar = document.getElementById('aiSuggestions');
+            const defaultBar = document.getElementById('aiQuickActions');
+            if (!sugBar) return;
+
+            // Parse <<<Q1|||Q2|||Q3>>> from end of response
+            const match = text.match(/<<<(.+?)>>>/);
+            if (match) {
+                const questions = match[1].split('|||').map(q => q.trim()).filter(q => q);
+                if (questions.length > 0) {
+                    sugBar.innerHTML = questions.map(q =>
+                        `<button class="ai-quick-btn" onclick="askSuggestion(this)">${q}</button>`
+                    ).join('');
+                    sugBar.style.display = 'flex';
+                    if (defaultBar) defaultBar.style.display = 'none';
+
+                    // Also strip the suggestion line from the displayed message
+                    const lastBubble = document.querySelector('#aiMessages .ai-message.assistant:last-child .ai-message-bubble');
+                    if (lastBubble) {
+                        lastBubble.innerHTML = lastBubble.innerHTML.replace(/&lt;&lt;&lt;.+?&gt;&gt;&gt;/g, '').replace(/<<<.+?>>>/g, '');
+                    }
+                    return;
+                }
+            }
+            // No suggestions parsed — keep showing defaults if no conversation yet
+        }
+
+        function askSuggestion(btn) {
+            const question = btn.textContent.trim();
+            const input = document.getElementById('aiInput');
+            if (input) {
+                input.value = question;
+                sendAiChatMessage();
+            }
         }
 
         function updateAiSendButton() {
@@ -7954,6 +8004,8 @@
                     appendAiError('No response received from AI provider.');
                 }
 
+                parseSuggestions(aiMessage);
+
             } catch (e) {
                 appendAiError('Failed to connect: ' + e.message);
             }
@@ -7995,6 +8047,8 @@
 
             const qa = document.getElementById('aiQuickActions');
             if (qa) qa.style.display = '';
+            const sug = document.getElementById('aiSuggestions');
+            if (sug) { sug.style.display = 'none'; sug.innerHTML = ''; }
 
             // Reset context to general
             aiActiveContexts = ['general'];
