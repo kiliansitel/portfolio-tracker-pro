@@ -8039,15 +8039,9 @@
                     userLabel = '🎯 Analyze my watchlist signals';
                     break;
                 case 'rebalance':
-                    // Use chat with context
-                    document.getElementById('aiInput').value = 'Suggest rebalancing moves for my portfolio. Consider current allocation, risk, and market conditions.';
-                    // Enable portfolio + market context
-                    aiActiveContexts = ['portfolio', 'market'];
-                    document.querySelectorAll('.ai-context-chip').forEach(c => {
-                        c.classList.toggle('active', aiActiveContexts.includes(c.dataset.context));
-                    });
-                    sendAiChatMessage();
-                    return;
+                    endpoint = '/ai/analyze/rebalance';
+                    userLabel = '⚖️ Rebalance my portfolio';
+                    break;
                 case 'news':
                     endpoint = '/ai/analyze/news';
                     userLabel = '📰 News digest for my holdings';

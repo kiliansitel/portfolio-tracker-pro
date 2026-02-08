@@ -110,7 +110,7 @@ async function buildSystemPrompt(userId, context) {
 
   // Handle analysis follow-ups: rebuild the same context the analysis had
   // 'analysis' (legacy) falls back to portfolio+market context
-  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.some(c => c.startsWith('analysis-position:'))) {
+  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.includes('analysis-rebalance') || contexts.some(c => c.startsWith('analysis-position:'))) {
     // Switch to analysis-style system prompt for continuity
     systemContent = `You are Oracle, an expert financial analyst built into Portfolio Tracker Pro.\n\n` +
       `## Analysis Guidelines\n` +
@@ -134,6 +134,11 @@ async function buildSystemPrompt(userId, context) {
     }
     if (contexts.includes('analysis-news')) {
       systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    if (contexts.includes('analysis-rebalance')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += buildWatchlistContext(userId, dbAll) + '\n';
       systemContent += buildMarketContext() + '\n';
     }
     const posContext = contexts.find(c => c.startsWith('analysis-position:'));
@@ -746,6 +751,28 @@ router.post('/analyze/news', async (req, res) => {
 Be concise and focus on what's actionable.`;
 
   await runAnalysis(req, res, newsContext + '\n' + portfolioData, userPrompt, 'analysis-news');
+});
+
+// POST /analyze/rebalance — rebalancing suggestions with concrete targets
+router.post('/analyze/rebalance', async (req, res) => {
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+  const watchlistData = buildWatchlistContext(req.user.id, dbAll);
+  const marketData = buildMarketContext();
+
+  const userPrompt = `Analyze my current portfolio allocation and provide a concrete rebalancing plan:
+
+1. **Current Allocation** — show my current asset class/sector weights as a table
+2. **Target Allocation** — propose a target allocation with specific percentages, tailored to my portfolio size and existing positions
+3. **Specific Trades** — list exact trades to execute:
+   - What to sell (symbol, quantity or %, dollar amount)
+   - What to buy (symbol, quantity or %, dollar amount)
+   - Priority order (do this first, then this)
+4. **Rationale** — why these changes improve the portfolio
+5. **Risk Impact** — how the rebalanced portfolio compares to current (volatility, max drawdown, correlation)
+
+Consider my watchlist items as potential buy candidates. Be specific with numbers — no vague suggestions.`;
+
+  await runAnalysis(req, res, portfolioData + '\n' + watchlistData + '\n' + marketData, userPrompt, 'analysis-rebalance');
 });
 
 module.exports = router;
