@@ -14,29 +14,17 @@
 
 ## Features
 
-- 📊 **Interactive Charts** — Area/candlestick views with MA20/50/200 overlays
-- 💼 **Portfolio Management** — Track positions, options, and cash with grouped display
-- 🔗 **Blockchain Wallets** — Connect public addresses across 13 chains with auto-sync
-- ⛓️ **13 Chains** — BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT
-- 👀 **Watchlists** — Customizable with 12+ categories, price alerts, and dropdown selector
-- 🔔 **Alerts** — Set price targets with Telegram & push notifications
-- ⛓️ **Options Chain** — View calls/puts with strikes and expiry dates
-- 📰 **News Feed** — Real-time market news with stock-specific filtering
-- 🥧 **Allocation Chart** — Visual donut chart showing portfolio breakdown
-- 📈 **Performance Chart** — Historical portfolio value with daily snapshots
-- 📊 **OHLCV History** — Stored daily candles for all tracked symbols (back to 1984)
-- 💱 **Multi-Currency** — EUR, USD, GBP, CHF with live exchange rates
-- 🔔 **Push Notifications** — Browser push via service worker (HTTPS required)
-- 📱 **Mobile-First** — Swipe actions, collapsible sections, responsive design
-- 👥 **Multi-User** — JWT auth with per-user portfolios
-- 🔒 **Security Hardened** — CSP, CORS lockdown, input validation, audit logging
-- ⚡ **Fast** — LocalStorage caching, debounced DB writes, indexed queries
-- 📍 **Position Source Tracking** — Track where each position is held (exchange, wallet, cold storage)
-- 🏦 **Exchange/Location** — Autocomplete for Binance, Kraken, Ledger, Keytrade Bank, etc.
-- 📐 **Compact Numbers** — Large values auto-format ($1.5M, $2.3B)
-- 🎁 **Demo Mode** — Ships with pre-loaded demo portfolio for instant exploration
-- 🪙 **42 Token Tracking** — ERC-20 (20) + SPL (14) + DeFi (8) auto-detected tokens
-- 🏗️ **Modular Architecture** — Clean route modules, utility services, middleware layers
+- 📊 **Charts & Analytics** — Interactive area/candlestick charts, MA overlays, allocation donut, performance history
+- 💼 **Portfolio Tracking** — Positions, options, cash, transactions with P&L and source/location tracking
+- 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT
+- 🪙 **42 Auto-Detected Tokens** — ERC-20, SPL, and DeFi positions (Aave, Compound, Lido, Rocket Pool)
+- 👀 **Watchlists & Alerts** — 12+ categories, price targets, Telegram & push notifications
+- ⛓️ **Options Chain** — Calls/puts with strikes, expiry dates, ITM highlighting
+- 📰 **News & Multi-Currency** — Real-time market news, EUR/USD/GBP/CHF with live FX rates
+- 📱 **Mobile-First** — Responsive design, compact numbers ($1.5M), swipe actions
+- 🔒 **Secure & Fast** — JWT + Argon2id, CSP, rate limiting, SQLite with indexed queries
+- 🎁 **Demo Mode** — Pre-loaded portfolio for instant exploration
+- 🐳 **Docker & CI/CD** — Multi-arch images (amd64/arm64), GitHub Actions pipeline
 
 ## Tech Stack
 
