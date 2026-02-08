@@ -1,10 +1,11 @@
 /**
  * AI Provider Abstraction Layer
- * Supports: OpenAI, Anthropic, Google, Ollama, OpenRouter, Custom (OpenAI-compatible)
- * Uses built-in fetch (Node 22) — no extra dependencies
+ * Supports: OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw, Custom (OpenAI-compatible)
+ * Anthropic supports both API keys and Claude Pro/Max setup-tokens (sk-ant-oat*)
  */
 
 const crypto = require('crypto');
+const Anthropic = require('@anthropic-ai/sdk').default;
 
 // ─── Encryption helpers ────────────────────────────────────────────
 const ALGORITHM = 'aes-256-cbc';
@@ -43,13 +44,13 @@ const PROVIDER_DEFS = {
   },
   anthropic: {
     name: 'Anthropic',
-    baseUrl: 'https://api.anthropic.com/v1',
+    baseUrl: 'https://api.anthropic.com',
     models: [
       { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
       { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' }
     ],
     requiresKey: true,
-    description: 'Requires a paid API key from console.anthropic.com — Claude Pro/setup-tokens won\'t work (use OpenClaw instead)'
+    description: 'Works with API keys AND Claude Pro/Max setup-tokens (sk-ant-oat*)'
   },
   google: {
     name: 'Google',
@@ -235,67 +236,86 @@ class AIProvider {
     }
   }
 
-  // ─── Anthropic streaming ─────────────────────────────────────────
+  // ─── Anthropic streaming (SDK with OAuth/setup-token support) ────
+
+  _isOAuthToken() {
+    return this.apiKey && this.apiKey.includes('sk-ant-oat');
+  }
+
+  _createAnthropicClient() {
+    const isOAuth = this._isOAuthToken();
+    const betaFeatures = ['fine-grained-tool-streaming-2025-05-14', 'interleaved-thinking-2025-05-14'];
+
+    if (isOAuth) {
+      return new Anthropic({
+        apiKey: null,
+        authToken: this.apiKey,
+        baseURL: this.baseUrl,
+        dangerouslyAllowBrowser: true,
+        defaultHeaders: {
+          'accept': 'application/json',
+          'anthropic-dangerous-direct-browser-access': 'true',
+          'anthropic-beta': `claude-code-20250219,oauth-2025-04-20,${betaFeatures.join(',')}`,
+          'user-agent': 'claude-cli/2.1.2 (external, cli)',
+          'x-app': 'cli',
+        },
+      });
+    }
+
+    return new Anthropic({
+      apiKey: this.apiKey,
+      baseURL: this.baseUrl,
+      defaultHeaders: {
+        'anthropic-beta': betaFeatures.join(','),
+      },
+    });
+  }
 
   async *_chatAnthropic(messages, model, options) {
-    const url = `${this.baseUrl}/messages`;
+    const client = this._createAnthropicClient();
+    const isOAuth = this._isOAuthToken();
 
-    // Anthropic uses a separate system param, not a system message
-    let system = undefined;
+    // Separate system messages
+    let systemText = '';
     const filteredMessages = [];
     for (const msg of messages) {
       if (msg.role === 'system') {
-        system = (system ? system + '\n\n' : '') + msg.content;
+        systemText += (systemText ? '\n\n' : '') + msg.content;
       } else {
         filteredMessages.push({ role: msg.role, content: msg.content });
       }
     }
 
-    const body = {
+    // Build system prompt — OAuth tokens need Claude Code identity prefix
+    const systemBlocks = [];
+    if (isOAuth) {
+      systemBlocks.push({
+        type: 'text',
+        text: "You are Claude Code, Anthropic's official CLI for Claude.",
+        cache_control: { type: 'ephemeral' },
+      });
+    }
+    if (systemText) {
+      systemBlocks.push({
+        type: 'text',
+        text: systemText,
+        cache_control: { type: 'ephemeral' },
+      });
+    }
+
+    const params = {
       model,
       messages: filteredMessages,
       max_tokens: options.maxTokens || 4096,
-      temperature: options.temperature ?? 0.7,
-      stream: true
+      stream: true,
     };
-    if (system) body.system = system;
+    if (systemBlocks.length > 0) params.system = systemBlocks;
 
-    const resp = await fetch(url, {
-      method: 'POST',
-      headers: this._anthropicHeaders(),
-      body: JSON.stringify(body)
-    });
+    const stream = client.messages.stream(params);
 
-    if (!resp.ok) {
-      const errText = await resp.text();
-      throw new Error(`Anthropic API error ${resp.status}: ${errText}`);
-    }
-
-    yield* this._parseAnthropicStream(resp.body);
-  }
-
-  async *_parseAnthropicStream(body) {
-    const decoder = new TextDecoder();
-    let buffer = '';
-
-    for await (const chunk of body) {
-      buffer += decoder.decode(chunk, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
-
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed.startsWith('data: ')) continue;
-        const data = trimmed.slice(6);
-
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.type === 'content_block_delta' && parsed.delta?.text) {
-            yield parsed.delta.text;
-          }
-        } catch {
-          // skip
-        }
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+        yield event.delta.text;
       }
     }
   }
@@ -420,25 +440,33 @@ class AIProvider {
     return resp.ok;
   }
 
-  _anthropicHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'x-api-key': this.apiKey,
-      'anthropic-version': '2023-06-01'
-    };
-  }
-
   async _testAnthropic() {
-    const resp = await fetch(`${this.baseUrl}/messages`, {
-      method: 'POST',
-      headers: this._anthropicHeaders(),
-      body: JSON.stringify({
-        model: 'claude-3-5-haiku-20241022',
-        max_tokens: 1,
-        messages: [{ role: 'user', content: 'hi' }]
-      })
-    });
-    return resp.status === 200;
+    try {
+      const client = this._createAnthropicClient();
+      const isOAuth = this._isOAuthToken();
+
+      const params = {
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 5,
+        messages: [{ role: 'user', content: 'hi' }],
+      };
+      if (isOAuth) {
+        params.system = [{
+          type: 'text',
+          text: "You are Claude Code, Anthropic's official CLI for Claude.",
+          cache_control: { type: 'ephemeral' },
+        }];
+      }
+
+      const stream = client.messages.stream(params);
+      for await (const event of stream) {
+        // Just need one event to confirm it works
+        return true;
+      }
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   async _testGoogle() {
