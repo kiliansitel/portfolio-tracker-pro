@@ -217,9 +217,10 @@ The killer feature: connect any LLM to analyze your portfolio.
 - [x] Transaction history from block explorers (BTC, ETH)
 - [x] Multi-wallet aggregation (sum per chain)
 - [x] ERC-20 token tracking (20 popular tokens, direct RPC)
+- [x] SPL token tracking (Solana — 14 popular tokens)
 - [x] Token → position sync (wallet tokens auto-create positions)
-- [ ] DeFi position tracking
-- [ ] SPL token tracking (Solana)
+- [x] DeFi position tracking (Aave, Compound, Rocket Pool, Lido)
+
 
 ### 🏦 Broker Integrations
 - [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)

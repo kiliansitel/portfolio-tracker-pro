@@ -352,6 +352,13 @@ async function initDatabase() {
   `);
   db.run('CREATE INDEX IF NOT EXISTS idx_wallet_tokens_wallet ON wallet_tokens(wallet_id)');
 
+  // Migration: add protocol column for DeFi position labeling
+  try {
+    db.run('ALTER TABLE wallet_tokens ADD COLUMN protocol TEXT DEFAULT NULL');
+  } catch (e) {
+    // Column already exists — ignore
+  }
+
   saveDatabaseImmediate(); // Use immediate save for init
   console.log('📦 Database initialized');
 }
