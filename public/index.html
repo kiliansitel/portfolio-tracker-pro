@@ -7777,13 +7777,25 @@
             };
             actions.appendChild(copyBtn);
 
-            if (navigator.share) {
+            {
                 const shareBtn = document.createElement('button');
                 shareBtn.className = 'ai-message-action-btn';
                 shareBtn.innerHTML = '📤 Share';
                 shareBtn.onclick = async () => {
                     try {
-                        await navigator.share({ title: 'Oracle Analysis', text: rawMarkdown });
+                        if (navigator.share) {
+                            await navigator.share({ title: 'Oracle Analysis', text: rawMarkdown });
+                        } else {
+                            // Fallback: copy and notify
+                            const ta = document.createElement('textarea');
+                            ta.value = rawMarkdown;
+                            ta.style.cssText = 'position:fixed;left:-9999px';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            showToast('Copied to clipboard — paste to share!', 'success');
+                        }
                     } catch (e) { if (e.name !== 'AbortError') showToast('Share failed', 'error'); }
                 };
                 actions.appendChild(shareBtn);
