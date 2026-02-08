@@ -698,8 +698,13 @@
         /* Empty state */
         .empty-state {
             text-align: center;
-            padding: 40px 20px;
+            padding: 60px 20px;
             color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 40vh;
         }
 
         .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
@@ -1415,7 +1420,7 @@
                                 oninput="filterPositions(this.value)"
                                 style="flex:1;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);font-size:0.9rem;box-sizing:border-box;">
                             <select id="positionSortSelect" class="sort-dropdown" onchange="onPositionSortChange(this.value)">
-                                <option value="default">Default</option>
+                                <option value="default">Sort ▾</option>
                                 <option value="name-asc">Name A-Z</option>
                                 <option value="name-desc">Name Z-A</option>
                                 <option value="value-desc">Value ↓</option>
@@ -1441,7 +1446,7 @@
                     <div class="card-body">
                         <div style="margin-bottom:10px;">
                             <select id="watchlistSortSelect" class="sort-dropdown" onchange="onWatchlistSortChange(this.value)" style="width:100%;">
-                                <option value="default">Sort: Default</option>
+                                <option value="default">Sort ▾</option>
                                 <option value="name-asc">Name A-Z</option>
                                 <option value="price-desc">Price ↓</option>
                                 <option value="change-desc">Change % ↓</option>
@@ -2289,8 +2294,9 @@
             let hash = 0;
             for (let i = 0; i < symbol.length; i++) hash = symbol.charCodeAt(i) + ((hash << 5) - hash);
             const bg = colors[Math.abs(hash) % colors.length];
-            const label = symbol.replace(/[-=^.]/g, '').substring(0, 3).toUpperCase();
-            return makeSvgIcon(bg, '#fff', label, label.length > 2 ? 8 : 10);
+            const label = symbol.replace(/[-=^.]/g, '').substring(0, 4).toUpperCase();
+            const fs = label.length > 3 ? 7 : label.length > 2 ? 8 : 10;
+            return makeSvgIcon(bg, '#fff', label, fs);
         }
 
         function getTickerLogo(symbol) {
@@ -4708,7 +4714,7 @@
                                 <div>${price > 0 ? fp(price) : '--'}</div>
                                 <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
                             </div>
-                            <button onclick="event.stopPropagation();quickAddFromWatchlist('${item.symbol}')" title="Add to positions" style="margin-left:8px;background:none;border:none;color:var(--accent);font-size:1.1rem;cursor:pointer;padding:4px 6px;border-radius:4px;">➕</button>
+                            <button onclick="event.stopPropagation();quickAddFromWatchlist('${item.symbol}')" title="Add to portfolio" style="margin-left:auto;flex-shrink:0;background:#3b82f6;border:none;color:#fff;font-size:0.7rem;cursor:pointer;padding:5px 10px;border-radius:6px;font-weight:700;letter-spacing:0.3px;">+ ADD</button>
                         </div>
                     </div>`;
             }
@@ -4969,8 +4975,9 @@
             const allocations = [];
             const colors = [
                 '#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6',
-                '#1abc9c', '#e67e22', '#34495e', '#16a085', '#c0392b',
-                '#27ae60', '#8e44ad', '#2980b9', '#d35400', '#7f8c8d'
+                '#1abc9c', '#e91e63', '#00bcd4', '#ff5722', '#8bc34a',
+                '#673ab7', '#009688', '#ff9800', '#795548', '#607d8b',
+                '#4caf50', '#03a9f4', '#cddc39', '#ff4081', '#7c4dff'
             ];
             
             // Add positions
