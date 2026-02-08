@@ -95,6 +95,14 @@ async function buildSystemPrompt(userId, context) {
     `- Reference the user's actual portfolio data when available — generic advice is useless.\n` +
     `- End with a clear takeaway or action item when relevant.\n` +
     `- Disclaimer: You provide analysis, not financial advice.\n\n` +
+    `## Actions\n` +
+    `You can suggest portfolio actions that the user can execute with one click.\n` +
+    `Include action tags INLINE in your response where relevant (not at the end):\n` +
+    `- Set price alert: [[[ACTION:alert:SYMBOL:PRICE:above]]] or [[[ACTION:alert:SYMBOL:PRICE:below]]]\n` +
+    `- Add to watchlist: [[[ACTION:watchlist:SYMBOL]]]\n` +
+    `- Add position: [[[ACTION:position:SYMBOL:QUANTITY:PRICE]]]\n` +
+    `Example: "I'd recommend setting an alert for TSLA at $420 [[[ACTION:alert:TSLA:420:above]]] to catch the breakout."\n` +
+    `Only suggest actions that make sense in context. Don't force them.\n\n` +
     `## Follow-up Suggestions\n` +
     `At the very end of every response, suggest 3 follow-up questions on the LAST line.\n` +
     `Format: <<<Q1|||Q2|||Q3>>>\n` +
@@ -548,6 +556,14 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
     `- For position deep dives: include technical levels, fundamental value, and a clear recommendation.\n` +
     `- Keep it focused — aim for 800-1200 words max. Quality over quantity.\n` +
     `- Disclaimer: Analysis, not financial advice.\n\n` +
+    `## Actions\n` +
+    `You can suggest portfolio actions that the user can execute with one click.\n` +
+    `Include action tags INLINE in your response where relevant (not at the end):\n` +
+    `- Set price alert: [[[ACTION:alert:SYMBOL:PRICE:above]]] or [[[ACTION:alert:SYMBOL:PRICE:below]]]\n` +
+    `- Add to watchlist: [[[ACTION:watchlist:SYMBOL]]]\n` +
+    `- Add position: [[[ACTION:position:SYMBOL:QUANTITY:PRICE]]]\n` +
+    `Example: "I'd recommend setting an alert for TSLA at $420 [[[ACTION:alert:TSLA:420:above]]] to catch the breakout."\n` +
+    `Only suggest actions that make sense in context. Don't force them.\n\n` +
     `## Follow-up Suggestions\n` +
     `Last line of every response: <<<Q1|||Q2|||Q3>>> (under 8 words each, specific and actionable)\n\n` +
     systemExtra;
@@ -785,6 +801,89 @@ router.post('/analyze/rebalance', async (req, res) => {
 Consider my watchlist items as potential buy candidates. Be specific with numbers — no vague suggestions.`;
 
   await runAnalysis(req, res, portfolioData + '\n' + watchlistData + '\n' + marketData, userPrompt, 'analysis-rebalance');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Action Execution (AI-suggested inline actions)
+// ═══════════════════════════════════════════════════════════════════
+
+router.post('/action', async (req, res) => {
+  const { type, params } = req.body;
+
+  if (!type || !Array.isArray(params)) {
+    return res.status(400).json({ error: 'Missing type or params' });
+  }
+
+  try {
+    switch (type) {
+      case 'alert': {
+        const [symbol, price, direction] = params;
+        if (!symbol || !price) {
+          return res.status(400).json({ error: 'Missing symbol or price for alert' });
+        }
+        // Schema: alerts(user_id, symbol, condition, value, is_active)
+        // condition maps to direction (above/below)
+        dbRun(
+          'INSERT INTO alerts (user_id, symbol, condition, value, is_active) VALUES (?, ?, ?, ?, 1)',
+          [req.user.id, symbol.toUpperCase(), direction || 'above', parseFloat(price)]
+        );
+        return res.json({ success: true, message: `Alert set: ${symbol.toUpperCase()} ${direction || 'above'} $${price}` });
+      }
+      case 'watchlist': {
+        const [symbol] = params;
+        if (!symbol) {
+          return res.status(400).json({ error: 'Missing symbol for watchlist' });
+        }
+        // Get or create default watchlist
+        let watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+        if (!watchlist) {
+          const result = dbRun('INSERT INTO watchlists (user_id, name) VALUES (?, ?)', [req.user.id, 'My Watchlist']);
+          watchlist = { id: result.lastInsertRowid };
+        }
+        // Check if already exists (UNIQUE constraint on watchlist_id, symbol)
+        const existing = dbGet('SELECT id FROM watchlist_items WHERE watchlist_id = ? AND symbol = ?', [watchlist.id, symbol.toUpperCase()]);
+        if (existing) {
+          return res.json({ success: true, message: `${symbol.toUpperCase()} is already on your watchlist` });
+        }
+        dbRun('INSERT INTO watchlist_items (watchlist_id, symbol) VALUES (?, ?)', [watchlist.id, symbol.toUpperCase()]);
+        return res.json({ success: true, message: `${symbol.toUpperCase()} added to watchlist` });
+      }
+      case 'position': {
+        const [symbol, quantity, price] = params;
+        if (!symbol || !quantity || !price) {
+          return res.status(400).json({ error: 'Missing symbol, quantity, or price for position' });
+        }
+        // Get first portfolio
+        const portfolio = dbGet('SELECT id FROM portfolios WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+        if (!portfolio) {
+          return res.status(400).json({ error: 'No portfolio found. Create one first.' });
+        }
+        // Schema: positions(portfolio_id, symbol, quantity, entry_price, type)
+        // Check for existing position (UNIQUE on portfolio_id, symbol)
+        const existingPos = dbGet('SELECT id, quantity, entry_price FROM positions WHERE portfolio_id = ? AND symbol = ?', [portfolio.id, symbol.toUpperCase()]);
+        if (existingPos) {
+          // Update: average in the new position
+          const totalQty = existingPos.quantity + parseFloat(quantity);
+          const avgPrice = ((existingPos.quantity * existingPos.entry_price) + (parseFloat(quantity) * parseFloat(price))) / totalQty;
+          dbRun(
+            'UPDATE positions SET quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [totalQty, avgPrice, existingPos.id]
+          );
+          return res.json({ success: true, message: `Updated ${symbol.toUpperCase()}: now ${totalQty} shares @ $${avgPrice.toFixed(2)} avg` });
+        }
+        dbRun(
+          'INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type) VALUES (?, ?, ?, ?, ?)',
+          [portfolio.id, symbol.toUpperCase(), parseFloat(quantity), parseFloat(price), 'stock']
+        );
+        return res.json({ success: true, message: `Added ${quantity} ${symbol.toUpperCase()} @ $${price}` });
+      }
+      default:
+        return res.status(400).json({ error: `Unknown action type: ${type}` });
+    }
+  } catch (err) {
+    logger.error('AI action error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

@@ -1510,6 +1510,35 @@
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
+        .ai-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            margin: 4px 4px 4px 0;
+            border: 1px solid var(--accent-color, #4a9eff);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--accent-color, #4a9eff);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ai-action-btn:hover {
+            background: var(--accent-color, #4a9eff);
+            color: white;
+        }
+        .ai-action-btn.executed {
+            border-color: #22c55e;
+            color: #22c55e;
+            cursor: default;
+            opacity: 0.7;
+        }
+        .ai-action-btn.executed:hover {
+            background: transparent;
+            color: #22c55e;
+        }
 
         /* Typing indicator */
         .ai-usage-info {
@@ -7668,6 +7697,72 @@
             return aiActiveContexts.join(',');
         }
 
+        // ─── Action tag parsing ────────────────────────────────
+        function parseActions(text) {
+            const actions = [];
+            const cleanText = text.replace(/\[\[\[ACTION:(.*?)\]\]\]/g, (match, actionStr) => {
+                const parts = actionStr.split(':');
+                const type = parts[0];
+                const params = parts.slice(1);
+                let label = '';
+                let icon = '';
+                switch (type) {
+                    case 'alert':
+                        icon = '⚡'; label = `Set ${params[0]} alert at $${params[1]} (${params[2] || 'above'})`;
+                        break;
+                    case 'watchlist':
+                        icon = '👁️'; label = `Add ${params[0]} to watchlist`;
+                        break;
+                    case 'position':
+                        icon = '➕'; label = `Add ${params[1]} ${params[0]} @ $${params[2]}`;
+                        break;
+                    default:
+                        return '';
+                }
+                actions.push({ type, params, label, icon });
+                return '';
+            });
+            return { cleanText, actions };
+        }
+
+        function createActionButtons(actions) {
+            if (!actions.length) return null;
+            const container = document.createElement('div');
+            container.style.cssText = 'margin-top: 8px; display: flex; flex-wrap: wrap;';
+            for (const action of actions) {
+                const btn = document.createElement('button');
+                btn.className = 'ai-action-btn';
+                btn.innerHTML = `${action.icon} ${action.label}`;
+                btn.onclick = async () => {
+                    if (btn.classList.contains('executed')) return;
+                    btn.disabled = true;
+                    btn.innerHTML = `⏳ ${action.label}`;
+                    try {
+                        const resp = await fetch(`${API_BASE}/ai/action`, {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: action.type, params: action.params })
+                        });
+                        const data = await resp.json();
+                        if (data.success) {
+                            btn.innerHTML = `✅ ${data.message}`;
+                            btn.classList.add('executed');
+                            showToast(data.message, 'success');
+                        } else {
+                            btn.innerHTML = `❌ ${data.error || 'Failed'}`;
+                            showToast(data.error || 'Action failed', 'error');
+                        }
+                    } catch (e) {
+                        btn.innerHTML = `❌ Error`;
+                        showToast('Action failed', 'error');
+                    }
+                    btn.disabled = false;
+                };
+                container.appendChild(btn);
+            }
+            return container;
+        }
+
         // Message rendering
         function renderAiMarkdown(text) {
             if (!text) return '';
@@ -7738,8 +7833,16 @@
             if (role === 'assistant' && isStreaming) {
                 bubble.innerHTML = '<div class="ai-typing"><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div></div>';
                 msgDiv.dataset.streaming = 'true';
+            } else if (role === 'assistant') {
+                const { cleanText, actions: msgActions } = parseActions(content);
+                bubble.innerHTML = renderAiMarkdown(cleanText);
+                if (msgActions.length > 0) {
+                    const actionEl = createActionButtons(msgActions);
+                    actionEl.className = 'ai-action-container';
+                    bubble.appendChild(actionEl);
+                }
             } else {
-                bubble.innerHTML = role === 'assistant' ? renderAiMarkdown(content) : content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                bubble.innerHTML = content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
             }
 
             msgDiv.appendChild(avatar);
@@ -7805,7 +7908,7 @@
         }
 
         function appendMessageActions(aiMessage) {
-            const cleanMarkdown = aiMessage.replace(/<<<.*?>>>/gs, '').trim();
+            const cleanMarkdown = aiMessage.replace(/\[\[\[ACTION:.*?\]\]\]/g, '').replace(/<<<.*?>>>/gs, '').trim();
             const container = document.getElementById('aiMessages');
             const msgs = container.querySelectorAll('.ai-message.assistant');
             const lastAssistant = msgs[msgs.length - 1];
@@ -7824,7 +7927,16 @@
             if (!lastMsg) return;
 
             const bubble = lastMsg.querySelector('.ai-message-bubble');
-            bubble.innerHTML = renderAiMarkdown(content);
+            const { cleanText, actions } = parseActions(content);
+            bubble.innerHTML = renderAiMarkdown(cleanText);
+            // Re-add action buttons on each update (streaming adds content incrementally)
+            const existingActions = bubble.querySelector('.ai-action-container');
+            if (existingActions) existingActions.remove();
+            if (actions.length > 0) {
+                const actionEl = createActionButtons(actions);
+                actionEl.className = 'ai-action-container';
+                bubble.appendChild(actionEl);
+            }
             lastMsg.dataset.streaming = '';
             container.scrollTop = container.scrollHeight;
         }
