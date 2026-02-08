@@ -22,6 +22,18 @@ const router = express.Router();
 const crypto = require('crypto');
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
 
+// Find the first configured/available provider for a user
+function findDefaultProvider(userId) {
+  // 1. User's own API keys
+  const userKeys = dbAll('SELECT provider FROM ai_api_keys WHERE user_id = ?', [userId]);
+  if (userKeys.length) return userKeys[0].provider;
+  // 2. OpenClaw gateway (preferred — uses existing AI subscription)
+  if (process.env.OPENCLAW_GATEWAY_TOKEN) return 'openclaw';
+  // 3. Ollama (local, no key needed)
+  if (PROVIDER_DEFS.ollama && !PROVIDER_DEFS.ollama.requiresKey) return 'ollama';
+  return null;
+}
+
 // ─── Helper: get provider instance for user ────────────────────────
 
 function getProviderForUser(userId, providerName) {
@@ -223,16 +235,7 @@ router.post('/chat', async (req, res) => {
   // Determine provider: explicit > first configured > error
   let selectedProvider = providerName;
   if (!selectedProvider) {
-    const userKeys = dbAll(
-      'SELECT provider FROM ai_api_keys WHERE user_id = ?',
-      [req.user.id]
-    );
-    if (userKeys.length) {
-      selectedProvider = userKeys[0].provider;
-    } else {
-      // Try ollama as fallback (no key needed)
-      selectedProvider = 'ollama';
-    }
+    selectedProvider = findDefaultProvider(req.user.id);
   }
 
   if (!PROVIDER_DEFS[selectedProvider]) {
@@ -417,15 +420,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
   // Determine provider
   let selectedProvider = providerName;
   if (!selectedProvider) {
-    const userKeys = dbAll(
-      'SELECT provider FROM ai_api_keys WHERE user_id = ?',
-      [req.user.id]
-    );
-    if (userKeys.length) {
-      selectedProvider = userKeys[0].provider;
-    } else {
-      selectedProvider = 'ollama';
-    }
+    selectedProvider = findDefaultProvider(req.user.id);
   }
 
   if (!PROVIDER_DEFS[selectedProvider]) {
