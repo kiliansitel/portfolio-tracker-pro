@@ -9,6 +9,10 @@ const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 
 // Seed demo database on fresh install: if no DB exists yet, copy demo-portfolio.db as starting point
 if (!fs.existsSync(DB_PATH)) {
+  // Ensure data directory exists
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
   const seedPath = path.join(__dirname, 'demo-portfolio.db');
   if (fs.existsSync(seedPath)) {
     fs.copyFileSync(seedPath, DB_PATH);
