@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/logo.svg" alt="Portfolio Tracker Pro" width="128" height="128">
+  <img src="logo.svg" alt="Portfolio Tracker Pro" width="128" height="128">
 </p>
 
 <h1 align="center">Portfolio Tracker Pro</h1>
@@ -115,43 +115,43 @@ A pre-loaded demo portfolio is included for exploration:
 ## Screenshots
 
 ### Dashboard
-![Dashboard](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/dashboard.jpg)
+![Dashboard](screenshots/dashboard.jpg)
 
 ### Positions
-![Positions](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/positions.jpg)
+![Positions](screenshots/positions.jpg)
 
 ### Add/Edit Position
-![Add Position](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/add-position.jpg)
+![Add Position](screenshots/add-position.jpg)
 
 ### Watchlist
-![Watchlist](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/watchlist.jpg)
+![Watchlist](screenshots/watchlist.jpg)
 
 ### Add to Watchlist
-![Add Watchlist](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/add-watchlist.jpg)
+![Add Watchlist](screenshots/add-watchlist.jpg)
 
 ### Alerts
-![Alerts](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/alerts.jpg)
+![Alerts](screenshots/alerts.jpg)
 
 ### News
-![News](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/news.jpg)
+![News](screenshots/news.jpg)
 
 ### Transactions
-![Transactions](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/transactions.jpg)
+![Transactions](screenshots/transactions.jpg)
 
 ### Chart Detail
-![Chart Detail](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/chart-detail.jpg)
+![Chart Detail](screenshots/chart-detail.jpg)
 
 ### Options Chain
-![Options Chain](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/options-chain.jpg)
+![Options Chain](screenshots/options-chain.jpg)
 
 ### Wallets
-![Wallets](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/wallets.jpg)
+![Wallets](screenshots/wallets.jpg)
 
 ### Wallet Tokens
-![Wallet Tokens](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/wallet-tokens.jpg)
+![Wallet Tokens](screenshots/wallet-tokens.jpg)
 
 ### Settings
-![Settings](https://raw.githubusercontent.com/kiliansitel/portfolio-tracker-pro/main/screenshots/settings.jpg)
+![Settings](screenshots/settings.jpg)
 
 ## Version History
 
