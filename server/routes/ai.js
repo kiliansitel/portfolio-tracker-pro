@@ -108,6 +108,65 @@ async function buildSystemPrompt(userId, context) {
 
   const contexts = context.split(',').map(c => c.trim());
 
+  // Handle analysis follow-ups: rebuild the same context the analysis had
+  // 'analysis' (legacy) falls back to portfolio+market context
+  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.some(c => c.startsWith('analysis-position:'))) {
+    // Switch to analysis-style system prompt for continuity
+    systemContent = `You are Oracle, an expert financial analyst built into Portfolio Tracker Pro.\n\n` +
+      `## Analysis Guidelines\n` +
+      `- Provide data-driven analysis with specific numbers and actionable conclusions.\n` +
+      `- Use markdown tables for data, bold for key takeaways.\n` +
+      `- Be opinionated — give a clear verdict (buy/hold/sell/avoid) with reasoning.\n` +
+      `- Reference the user's actual position data and cost basis when available.\n` +
+      `- Keep it focused. Quality over quantity.\n` +
+      `- Disclaimer: Analysis, not financial advice.\n\n` +
+      `## Follow-up Suggestions\n` +
+      `Last line of every response: <<<Q1|||Q2|||Q3>>> (under 8 words each, specific and actionable)\n\n`;
+
+    if (contexts.includes('analysis-portfolio') || contexts.includes('analysis')) {
+      // 'analysis' (legacy) defaults to portfolio+market for backwards compat
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    if (contexts.includes('analysis-watchlist')) {
+      systemContent += buildWatchlistContext(userId, dbAll) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    const posContext = contexts.find(c => c.startsWith('analysis-position:'));
+    if (posContext) {
+      const symbol = posContext.split(':')[1];
+      if (symbol) {
+        // Rebuild position context
+        const positions = dbAll(`
+          SELECT p.*, pf.name as portfolio_name
+          FROM positions p
+          JOIN portfolios pf ON p.portfolio_id = pf.id
+          WHERE pf.user_id = ? AND p.symbol = ?
+        `, [userId, symbol.toUpperCase()]);
+
+        let positionData = '';
+        if (positions.length) {
+          positionData = `## Position Data for ${symbol.toUpperCase()}\n\n`;
+          for (const pos of positions) {
+            const currentPrice = pos.current_price || pos.entry_price;
+            const value = pos.quantity * currentPrice;
+            const cost = pos.quantity * pos.entry_price;
+            const pnl = value - cost;
+            positionData += `- **Portfolio:** ${pos.portfolio_name}\n`;
+            positionData += `  - Quantity: ${pos.quantity}\n`;
+            positionData += `  - Entry Price: $${pos.entry_price.toFixed(2)}\n`;
+            positionData += `  - Current Price: $${currentPrice.toFixed(2)}\n`;
+            positionData += `  - P&L: $${pnl.toFixed(2)} (${cost > 0 ? ((pnl / cost) * 100).toFixed(1) : '0.0'}%)\n`;
+            positionData += `  - Value: $${value.toFixed(2)}\n\n`;
+          }
+        }
+        systemContent += positionData;
+        systemContent += buildMarketContext() + '\n';
+      }
+    }
+    return systemContent;
+  }
+
   if (contexts.includes('portfolio')) {
     systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
   }
@@ -275,6 +334,7 @@ router.post('/chat', async (req, res) => {
   // Build or resume conversation
   let convId = conversationId ? parseInt(conversationId) : null;
   let conversationMessages = [];
+  let effectiveContext = context || 'general';
 
   if (convId) {
     // Verify ownership
@@ -284,6 +344,11 @@ router.post('/chat', async (req, res) => {
     );
     if (!conv) {
       return res.status(404).json({ error: 'Conversation not found' });
+    }
+    // Use stored conversation context for continuity (e.g. analysis-portfolio)
+    // This ensures follow-up messages in an analysis conversation get the same context
+    if (conv.context) {
+      effectiveContext = conv.context;
     }
     // Load previous messages
     const prevMsgs = dbAll(
@@ -300,13 +365,13 @@ router.post('/chat', async (req, res) => {
     const title = message.slice(0, 100) + (message.length > 100 ? '...' : '');
     const result = dbRun(
       'INSERT INTO ai_conversations (user_id, title, context, provider, model) VALUES (?, ?, ?, ?, ?)',
-      [req.user.id, title, context || 'general', selectedProvider, selectedModel]
+      [req.user.id, title, effectiveContext, selectedProvider, selectedModel]
     );
     convId = result.lastInsertRowid;
   }
 
-  // Build system prompt with context
-  const systemContent = await buildSystemPrompt(req.user.id, context);
+  // Build system prompt with context (uses stored context for resumed conversations)
+  const systemContent = await buildSystemPrompt(req.user.id, effectiveContext);
 
   // Construct messages array
   const apiMessages = [
@@ -433,7 +498,7 @@ router.delete('/conversations/:id', (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 
 // Helper: run analysis with a pre-built prompt
-async function runAnalysis(req, res, systemExtra, userPrompt) {
+async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
   const { provider: providerName, model } = req.body;
 
   // Determine provider
@@ -476,11 +541,11 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
     { role: 'user', content: userPrompt }
   ];
 
-  // Save as conversation
+  // Save as conversation with specific analysis context for follow-up continuity
   const title = userPrompt.slice(0, 100);
   const result = dbRun(
     'INSERT INTO ai_conversations (user_id, title, context, provider, model) VALUES (?, ?, ?, ?, ?)',
-    [req.user.id, title, 'analysis', selectedProvider, selectedModel]
+    [req.user.id, title, analysisContext || 'analysis', selectedProvider, selectedModel]
   );
   const convId = result.lastInsertRowid;
 
@@ -538,7 +603,7 @@ router.post('/analyze/portfolio', async (req, res) => {
 
 Be specific with numbers from my portfolio data.`;
 
-  await runAnalysis(req, res, portfolioData + '\n' + marketData, userPrompt);
+  await runAnalysis(req, res, portfolioData + '\n' + marketData, userPrompt, 'analysis-portfolio');
 });
 
 // POST /analyze/watchlist — watchlist entry/exit signals
@@ -554,7 +619,7 @@ router.post('/analyze/watchlist', async (req, res) => {
 
 Consider current market conditions and be specific.`;
 
-  await runAnalysis(req, res, watchlistData + '\n' + marketData, userPrompt);
+  await runAnalysis(req, res, watchlistData + '\n' + marketData, userPrompt, 'analysis-watchlist');
 });
 
 // POST /analyze/position/:symbol — deep dive on specific position
@@ -608,7 +673,7 @@ router.post('/analyze/position/:symbol', async (req, res) => {
 
 Be specific and reference the position data provided.`;
 
-  await runAnalysis(req, res, positionContext + '\n' + marketData, userPrompt);
+  await runAnalysis(req, res, positionContext + '\n' + marketData, userPrompt, `analysis-position:${upperSymbol}`);
 });
 
 module.exports = router;
