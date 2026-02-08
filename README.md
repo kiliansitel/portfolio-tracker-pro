@@ -21,8 +21,10 @@
 - 👀 **Watchlists & Alerts** — 12+ categories, price targets, Telegram & push notifications
 - ⛓️ **Options Chain** — Calls/puts with strikes, expiry dates, ITM highlighting
 - 📰 **News & Multi-Currency** — Real-time market news, EUR/USD/GBP/CHF with live FX rates
-- 📱 **Mobile-First** — Responsive design, compact numbers ($1.5M), swipe actions
-- 🔒 **Secure & Fast** — JWT + Argon2id, CSP, rate limiting, SQLite with indexed queries
+- 📱 **Mobile-First PWA** — Installable app, responsive design, compact numbers ($1.5M), swipe actions, loading skeletons
+- 🔀 **Sort & Search** — Sort positions/watchlist by name, value, P&L%, or change%. Instant search filter
+- 🔒 **Secure & Fast** — JWT + Argon2id, CSP, rate limiting, SQLite with indexed queries, session timeout warning
+- 💾 **Backup & Restore** — Full database backup/restore, smart broker CSV import (Keytrade, IBKR, DeGiro)
 - 🎁 **Demo Mode** — Pre-loaded portfolio for instant exploration
 - 🐳 **Docker & CI/CD** — Multi-arch images (amd64/arm64), GitHub Actions pipeline
 
@@ -98,6 +100,11 @@ A pre-loaded demo portfolio is included for exploration:
 | GET | `/api/wallets/:id/transactions` | List chain transactions |
 | GET | `/api/wallets/:id/tokens` | List wallet tokens |
 | POST | `/api/wallets/:id/sync-tokens` | Sync tokens only |
+| POST | `/api/portfolios/:id/duplicate` | Clone portfolio with positions |
+| PUT | `/api/auth/password` | Change password |
+| PUT | `/api/auth/email` | Update email |
+| GET | `/api/backup` | Download full database backup |
+| POST | `/api/backup/restore` | Restore from backup file |
 | GET | `/api/info` | App version & environment |
 
 ## Screenshots
@@ -199,15 +206,18 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 - [x] Self-update system (check updates, switch channels, one-click apply)
 - [x] Comprehensive product manual (16 chapters)
 - [x] Automated screenshot generation
-
-### 🚧 In Progress
-
-### 📍 v0.20.0 "Compass" — Source Tracking & Polish
-- [x] Position source/location tracking
+- [x] Position source/location tracking with exchange fields
 - [x] Demo database with example data
 - [x] Compact number formatting for mobile
-- [x] SPL token tracking (Solana)
-- [x] DeFi position tracking
+- [x] Password change, email edit from Settings UI
+- [x] Full database backup & restore
+- [x] PWA (installable, offline support, service worker)
+- [x] Position/watchlist sorting and search
+- [x] Smart broker CSV import (Keytrade, IBKR, DeGiro)
+- [x] Loading skeletons, empty states, session timeout warning
+- [x] Smart logo caching (zero 404s)
+
+### 🚧 In Progress
 
 ### 🧠 v0.21.0 "Oracle" — AI Intelligence Layer
 The killer feature: connect any LLM to analyze your portfolio.
