@@ -427,6 +427,9 @@ async function runAnalysis(req, res, systemExtra, userPrompt) {
   const systemContent = `You are an expert financial analyst integrated into Portfolio Tracker Pro. ` +
     `Provide thorough, data-driven analysis with specific numbers and actionable insights. ` +
     `Use markdown formatting for readability. Disclaimer: This is analysis, not financial advice.\n\n` +
+    `IMPORTANT: At the very end of every response, suggest 3 natural follow-up questions the user might ask next. ` +
+    `Format them on the last line as: <<<Q1|||Q2|||Q3>>> ` +
+    `Keep each question short (under 8 words). Make them contextual to what you just discussed.\n\n` +
     systemExtra;
 
   const apiMessages = [
