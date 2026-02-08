@@ -1,5 +1,19 @@
 # Portfolio Tracker Pro — Version History
-## v0.20.2 (2026-02-08) ← CURRENT
+## v0.20.3 (2026-02-08) ← CURRENT
+Visual polish pass from full QA audit.
+
+- 🎨 4-char fallback logos (AAPL not AAP) with auto-scaling font
+- 🔵 Blue pill "+ ADD" buttons on watchlist items
+- 📐 Empty states vertically centered (flexbox, 40vh min-height)
+- 🌈 20-color donut chart palette (no duplicate oranges)
+- 🔽 Sort dropdowns with "Sort ▾" label
+- 📸 Updated screenshots (dashboard, positions, watchlist)
+- 📖 README: 5 missing API endpoints added, features updated, roadmap cleaned
+- 🧹 Zero 404s, zero console errors
+
+---
+
+## v0.20.2 (2026-02-08)
 UX polish: sorting, search, empty states, skeletons, and zero 404s.
 
 **New Features:**
