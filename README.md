@@ -8,7 +8,7 @@
   A TradingView-inspired portfolio tracker with real-time prices, interactive charts, crypto wallet tracking, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.20.1-blue)
+![Version](https://img.shields.io/badge/version-0.20.2-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -145,6 +145,7 @@ A pre-loaded demo portfolio is included for exploration:
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.20.2** — Position/watchlist sorting, empty states, skeletons, smart logo caching, session timeout
 - **v0.20.1** — Password change, email edit, backup/restore, PWA, position search, keyboard shortcuts, smart broker import
 - **v0.20.0 "Compass"** — Position source tracking, exchange/location fields, compact numbers, demo database, SPL tokens, DeFi tracking
 - **v0.19.1** — ERC-20 token tracking, self-update system, UI polish
