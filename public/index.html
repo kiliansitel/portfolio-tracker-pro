@@ -1483,8 +1483,30 @@
                             <div class="setting-item">
                                 <div>
                                     <div class="setting-label">Email</div>
-                                    <div class="setting-desc" id="settingsEmail">--</div>
+                                    <div id="emailDisplay">
+                                        <span class="setting-desc" id="settingsEmail">--</span>
+                                        <button class="btn btn-secondary" style="margin-left:10px;padding:4px 10px;font-size:0.8rem;" onclick="startEditEmail()">✏️ Edit</button>
+                                    </div>
+                                    <div id="emailEditForm" style="display:none;">
+                                        <div style="display:flex;gap:8px;align-items:center;margin-top:4px;">
+                                            <input type="email" id="emailEditInput" placeholder="new@email.com" style="padding:8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.9rem;width:220px;">
+                                            <button class="btn btn-primary" style="padding:4px 10px;font-size:0.8rem;" onclick="saveEmail()">Save</button>
+                                            <button class="btn btn-secondary" style="padding:4px 10px;font-size:0.8rem;" onclick="cancelEditEmail()">Cancel</button>
+                                        </div>
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="settings-section">
+                            <h3>🔒 Change Password</h3>
+                            <div class="setting-item" style="flex-direction:column;align-items:stretch;gap:12px;">
+                                <div style="display:flex;flex-direction:column;gap:8px;">
+                                    <input type="password" id="currentPasswordInput" placeholder="Current Password" style="padding:8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.9rem;width:100%;max-width:300px;">
+                                    <input type="password" id="newPasswordInput" placeholder="New Password" style="padding:8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.9rem;width:100%;max-width:300px;">
+                                    <input type="password" id="confirmPasswordInput" placeholder="Confirm New Password" style="padding:8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.9rem;width:100%;max-width:300px;">
+                                    <div class="setting-desc" style="font-size:0.75rem;color:var(--text-secondary);">Min 8 chars, uppercase, lowercase, and number required</div>
+                                </div>
+                                <button class="btn btn-primary" style="width:fit-content;" onclick="changePassword()">🔒 Change Password</button>
                             </div>
                         </div>
                         <div class="settings-section">
@@ -1587,6 +1609,26 @@
                                 </label>
                             </div>
                         </div>
+                        <div class="settings-section">
+                            <h3>💾 Backup & Restore</h3>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Download Full Backup</div>
+                                    <div class="setting-desc">Export entire database as a single file</div>
+                                </div>
+                                <button class="btn btn-secondary" onclick="downloadBackup()">💾 Download Backup</button>
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Restore from Backup</div>
+                                    <div class="setting-desc">⚠️ Replaces ALL data with the uploaded backup</div>
+                                </div>
+                                <label class="btn btn-danger" style="cursor:pointer;">
+                                    📤 Restore
+                                    <input type="file" accept=".db" onchange="restoreBackup(this)" style="display:none;">
+                                </label>
+                            </div>
+                        </div>
                         <div class="settings-section" id="updateSection">
                             <h3>🔄 App Updates</h3>
                             <div class="setting-item">
@@ -1639,7 +1681,7 @@
                             <div class="setting-item">
                                 <div>
                                     <div class="setting-label">Portfolio Tracker Pro</div>
-                                    <div class="setting-desc">v0.18.0 "Chain"</div>
+                                    <div class="setting-desc">v0.20.0 "Compass"</div>
                                 </div>
                             </div>
                             <div class="setting-item">
@@ -3814,6 +3856,145 @@
         function initCurrencySetting() {
             const sel = document.getElementById('settingsCurrency');
             if (sel) sel.value = userCurrency;
+        }
+
+        // ============ CHANGE PASSWORD ============
+        async function changePassword() {
+            const currentPassword = document.getElementById('currentPasswordInput').value;
+            const newPassword = document.getElementById('newPasswordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
+
+            if (!currentPassword || !newPassword || !confirmPassword) {
+                showToast('Please fill in all password fields', 'error');
+                return;
+            }
+            if (newPassword !== confirmPassword) {
+                showToast('New passwords do not match', 'error');
+                return;
+            }
+            if (newPassword.length < 8) {
+                showToast('Password must be at least 8 characters', 'error');
+                return;
+            }
+            if (!/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/[0-9]/.test(newPassword)) {
+                showToast('Password needs uppercase, lowercase, and a number', 'error');
+                return;
+            }
+
+            try {
+                const res = await api('/auth/password', {
+                    method: 'PUT',
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                showToast(res.message || 'Password changed successfully', 'success');
+                document.getElementById('currentPasswordInput').value = '';
+                document.getElementById('newPasswordInput').value = '';
+                document.getElementById('confirmPasswordInput').value = '';
+            } catch (err) {
+                showToast(err.message || 'Failed to change password', 'error');
+            }
+        }
+
+        // ============ EDIT EMAIL ============
+        function startEditEmail() {
+            const currentEmail = document.getElementById('settingsEmail').textContent;
+            document.getElementById('emailEditInput').value = currentEmail === '--' ? '' : currentEmail;
+            document.getElementById('emailDisplay').style.display = 'none';
+            document.getElementById('emailEditForm').style.display = 'block';
+            document.getElementById('emailEditInput').focus();
+        }
+
+        function cancelEditEmail() {
+            document.getElementById('emailDisplay').style.display = '';
+            document.getElementById('emailEditForm').style.display = 'none';
+        }
+
+        async function saveEmail() {
+            const email = document.getElementById('emailEditInput').value.trim();
+            if (!email) {
+                showToast('Email cannot be empty', 'error');
+                return;
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                showToast('Invalid email format', 'error');
+                return;
+            }
+
+            try {
+                const res = await api('/auth/email', {
+                    method: 'PUT',
+                    body: JSON.stringify({ email })
+                });
+                document.getElementById('settingsEmail').textContent = res.email || email;
+                cancelEditEmail();
+                showToast(res.message || 'Email updated successfully', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to update email', 'error');
+            }
+        }
+
+        // ============ BACKUP & RESTORE ============
+        async function downloadBackup() {
+            try {
+                showToast('Preparing backup...', 'info');
+                const response = await fetch('/api/backup', {
+                    headers: token ? { 'Authorization': 'Bearer ' + token } : {},
+                    credentials: 'include'
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Backup failed');
+                }
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const date = new Date().toISOString().split('T')[0];
+                a.download = `portfolio-backup-${date}.db`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('Backup downloaded!', 'success');
+            } catch (err) {
+                showToast(err.message || 'Failed to download backup', 'error');
+            }
+        }
+
+        async function restoreBackup(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            // Reset file input so same file can be selected again
+            input.value = '';
+
+            if (!confirm('⚠️ This will replace ALL data in the database. Are you sure you want to restore from this backup?')) {
+                return;
+            }
+
+            try {
+                showToast('Restoring backup...', 'info');
+                const arrayBuffer = await file.arrayBuffer();
+                const response = await fetch('/api/backup/restore', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/octet-stream',
+                        ...(token ? { 'Authorization': 'Bearer ' + token } : {})
+                    },
+                    credentials: 'include',
+                    body: arrayBuffer
+                });
+                if (!response.ok) {
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error || 'Restore failed');
+                }
+                const result = await response.json();
+                showToast(result.message || 'Database restored! Reloading...', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (err) {
+                showToast(err.message || 'Failed to restore backup', 'error');
+            }
         }
 
         // ============ PUSH NOTIFICATIONS ============

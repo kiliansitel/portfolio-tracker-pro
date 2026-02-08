@@ -200,6 +200,95 @@ router.put('/settings', authenticateToken, (req, res) => {
   res.json({ message: 'Settings updated', settings, currency });
 });
 
+// Change password
+router.put('/password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required' });
+    }
+
+    // Validate new password strength (min 8 chars, upper+lower+number)
+    if (newPassword.length < 8) {
+      return res.status(400).json({ error: 'New password must be at least 8 characters' });
+    }
+    if (!/[A-Z]/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must contain at least one uppercase letter' });
+    }
+    if (!/[a-z]/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must contain at least one lowercase letter' });
+    }
+    if (!/[0-9]/.test(newPassword)) {
+      return res.status(400).json({ error: 'New password must contain at least one number' });
+    }
+
+    const user = dbGet('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Verify current password (support argon2 and legacy bcrypt)
+    let validPassword = false;
+    if (user.password.startsWith('$argon2')) {
+      validPassword = await argon2.verify(user.password, currentPassword);
+    } else {
+      validPassword = await bcrypt.compare(currentPassword, user.password);
+    }
+
+    if (!validPassword) {
+      logSecurityEvent(req, 'PASSWORD_CHANGE_FAILED', { userId: req.user.id });
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+
+    // Hash new password with argon2id
+    const hashedPassword = await argon2.hash(newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 19456,
+      timeCost: 2,
+      parallelism: 1
+    });
+
+    dbRun('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, req.user.id]);
+    logSecurityEvent(req, 'PASSWORD_CHANGED', { userId: req.user.id });
+
+    res.json({ message: 'Password changed successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
+// Update email
+router.put('/email', authenticateToken, (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Check for duplicates (another user with same email)
+    const existing = dbGet('SELECT id FROM users WHERE email = ? AND id != ?', [email.toLowerCase(), req.user.id]);
+    if (existing) {
+      return res.status(400).json({ error: 'Email is already in use by another account' });
+    }
+
+    dbRun('UPDATE users SET email = ? WHERE id = ?', [email.toLowerCase(), req.user.id]);
+
+    res.json({ message: 'Email updated successfully', email: email.toLowerCase() });
+  } catch (error) {
+    console.error('Update email error:', error);
+    res.status(500).json({ error: 'Failed to update email' });
+  }
+});
+
 // Logout
 router.post('/logout', (req, res) => {
   res.clearCookie('auth_token');
