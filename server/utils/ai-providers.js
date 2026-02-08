@@ -49,7 +49,7 @@ const PROVIDER_DEFS = {
       { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' }
     ],
     requiresKey: true,
-    description: 'Requires an API key from console.anthropic.com (not setup-tokens)'
+    description: 'Requires a paid API key from console.anthropic.com — Claude Pro/setup-tokens won\'t work (use OpenClaw instead)'
   },
   google: {
     name: 'Google',
@@ -421,14 +421,11 @@ class AIProvider {
   }
 
   _anthropicHeaders() {
-    const headers = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
-    // Setup tokens (sk-ant-oat*) use Bearer auth; API keys use x-api-key
-    if (this.apiKey.startsWith('sk-ant-oat')) {
-      headers['Authorization'] = `Bearer ${this.apiKey}`;
-    } else {
-      headers['x-api-key'] = this.apiKey;
-    }
-    return headers;
+    return {
+      'Content-Type': 'application/json',
+      'x-api-key': this.apiKey,
+      'anthropic-version': '2023-06-01'
+    };
   }
 
   async _testAnthropic() {
