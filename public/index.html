@@ -8049,13 +8049,9 @@
                     sendAiChatMessage();
                     return;
                 case 'news':
-                    document.getElementById('aiInput').value = 'Give me a brief digest of what matters in the market today and how it might affect my portfolio.';
-                    aiActiveContexts = ['portfolio', 'market'];
-                    document.querySelectorAll('.ai-context-chip').forEach(c => {
-                        c.classList.toggle('active', aiActiveContexts.includes(c.dataset.context));
-                    });
-                    sendAiChatMessage();
-                    return;
+                    endpoint = '/ai/analyze/news';
+                    userLabel = '📰 News digest for my holdings';
+                    break;
                 case 'position':
                     openTickerSearchModal();
                     return;

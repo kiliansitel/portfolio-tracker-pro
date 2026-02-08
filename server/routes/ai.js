@@ -110,7 +110,7 @@ async function buildSystemPrompt(userId, context) {
 
   // Handle analysis follow-ups: rebuild the same context the analysis had
   // 'analysis' (legacy) falls back to portfolio+market context
-  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.some(c => c.startsWith('analysis-position:'))) {
+  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.some(c => c.startsWith('analysis-position:'))) {
     // Switch to analysis-style system prompt for continuity
     systemContent = `You are Oracle, an expert financial analyst built into Portfolio Tracker Pro.\n\n` +
       `## Analysis Guidelines\n` +
@@ -130,6 +130,10 @@ async function buildSystemPrompt(userId, context) {
     }
     if (contexts.includes('analysis-watchlist')) {
       systemContent += buildWatchlistContext(userId, dbAll) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    if (contexts.includes('analysis-news')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
       systemContent += buildMarketContext() + '\n';
     }
     const posContext = contexts.find(c => c.startsWith('analysis-position:'));
@@ -688,6 +692,60 @@ router.post('/analyze/position/:symbol', async (req, res) => {
 Be specific and reference the position data provided.`;
 
   await runAnalysis(req, res, positionContext + '\n' + marketData, userPrompt, `analysis-position:${upperSymbol}`);
+});
+
+// POST /analyze/news — AI-powered news digest for holdings
+router.post('/analyze/news', async (req, res) => {
+  // Get user's position symbols
+  const positions = dbAll(`
+    SELECT DISTINCT p.symbol FROM positions p
+    JOIN portfolios pf ON p.portfolio_id = pf.id
+    WHERE pf.user_id = ?
+    ORDER BY p.quantity * COALESCE(p.current_price, p.entry_price) DESC
+    LIMIT 10
+  `, [req.user.id]);
+
+  const symbols = positions.map(p => p.symbol);
+
+  // Fetch news from Yahoo for top holdings
+  let newsContext = '## Recent News for Your Holdings\n\n';
+
+  if (symbols.length === 0) {
+    newsContext += 'No positions found. Add some positions first.\n';
+  } else {
+    try {
+      const { fetchYahooNews } = require('../utils/yahoo');
+      const newsResults = await Promise.allSettled(
+        symbols.slice(0, 5).map(sym => fetchYahooNews(sym))
+      );
+
+      for (let i = 0; i < newsResults.length; i++) {
+        const result = newsResults[i];
+        const sym = symbols[i];
+        if (result.status === 'fulfilled' && result.value?.length > 0) {
+          newsContext += `### ${sym}\n`;
+          for (const article of result.value.slice(0, 3)) {
+            newsContext += `- **${article.title}** (${article.publisher || 'Unknown'}, ${article.date || 'recent'})\n`;
+          }
+          newsContext += '\n';
+        }
+      }
+    } catch (e) {
+      newsContext += 'Unable to fetch news at this time.\n';
+    }
+  }
+
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+
+  const userPrompt = `Based on the recent news for my holdings, provide:
+1. **Key Headlines** — what happened and why it matters for my portfolio
+2. **Impact Assessment** — which positions are most affected (positive or negative)
+3. **Action Items** — any immediate concerns or opportunities
+4. **Market Mood** — overall sentiment for my holdings
+
+Be concise and focus on what's actionable.`;
+
+  await runAnalysis(req, res, newsContext + '\n' + portfolioData, userPrompt, 'analysis-news');
 });
 
 module.exports = router;
