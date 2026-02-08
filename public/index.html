@@ -3145,7 +3145,7 @@
                 const syncTime = timeSince(w.last_synced);
                 const tokenCount = w.token_count || 0;
                 const tokens = w.tokens || [];
-                const isEvm = ['eth','bnb','avax','matic','arb','op'].includes(w.chain);
+                const hasTokenSupport = ['eth','bnb','avax','matic','arb','op','sol'].includes(w.chain);
 
                 html += `<div class="swipe-container" data-id="${w.id}" data-type="wallet">
                     <div class="swipe-actions">
@@ -3166,7 +3166,7 @@
                                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
                                     <div style="display:flex;gap:6px;align-items:center;">
                                         <span style="font-size:0.75rem;color:var(--text-secondary);">Synced: ${syncTime}</span>
-                                        ${isEvm && tokenCount > 0 ? `<button onclick="toggleWalletTokens(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:var(--accent-blue);padding:1px 6px;border-radius:10px;border:1px solid var(--accent-blue);">🪙 ${tokenCount} token${tokenCount !== 1 ? 's' : ''}</button>` : ''}
+                                        ${hasTokenSupport && tokenCount > 0 ? (() => { const defiCount = tokens.filter(t => t.protocol).length; const label = defiCount > 0 ? `🪙 ${tokenCount - defiCount} token${(tokenCount - defiCount) !== 1 ? 's' : ''} · 🏦 ${defiCount} DeFi` : `🪙 ${tokenCount} token${tokenCount !== 1 ? 's' : ''}`; return `<button onclick="toggleWalletTokens(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:var(--accent-blue);padding:1px 6px;border-radius:10px;border:1px solid var(--accent-blue);">${label}</button>`; })() : ''}
                                     </div>
                                     <div style="display:flex;gap:8px;align-items:center;">
                                         <button onclick="showWalletTx(${w.id}, '${w.chain}', '${(w.label || w.chain_name || w.chain.toUpperCase()).replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--accent-blue);padding:2px 4px;">📜 Txs</button>
@@ -3178,25 +3178,60 @@
 
                 html += `</div></div>`;
 
-                // Collapsible ERC-20 token list (OUTSIDE swipe-container)
-                if (isEvm && tokens.length > 0) {
+                // Collapsible token list with DeFi separation (OUTSIDE swipe-container)
+                if (hasTokenSupport && tokens.length > 0) {
+                    // Split tokens into regular and DeFi
+                    const regularTokens = tokens.filter(t => !t.protocol);
+                    const defiTokens = tokens.filter(t => t.protocol);
+                    const regularUsd = regularTokens.reduce((s, t) => s + (t.usd_value || 0), 0);
+                    const defiUsd = defiTokens.reduce((s, t) => s + (t.usd_value || 0), 0);
+                    const tokenLabel = w.chain === 'sol' ? 'SPL Tokens' : 'ERC-20 Tokens';
+
                     html += `<div id="wallet-tokens-${w.id}" style="display:none;margin-left:52px;border-top:1px solid var(--border-color);padding:8px 0;">`;
-                    html += `<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">ERC-20 Tokens — ${fc(w.tokens_usd_value || 0)}</div>`;
-                    for (const t of tokens) {
-                        const tBal = parseFloat(t.balance) || 0;
-                        const tBalStr = tBal >= 1000 ? tBal.toLocaleString(undefined, {maximumFractionDigits: 2}) : tBal.toFixed(Math.min(6, Math.max(2, 4 - Math.floor(Math.log10(Math.max(tBal, 0.0001))))));
-                        const tUsdStr = fc(t.usd_value || 0);
-                        html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.8rem;">
-                            <div style="display:flex;align-items:center;gap:6px;min-width:0;">
-                                <span style="font-weight:600;color:var(--text-primary);">${t.symbol}</span>
-                                <span style="color:var(--text-secondary);font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;" title="${t.name}">${t.name}</span>
-                            </div>
-                            <div style="text-align:right;flex-shrink:0;">
-                                <div style="font-weight:500;">${tUsdStr}</div>
-                                <div style="font-size:0.7rem;color:var(--text-secondary);">${tBalStr}</div>
-                            </div>
-                        </div>`;
+
+                    // Regular tokens (ERC-20 or SPL)
+                    if (regularTokens.length > 0) {
+                        html += `<div style="font-size:0.7rem;color:var(--text-secondary);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">${tokenLabel} — ${fc(regularUsd)}</div>`;
+                        for (const t of regularTokens) {
+                            const tBal = parseFloat(t.balance) || 0;
+                            const tBalStr = tBal >= 1000 ? tBal.toLocaleString(undefined, {maximumFractionDigits: 2}) : tBal.toFixed(Math.min(6, Math.max(2, 4 - Math.floor(Math.log10(Math.max(tBal, 0.0001))))));
+                            const tUsdStr = fc(t.usd_value || 0);
+                            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.8rem;">
+                                <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                                    <span style="font-weight:600;color:var(--text-primary);">${t.symbol}</span>
+                                    <span style="color:var(--text-secondary);font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;" title="${t.name}">${t.name}</span>
+                                </div>
+                                <div style="text-align:right;flex-shrink:0;">
+                                    <div style="font-weight:500;">${tUsdStr}</div>
+                                    <div style="font-size:0.7rem;color:var(--text-secondary);">${tBalStr}</div>
+                                </div>
+                            </div>`;
+                        }
                     }
+
+                    // DeFi positions section
+                    if (defiTokens.length > 0) {
+                        html += `<div style="font-size:0.7rem;color:var(--text-secondary);margin-top:${regularTokens.length > 0 ? '10' : '0'}px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;">🏦 DeFi Positions — ${fc(defiUsd)}</div>`;
+                        for (const t of defiTokens) {
+                            const tBal = parseFloat(t.balance) || 0;
+                            const tBalStr = tBal >= 1000 ? tBal.toLocaleString(undefined, {maximumFractionDigits: 2}) : tBal.toFixed(Math.min(6, Math.max(2, 4 - Math.floor(Math.log10(Math.max(tBal, 0.0001))))));
+                            const tUsdStr = fc(t.usd_value || 0);
+                            // Protocol badge
+                            const protocolIcon = t.protocol === 'Lido' || t.protocol === 'Coinbase' || t.protocol === 'Rocket Pool' ? '🥩' : '🏦';
+                            const badgeColor = t.protocol === 'Aave' ? '#B6509E' : t.protocol === 'Compound' ? '#00D395' : t.protocol === 'Lido' ? '#00A3FF' : t.protocol === 'Rocket Pool' ? '#FF6E40' : 'var(--accent-blue)';
+                            html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.8rem;">
+                                <div style="display:flex;align-items:center;gap:6px;min-width:0;">
+                                    <span style="font-weight:600;color:var(--text-primary);">${t.symbol}</span>
+                                    <span style="font-size:0.6rem;padding:1px 5px;border-radius:8px;background:${badgeColor}20;color:${badgeColor};font-weight:600;white-space:nowrap;">${protocolIcon} ${t.protocol}</span>
+                                </div>
+                                <div style="text-align:right;flex-shrink:0;">
+                                    <div style="font-weight:500;">${tUsdStr}</div>
+                                    <div style="font-size:0.7rem;color:var(--text-secondary);">${tBalStr}</div>
+                                </div>
+                            </div>`;
+                        }
+                    }
+
                     html += `</div>`;
                 }
             }

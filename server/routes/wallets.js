@@ -10,6 +10,9 @@ const router = express.Router();
 // ---- EVM chains that support ERC-20 tokens ----
 const EVM_CHAINS = ['eth', 'bnb', 'avax', 'matic', 'arb', 'op'];
 
+// ---- Chains that support token tracking (EVM + Solana SPL) ----
+const TOKEN_CHAINS = ['eth', 'bnb', 'avax', 'matic', 'arb', 'op', 'sol'];
+
 // ---- Top ERC-20 tokens to check (no API key needed, uses RPC) ----
 const POPULAR_ERC20 = [
   { contract: '0xdac17f958d2ee523a2206206994597c13d831ec7', symbol: 'USDT',  name: 'Tether USD',     decimals: 6 },
@@ -33,6 +36,53 @@ const POPULAR_ERC20 = [
   { contract: '0x3845badade8e6dff049820680d1f14bd3903a5d0', symbol: 'SAND',  name: 'The Sandbox',     decimals: 18 },
   { contract: '0x0f5d2fb29fb7d3cfee444a200298f468908cc942', symbol: 'MANA',  name: 'Decentraland',    decimals: 18 },
 ];
+
+// ---- Top SPL tokens to check (Solana) ----
+const POPULAR_SPL = [
+  { mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', symbol: 'USDC', name: 'USD Coin', decimals: 6 },
+  { mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', symbol: 'USDT', name: 'Tether USD', decimals: 6 },
+  { mint: 'So11111111111111111111111111111111111111112', symbol: 'WSOL', name: 'Wrapped SOL', decimals: 9 },
+  { mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN', symbol: 'JUP', name: 'Jupiter', decimals: 6 },
+  { mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', symbol: 'BONK', name: 'Bonk', decimals: 5 },
+  { mint: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm', symbol: 'WIF', name: 'dogwifhat', decimals: 6 },
+  { mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs', symbol: 'WETH', name: 'Wrapped ETH (Wormhole)', decimals: 8 },
+  { mint: '3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh', symbol: 'WBTC', name: 'Wrapped BTC (Wormhole)', decimals: 8 },
+  { mint: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3', symbol: 'PYTH', name: 'Pyth Network', decimals: 6 },
+  { mint: 'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof', symbol: 'RENDER', name: 'Render Token', decimals: 8 },
+  { mint: 'hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux', symbol: 'HNT', name: 'Helium', decimals: 8 },
+  { mint: 'jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL', symbol: 'JTO', name: 'Jito', decimals: 9 },
+  { mint: 'METAewgxyPbgwsseH8T16a39CQ5VyVxZi9zXiDPY18m', symbol: 'MPLX', name: 'Metaplex', decimals: 6 },
+  { mint: 'RLBxxFkseAZ4RgJH3Sqn8jXxhmGoz9jWxDNJMh8pL7a', symbol: 'RLBB', name: 'Rollbit', decimals: 2 },
+];
+
+const SOLANA_RPC = 'https://api.mainnet-beta.solana.com';
+
+// ---- DeFi protocol tokens (Aave aTokens, Compound cTokens, Liquid Staking) ----
+const DEFI_TOKENS = [
+  // Aave v2 aTokens
+  { contract: '0xbcca60bb61934080951369a648fb03df4f96263c6', symbol: 'aUSDC', name: 'Aave USDC', decimals: 6, protocol: 'Aave', underlying: 'USDC' },
+  { contract: '0x3ed3b47dd13ec9a98b44e6204a523e766b225811', symbol: 'aUSDT', name: 'Aave USDT', decimals: 6, protocol: 'Aave', underlying: 'USDT' },
+  { contract: '0x030ba81f1c18d280636f32af80b9aad02cf0854e', symbol: 'aWETH', name: 'Aave WETH', decimals: 18, protocol: 'Aave', underlying: 'WETH' },
+  { contract: '0x028171bca77440897b824ca71d1c56cac55b68a3', symbol: 'aDAI', name: 'Aave DAI', decimals: 18, protocol: 'Aave', underlying: 'DAI' },
+  // Compound cTokens
+  { contract: '0x39aa39c021dfbae8fac545936693ac917d5e7563', symbol: 'cUSDC', name: 'Compound USDC', decimals: 8, protocol: 'Compound', underlying: 'USDC' },
+  { contract: '0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5', symbol: 'cETH', name: 'Compound ETH', decimals: 8, protocol: 'Compound', underlying: 'ETH' },
+  { contract: '0x5d3a536e4d6dbd6114cc1ead35777bab948e3643', symbol: 'cDAI', name: 'Compound DAI', decimals: 8, protocol: 'Compound', underlying: 'DAI' },
+  // Liquid staking
+  { contract: '0xae78736cd615f374d3085123a210448e74fc6393', symbol: 'rETH', name: 'Rocket Pool ETH', decimals: 18, protocol: 'Rocket Pool', underlying: 'ETH' },
+];
+
+// Map DeFi token contracts to their protocol for quick lookup
+const DEFI_CONTRACT_MAP = {};
+for (const dt of DEFI_TOKENS) {
+  DEFI_CONTRACT_MAP[dt.contract.toLowerCase()] = dt;
+}
+
+// Identify staking protocol tokens already in POPULAR_ERC20
+const STAKING_SYMBOLS = {
+  'stETH': { protocol: 'Lido', underlying: 'ETH' },
+  'cbETH': { protocol: 'Coinbase', underlying: 'ETH' },
+};
 
 const ETH_RPC = 'https://ethereum-rpc.publicnode.com';
 const BALANCE_OF_SELECTOR = '0x70a08231';
@@ -64,12 +114,30 @@ async function fetchErc20BalanceRPC(walletAddress, contractAddress) {
   }
 }
 
-// Discover tokens by checking popular ERC-20 balances via RPC
+// Discover tokens by checking popular ERC-20 + DeFi token balances via RPC
 async function fetchErc20Tokens(address) {
   const found = [];
-  // Check all popular tokens in parallel (batches of 5)
-  for (let i = 0; i < POPULAR_ERC20.length; i += 5) {
-    const batch = POPULAR_ERC20.slice(i, i + 5);
+
+  // Combine POPULAR_ERC20 + DEFI_TOKENS for a single scan pass
+  const allTokensToCheck = [
+    ...POPULAR_ERC20.map(t => ({ ...t, protocol: STAKING_SYMBOLS[t.symbol]?.protocol || null, underlying: STAKING_SYMBOLS[t.symbol]?.underlying || null })),
+    ...DEFI_TOKENS,
+  ];
+
+  // Deduplicate by contract address (in case of overlap)
+  const seen = new Set();
+  const uniqueTokens = [];
+  for (const t of allTokensToCheck) {
+    const key = t.contract.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      uniqueTokens.push(t);
+    }
+  }
+
+  // Check all tokens in parallel (batches of 5)
+  for (let i = 0; i < uniqueTokens.length; i += 5) {
+    const batch = uniqueTokens.slice(i, i + 5);
     const results = await Promise.allSettled(
       batch.map(async (tok) => {
         const bal = await fetchErc20BalanceRPC(address, tok.contract);
@@ -83,7 +151,7 @@ async function fetchErc20Tokens(address) {
       if (r.status === 'fulfilled' && r.value) found.push(r.value);
     }
     // Small delay between batches
-    if (i + 5 < POPULAR_ERC20.length) await new Promise(r => setTimeout(r, 200));
+    if (i + 5 < uniqueTokens.length) await new Promise(r => setTimeout(r, 200));
   }
   return found;
 }
@@ -91,6 +159,86 @@ async function fetchErc20Tokens(address) {
 // Fetch a single ERC-20 token balance via RPC
 async function fetchErc20Balance(address, contractAddress) {
   return fetchErc20BalanceRPC(address, contractAddress);
+}
+
+// ---- SPL token fetching (Solana) ----
+
+// Fetch all SPL token accounts for a Solana wallet (single RPC call)
+async function fetchSplTokenAccounts(address) {
+  try {
+    const res = await fetch(SOLANA_RPC, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getTokenAccountsByOwner',
+        params: [
+          address,
+          { programId: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
+          { encoding: 'jsonParsed' }
+        ]
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) {
+      logger.error(`Solana RPC getTokenAccountsByOwner failed: ${res.status}`);
+      return [];
+    }
+    const data = await res.json();
+    if (data.error) {
+      logger.error(`Solana RPC error: ${data.error.message}`);
+      return [];
+    }
+    return data.result?.value || [];
+  } catch (e) {
+    logger.error(`SPL token fetch failed for ${address}:`, e.message);
+    return [];
+  }
+}
+
+// Discover SPL tokens with non-zero balances, matching against POPULAR_SPL
+async function fetchSplTokens(address) {
+  const accounts = await fetchSplTokenAccounts(address);
+  const found = [];
+
+  // Build lookup by mint address
+  const splLookup = {};
+  for (const tok of POPULAR_SPL) {
+    splLookup[tok.mint] = tok;
+  }
+
+  for (const account of accounts) {
+    try {
+      const info = account.account?.data?.parsed?.info;
+      if (!info) continue;
+
+      const mint = info.mint;
+      const tokenAmount = info.tokenAmount;
+      if (!tokenAmount || tokenAmount.uiAmount === 0 || tokenAmount.amount === '0') continue;
+
+      // Match against popular tokens for symbol/name
+      const known = splLookup[mint];
+      const symbol = known?.symbol || null;
+      const name = known?.name || null;
+      const decimals = tokenAmount.decimals || (known?.decimals ?? 0);
+
+      // Only include known tokens (skip unknown mints to avoid noise)
+      if (!known) continue;
+
+      found.push({
+        contract_address: mint, // Use mint as contract_address for DB compatibility
+        symbol,
+        name,
+        decimals,
+        balance_raw: tokenAmount.amount,
+      });
+    } catch (e) {
+      logger.error(`Error parsing SPL token account:`, e.message);
+    }
+  }
+
+  return found;
 }
 
 // Map token symbols to Yahoo Finance tickers for pricing
@@ -102,6 +250,14 @@ const TOKEN_YAHOO_TICKERS = {
   'LDO': 'LDO-USD', 'stETH': 'STETH-USD', 'cbETH': 'CBETH-USD',
   'CRO': 'CRO-USD', 'OKB': 'OKB-USD', 'FTM': 'FTM-USD',
   'SAND': 'SAND-USD', 'MANA': 'MANA-USD',
+  // SPL tokens (Solana)
+  'WSOL': 'SOL-USD', 'JUP': 'JUP-USD', 'BONK': 'BONK-USD',
+  'WIF': 'WIF-USD', 'PYTH': 'PYTH-USD', 'RENDER': 'RNDR-USD',
+  'HNT': 'HNT-USD', 'JTO': 'JTO-USD', 'MPLX': 'MPLX-USD',
+  // DeFi tokens — priced via their underlying asset
+  'aUSDC': 'USDC-USD', 'aUSDT': 'USDT-USD', 'aWETH': 'WETH-USD', 'aDAI': 'DAI-USD',
+  'cUSDC': 'USDC-USD', 'cETH': 'ETH-USD', 'cDAI': 'DAI-USD',
+  'rETH': 'RETH-USD',
 };
 
 // Fetch token USD prices via Yahoo Finance (same as rest of app)
@@ -115,7 +271,8 @@ async function fetchTokenPrices(tokens) {
     try {
       const quote = await fetchYahooPrice(yahooTicker);
       if (quote && quote.price) {
-        prices[token.contract_address.toLowerCase()] = quote.price;
+        // Use contract_address as-is (SPL mints are case-sensitive base58)
+        prices[token.contract_address] = quote.price;
       }
     } catch (e) {
       logger.error(`Yahoo price fetch for ${token.symbol}:`, e.message);
@@ -125,13 +282,18 @@ async function fetchTokenPrices(tokens) {
   return prices;
 }
 
-// Full ERC-20 sync for a single ETH wallet
+// Full token sync for a single wallet (ERC-20 for ETH, SPL for SOL)
 async function syncWalletTokens(wallet) {
-  if (wallet.chain !== 'eth') return []; // ETH only for now
+  if (!TOKEN_CHAINS.includes(wallet.chain)) return [];
 
   try {
-    // 1. Discover tokens with non-zero balances via RPC
-    const discoveredTokens = await fetchErc20Tokens(wallet.address);
+    // 1. Discover tokens with non-zero balances
+    let discoveredTokens;
+    if (wallet.chain === 'sol') {
+      discoveredTokens = await fetchSplTokens(wallet.address);
+    } else {
+      discoveredTokens = await fetchErc20Tokens(wallet.address);
+    }
     if (discoveredTokens.length === 0) return [];
 
     // 2. Convert raw balances to human-readable
@@ -176,6 +338,9 @@ async function syncWalletTokens(wallet) {
       // If no price data, still store if balance is significant
       if (usdPrice === 0 && balanceNum < 0.001) continue;
 
+      // Determine protocol label
+      const protocol = token.protocol || DEFI_CONTRACT_MAP[token.contract_address?.toLowerCase()]?.protocol || STAKING_SYMBOLS[token.symbol]?.protocol || null;
+
       // Upsert
       const existing = dbGet(
         'SELECT id FROM wallet_tokens WHERE wallet_id = ? AND contract_address = ?',
@@ -184,14 +349,14 @@ async function syncWalletTokens(wallet) {
 
       if (existing) {
         dbRun(
-          `UPDATE wallet_tokens SET symbol = ?, name = ?, decimals = ?, balance = ?, usd_value = ?, last_synced = ? WHERE id = ?`,
-          [token.symbol, token.name, token.decimals, token.balance, usdValue, now, existing.id]
+          `UPDATE wallet_tokens SET symbol = ?, name = ?, decimals = ?, balance = ?, usd_value = ?, protocol = ?, last_synced = ? WHERE id = ?`,
+          [token.symbol, token.name, token.decimals, token.balance, usdValue, protocol, now, existing.id]
         );
       } else {
         dbRun(
-          `INSERT INTO wallet_tokens (wallet_id, contract_address, symbol, name, decimals, balance, usd_value, last_synced)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-          [wallet.id, token.contract_address, token.symbol, token.name, token.decimals, token.balance, usdValue, now]
+          `INSERT INTO wallet_tokens (wallet_id, contract_address, symbol, name, decimals, balance, usd_value, protocol, last_synced)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [wallet.id, token.contract_address, token.symbol, token.name, token.decimals, token.balance, usdValue, protocol, now]
         );
       }
 
@@ -201,6 +366,7 @@ async function syncWalletTokens(wallet) {
         name: token.name,
         balance: token.balance,
         usd_value: usdValue,
+        protocol: protocol,
       });
     }
 
@@ -280,8 +446,8 @@ function startAutoSync() {
           } catch (txErr) {
             logger.error(`Auto-sync tx fetch failed for wallet ${wallet.id}:`, txErr.message);
           }
-          // Sync ERC-20 tokens for EVM wallets during auto-sync
-          if (EVM_CHAINS.includes(wallet.chain)) {
+          // Sync tokens for supported chains during auto-sync (EVM + SOL)
+          if (TOKEN_CHAINS.includes(wallet.chain)) {
             try {
               await syncWalletTokens(wallet);
             } catch (tokenErr) {
@@ -875,7 +1041,7 @@ router.get('/', async (req, res) => {
     // Enrich with USD value and tokens
     const enriched = wallets.map(w => {
       const nativeUsd = (w.balance || 0) * (prices[w.chain] || 0);
-      const tokens = EVM_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
+      const tokens = TOKEN_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
       const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
 
       return {
@@ -1000,9 +1166,9 @@ router.post('/:id/sync', idParamValidation, async (req, res) => {
       logger.error(`Tx fetch during sync failed for wallet ${wallet.id}:`, txErr.message);
     }
 
-    // Sync ERC-20 tokens for EVM wallets
+    // Sync tokens for supported chains (EVM + SOL)
     let tokenResult = [];
-    if (EVM_CHAINS.includes(wallet.chain)) {
+    if (TOKEN_CHAINS.includes(wallet.chain)) {
       try {
         tokenResult = await syncWalletTokens(wallet);
       } catch (tokenErr) {
@@ -1063,8 +1229,8 @@ router.post('/sync-all', async (req, res) => {
         } catch (txErr) {
           logger.error(`Tx fetch during sync-all failed for wallet ${wallet.id}:`, txErr.message);
         }
-        // Sync ERC-20 tokens for EVM wallets
-        if (EVM_CHAINS.includes(wallet.chain)) {
+        // Sync tokens for supported chains (EVM + SOL)
+        if (TOKEN_CHAINS.includes(wallet.chain)) {
           try {
             await syncWalletTokens(wallet);
           } catch (tokenErr) {
@@ -1088,7 +1254,7 @@ router.post('/sync-all', async (req, res) => {
 
     const enriched = results.map(w => {
       const nativeUsd = (w.balance || 0) * (prices[w.chain] || 0);
-      const tokens = EVM_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
+      const tokens = TOKEN_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
       const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
 
       return {
@@ -1144,7 +1310,7 @@ router.get('/summary', async (req, res) => {
     for (const w of wallets) {
       const price = prices[w.chain] || 0;
       const nativeUsd = (w.balance || 0) * price;
-      const tokens = EVM_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
+      const tokens = TOKEN_CHAINS.includes(w.chain) ? getWalletTokens(w.id) : [];
       const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
       const walletTotalUsd = nativeUsd + tokensUsd;
 
@@ -1254,8 +1420,8 @@ router.get('/:id/tokens', idParamValidation, async (req, res) => {
       return res.status(404).json({ error: 'Wallet not found' });
     }
 
-    if (!EVM_CHAINS.includes(wallet.chain)) {
-      return res.json({ tokens: [], message: 'Token tracking only available for EVM chains' });
+    if (!TOKEN_CHAINS.includes(wallet.chain)) {
+      return res.json({ tokens: [], message: 'Token tracking only available for EVM and Solana chains' });
     }
 
     const tokens = getWalletTokens(wallet.id);
@@ -1283,8 +1449,8 @@ router.post('/:id/sync-tokens', idParamValidation, async (req, res) => {
       return res.status(404).json({ error: 'Wallet not found' });
     }
 
-    if (!EVM_CHAINS.includes(wallet.chain)) {
-      return res.json({ tokens: [], message: 'Token tracking only available for EVM chains' });
+    if (!TOKEN_CHAINS.includes(wallet.chain)) {
+      return res.json({ tokens: [], message: 'Token tracking only available for EVM and Solana chains' });
     }
 
     const syncResult = await syncWalletTokens(wallet);
