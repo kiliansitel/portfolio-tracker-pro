@@ -1,4 +1,24 @@
 # Portfolio Tracker Pro — Version History
+## v0.20.2 (2026-02-08) ← CURRENT
+UX polish: sorting, search, empty states, skeletons, and zero 404s.
+
+**New Features:**
+- 🔀 **Position Sorting** — Sort by name, value, P&L%, daily change% (dropdown)
+- 🔀 **Watchlist Sorting** — Sort by name, price, change%
+- ➕ **Quick-Add from Watchlist** — Add to portfolio directly from watchlist items
+- 📌 **Remember Last Page** — Returns to your last page after refresh
+- 🎨 **Empty States** — Friendly messages with emojis on all empty pages
+- 💀 **Loading Skeletons** — Shimmer animations while data loads
+- 📝 **Position Notes on Cards** — Notes visible on position cards
+- ⏰ **Session Timeout Warning** — Toast 1hr before JWT expiry, auto-logout on 401
+- 🖼️ **Smart Logo Caching** — Failed logos cached, never re-requested
+
+**Fixes:**
+- 🔧 Zero 404 errors (DeFi tokens skip Yahoo API, logo fallbacks cached)
+- 🔧 Confirm dialogs on all delete actions
+- 🔧 Portfolio duplicate endpoint added
+
+---
 
 ## v0.20.1 (2026-02-08) ← CURRENT
 Account management, PWA, UX improvements, and smart broker import.
