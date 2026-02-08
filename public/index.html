@@ -1211,6 +1211,740 @@
                 font-size: 0.8rem;
             }
         }
+
+        /* ============ AI ORACLE PAGE ============ */
+        .ai-chat-container {
+            display: flex;
+            flex-direction: column;
+            height: calc(100vh - 60px);
+            max-height: calc(100vh - 60px);
+            position: relative;
+        }
+
+        .ai-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            border-radius: 8px 8px 0 0;
+            flex-shrink: 0;
+        }
+
+        .ai-header-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            font-size: 1.05rem;
+        }
+
+        .ai-header-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-header-btn {
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .ai-header-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .ai-provider-badge {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            background: var(--bg-tertiary);
+            padding: 3px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .ai-provider-badge:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .ai-context-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+            flex-shrink: 0;
+        }
+
+        .ai-context-chip {
+            padding: 4px 12px;
+            border-radius: 14px;
+            font-size: 0.78rem;
+            cursor: pointer;
+            white-space: nowrap;
+            border: 1px solid var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+            user-select: none;
+        }
+
+        .ai-context-chip:hover {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+        }
+
+        .ai-context-chip.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            scroll-behavior: smooth;
+        }
+
+        .ai-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .ai-messages::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .ai-message {
+            display: flex;
+            gap: 10px;
+            max-width: 85%;
+            animation: aiMsgIn 0.25s ease-out;
+        }
+
+        @keyframes aiMsgIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .ai-message.assistant {
+            align-self: flex-start;
+        }
+
+        .ai-message.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .ai-message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .ai-message.assistant .ai-message-avatar {
+            background: var(--accent-blue);
+        }
+
+        .ai-message.user .ai-message-avatar {
+            background: var(--accent-green);
+        }
+
+        .ai-message-bubble {
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.55;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+
+        .ai-message.assistant .ai-message-bubble {
+            background: var(--bg-tertiary);
+            border-top-left-radius: 4px;
+            color: var(--text-primary);
+        }
+
+        .ai-message.user .ai-message-bubble {
+            background: var(--accent-blue);
+            border-top-right-radius: 4px;
+            color: white;
+        }
+
+        /* Markdown in AI messages */
+        .ai-message-bubble h1,
+        .ai-message-bubble h2,
+        .ai-message-bubble h3 {
+            margin: 8px 0 4px 0;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .ai-message-bubble h1 { font-size: 1.05rem; }
+        .ai-message-bubble h2 { font-size: 1rem; }
+
+        .ai-message-bubble strong { font-weight: 700; }
+        .ai-message-bubble em { font-style: italic; }
+
+        .ai-message-bubble ul,
+        .ai-message-bubble ol {
+            margin: 4px 0;
+            padding-left: 20px;
+        }
+
+        .ai-message-bubble li {
+            margin-bottom: 2px;
+        }
+
+        .ai-message-bubble code {
+            background: var(--bg-primary);
+            padding: 1px 5px;
+            border-radius: 3px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.83rem;
+        }
+
+        .ai-message-bubble pre {
+            background: var(--bg-primary);
+            padding: 10px 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+        }
+
+        .ai-message-bubble pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        .ai-message-bubble table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 8px 0;
+            font-size: 0.83rem;
+        }
+
+        .ai-message-bubble th,
+        .ai-message-bubble td {
+            border: 1px solid var(--border-color);
+            padding: 4px 8px;
+            text-align: left;
+        }
+
+        .ai-message-bubble th {
+            background: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        /* Typing indicator */
+        .ai-typing {
+            display: flex;
+            gap: 4px;
+            padding: 8px 14px;
+        }
+
+        .ai-typing-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            animation: aiTypingBounce 1.4s ease-in-out infinite;
+        }
+
+        .ai-typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .ai-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes aiTypingBounce {
+            0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+            30% { transform: translateY(-6px); opacity: 1; }
+        }
+
+        /* Welcome / empty state */
+        .ai-welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            text-align: center;
+            padding: 32px;
+            color: var(--text-secondary);
+        }
+
+        .ai-welcome-icon {
+            font-size: 3rem;
+            margin-bottom: 16px;
+        }
+
+        .ai-welcome h3 {
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            font-size: 1.1rem;
+        }
+
+        .ai-welcome p {
+            font-size: 0.88rem;
+            max-width: 360px;
+            line-height: 1.5;
+        }
+
+        /* Quick actions */
+        .ai-quick-actions {
+            display: flex;
+            gap: 8px;
+            padding: 8px 16px;
+            overflow-x: auto;
+            flex-shrink: 0;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .ai-quick-actions::-webkit-scrollbar { display: none; }
+
+        .ai-quick-btn {
+            padding: 6px 14px;
+            border-radius: 16px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+
+        .ai-quick-btn:hover {
+            border-color: var(--accent-blue);
+            color: var(--text-primary);
+            background: var(--bg-tertiary);
+        }
+
+        /* Input bar */
+        .ai-input-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .ai-input-field {
+            flex: 1;
+            padding: 10px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+            resize: none;
+            max-height: 120px;
+            line-height: 1.4;
+            font-family: inherit;
+        }
+
+        .ai-input-field:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .ai-input-field::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .ai-send-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            background: var(--accent-blue);
+            color: white;
+            border: none;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .ai-send-btn:hover {
+            filter: brightness(1.15);
+        }
+
+        .ai-send-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Settings panel */
+        .ai-panel-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 50;
+            display: none;
+            animation: aiFadeIn 0.2s ease;
+        }
+
+        .ai-panel-overlay.show { display: block; }
+
+        @keyframes aiFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .ai-settings-panel {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 380px;
+            max-width: 100%;
+            background: var(--bg-secondary);
+            z-index: 51;
+            display: none;
+            flex-direction: column;
+            animation: aiSlideInRight 0.25s ease;
+            border-left: 1px solid var(--border-color);
+        }
+
+        .ai-settings-panel.show {
+            display: flex;
+        }
+
+        @keyframes aiSlideInRight {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .ai-conversation-panel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 320px;
+            max-width: 100%;
+            background: var(--bg-secondary);
+            z-index: 51;
+            display: none;
+            flex-direction: column;
+            animation: aiSlideInLeft 0.25s ease;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .ai-conversation-panel.show {
+            display: flex;
+        }
+
+        @keyframes aiSlideInLeft {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+
+        .ai-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-weight: 600;
+        }
+
+        .ai-panel-close {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+        }
+
+        .ai-panel-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .ai-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        /* Provider config card */
+        .ai-provider-card {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 14px;
+            margin-bottom: 12px;
+        }
+
+        .ai-provider-card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .ai-provider-name {
+            font-weight: 600;
+            font-size: 0.92rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .ai-provider-status {
+            font-size: 0.9rem;
+        }
+
+        .ai-provider-fields {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ai-provider-input {
+            width: 100%;
+            padding: 8px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+        }
+
+        .ai-provider-input::placeholder {
+            color: var(--text-secondary);
+        }
+
+        .ai-provider-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .ai-provider-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .ai-btn-sm {
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            transition: all 0.2s;
+        }
+
+        .ai-btn-sm:hover {
+            background: var(--border-color);
+        }
+
+        .ai-btn-sm.primary {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }
+
+        .ai-btn-sm.primary:hover {
+            filter: brightness(1.1);
+        }
+
+        .ai-btn-sm.danger {
+            color: var(--accent-red);
+            border-color: var(--accent-red);
+        }
+
+        .ai-btn-sm.danger:hover {
+            background: var(--accent-red);
+            color: white;
+        }
+
+        /* Conversation list */
+        .ai-conv-item {
+            padding: 12px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .ai-conv-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .ai-conv-item.active {
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .ai-conv-title {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .ai-conv-meta {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .ai-conv-delete {
+            opacity: 0;
+            background: none;
+            border: none;
+            color: var(--accent-red);
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .ai-conv-item:hover .ai-conv-delete {
+            opacity: 1;
+        }
+
+        .ai-conv-delete:hover {
+            background: rgba(239, 83, 80, 0.15);
+        }
+
+        /* Provider/model selector dropdown */
+        .ai-model-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 4px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            min-width: 260px;
+            z-index: 60;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: none;
+            overflow: hidden;
+        }
+
+        .ai-model-dropdown.show {
+            display: block;
+        }
+
+        .ai-model-dropdown-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: background 0.15s;
+        }
+
+        .ai-model-dropdown-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .ai-model-dropdown-item.active {
+            background: var(--bg-tertiary);
+            color: var(--accent-blue);
+        }
+
+        .ai-model-dropdown-item .ai-model-provider-label {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+
+        .ai-model-dropdown-section {
+            padding: 6px 14px 4px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .ai-model-dropdown-section:first-child {
+            border-top: none;
+        }
+
+        /* Error message styling */
+        .ai-message.error .ai-message-bubble {
+            background: rgba(239, 83, 80, 0.15);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 600px) {
+            .ai-chat-container {
+                height: calc(100vh - 56px);
+                max-height: calc(100vh - 56px);
+            }
+
+            .ai-message {
+                max-width: 92%;
+            }
+
+            .ai-settings-panel {
+                width: 100%;
+            }
+
+            .ai-conversation-panel {
+                width: 100%;
+            }
+
+            .ai-provider-badge {
+                display: none;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1287,6 +2021,7 @@
             <div class="nav-item" data-page="watchlist" title="Watchlist">👁️</div>
             <div class="nav-item" data-page="alerts" title="Alerts">🔔</div>
             <div class="nav-item" data-page="news" title="News">📰</div>
+            <div class="nav-item" data-page="ai" title="AI Oracle">🧠</div>
             <div class="nav-item" data-page="history" title="History">📜</div>
             <div class="nav-item" data-page="wallets" title="Wallets">🔗</div>
             <div class="nav-item" data-page="settings" title="Settings">⚙️</div>
@@ -1491,6 +2226,89 @@
                                    onkeypress="if(event.key==='Enter') searchNews()">
                         </div>
                         <div id="newsList" class="news-list"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Oracle Page -->
+            <div class="page" id="page-ai">
+                <div class="ai-chat-container">
+                    <!-- Header -->
+                    <div class="ai-header">
+                        <div class="ai-header-left">
+                            <span>🧠</span>
+                            <span>Oracle</span>
+                            <div style="position:relative;">
+                                <span class="ai-provider-badge" id="aiProviderBadge" onclick="toggleAiModelDropdown()">No provider</span>
+                                <div class="ai-model-dropdown" id="aiModelDropdown"></div>
+                            </div>
+                        </div>
+                        <div class="ai-header-right">
+                            <button class="ai-header-btn" onclick="openAiSettings()" title="AI Settings">⚙️</button>
+                            <button class="ai-header-btn" onclick="openAiConversations()" title="Conversations">📋</button>
+                            <button class="ai-header-btn" onclick="newAiChat()" title="New Chat">+</button>
+                        </div>
+                    </div>
+
+                    <!-- Context chips -->
+                    <div class="ai-context-bar">
+                        <span style="font-size:0.75rem;color:var(--text-secondary);white-space:nowrap;">Context:</span>
+                        <div class="ai-context-chip active" data-context="general" onclick="toggleAiContext(this)">💬 General</div>
+                        <div class="ai-context-chip" data-context="portfolio" onclick="toggleAiContext(this)">💼 Portfolio</div>
+                        <div class="ai-context-chip" data-context="watchlist" onclick="toggleAiContext(this)">👁️ Watchlist</div>
+                        <div class="ai-context-chip" data-context="market" onclick="toggleAiContext(this)">📈 Market</div>
+                    </div>
+
+                    <!-- Messages area -->
+                    <div class="ai-messages" id="aiMessages">
+                        <div class="ai-welcome" id="aiWelcome">
+                            <div class="ai-welcome-icon">🧠</div>
+                            <h3>Oracle AI Assistant</h3>
+                            <p>Ask me about your portfolio, market trends, or investment strategies. Select context chips above to include your data.</p>
+                        </div>
+                    </div>
+
+                    <!-- Quick actions -->
+                    <div class="ai-quick-actions" id="aiQuickActions">
+                        <button class="ai-quick-btn" onclick="aiQuickAction('portfolio')">📊 Review Portfolio</button>
+                        <button class="ai-quick-btn" onclick="aiQuickAction('watchlist')">🎯 Watchlist Signals</button>
+                        <button class="ai-quick-btn" onclick="aiQuickAction('rebalance')">⚖️ Rebalance Ideas</button>
+                        <button class="ai-quick-btn" onclick="aiQuickAction('news')">📰 News Digest</button>
+                        <button class="ai-quick-btn" onclick="aiQuickAction('position')">🔍 Analyze Position</button>
+                    </div>
+
+                    <!-- Input bar -->
+                    <div class="ai-input-bar">
+                        <textarea class="ai-input-field" id="aiInput" rows="1" placeholder="Ask Oracle anything..."
+                            onkeydown="aiInputKeydown(event)"
+                            oninput="aiInputAutoResize(this)"></textarea>
+                        <button class="ai-send-btn" id="aiSendBtn" onclick="sendAiChatMessage()" title="Send">
+                            <span>📤</span>
+                        </button>
+                    </div>
+
+                    <!-- Settings panel overlay -->
+                    <div class="ai-panel-overlay" id="aiPanelOverlay" onclick="closeAiPanels()"></div>
+
+                    <!-- Settings panel (right) -->
+                    <div class="ai-settings-panel" id="aiSettingsPanel">
+                        <div class="ai-panel-header">
+                            <span>⚙️ AI Providers</span>
+                            <button class="ai-panel-close" onclick="closeAiSettings()">×</button>
+                        </div>
+                        <div class="ai-panel-body" id="aiProvidersList"></div>
+                    </div>
+
+                    <!-- Conversations panel (left) -->
+                    <div class="ai-conversation-panel" id="aiConversationPanel">
+                        <div class="ai-panel-header">
+                            <span>📋 Conversations</span>
+                            <button class="ai-panel-close" onclick="closeAiConversations()">×</button>
+                        </div>
+                        <div style="padding:8px 16px;">
+                            <button class="ai-btn-sm primary" style="width:100%;" onclick="newAiChat();closeAiConversations();">+ New Chat</button>
+                        </div>
+                        <div class="ai-panel-body" id="aiConversationList"></div>
                     </div>
                 </div>
             </div>
@@ -2722,6 +3540,7 @@
                 renderTransactions();
             }
             if (page === 'news') loadNews();
+            if (page === 'ai') initAi();
             if (page === 'wallets') renderWallets();
         }
 
@@ -6604,6 +7423,787 @@
             initApp();
         } else {
             showAuth();
+        }
+
+        // ============ AI ORACLE ============
+        let aiProviders = [];
+        let aiSelectedProvider = localStorage.getItem('aiProvider') || '';
+        let aiSelectedModel = localStorage.getItem('aiModel') || '';
+        let aiCurrentConversationId = null;
+        let aiIsStreaming = false;
+        let aiActiveContexts = ['general'];
+        let aiConversations = [];
+
+        // Initialize AI when page is shown
+        async function initAi() {
+            try {
+                aiProviders = await api('/ai/providers');
+                updateAiProviderBadge();
+            } catch (e) {
+                console.warn('AI init failed:', e);
+            }
+        }
+
+        function updateAiProviderBadge() {
+            const badge = document.getElementById('aiProviderBadge');
+            if (!badge) return;
+
+            const configured = aiProviders.filter(p => p.configured || !p.requiresKey);
+            if (!configured.length) {
+                badge.textContent = 'No provider';
+                badge.style.color = 'var(--accent-red)';
+                return;
+            }
+
+            // Auto-select first configured provider if none selected
+            if (!aiSelectedProvider || !configured.find(p => p.id === aiSelectedProvider)) {
+                const firstConfigured = configured.find(p => p.configured) || configured[0];
+                aiSelectedProvider = firstConfigured.id;
+                aiSelectedModel = firstConfigured.modelPreference || (firstConfigured.models[0]?.id) || '';
+                localStorage.setItem('aiProvider', aiSelectedProvider);
+                localStorage.setItem('aiModel', aiSelectedModel);
+            }
+
+            const p = aiProviders.find(p => p.id === aiSelectedProvider);
+            const modelName = aiSelectedModel ?
+                (p?.models?.find(m => m.id === aiSelectedModel)?.name || aiSelectedModel.split('/').pop()) :
+                'default';
+            badge.textContent = `${p?.name || aiSelectedProvider} · ${modelName}`;
+            badge.style.color = '';
+        }
+
+        function toggleAiModelDropdown() {
+            const dd = document.getElementById('aiModelDropdown');
+            if (dd.classList.contains('show')) {
+                dd.classList.remove('show');
+                return;
+            }
+
+            let html = '';
+            const configured = aiProviders.filter(p => p.configured || !p.requiresKey);
+
+            for (const provider of configured) {
+                html += `<div class="ai-model-dropdown-section">${provider.name}</div>`;
+                const models = provider.models || [];
+                if (!models.length && provider.id === 'custom') {
+                    const modelName = provider.modelPreference || 'custom-model';
+                    const isActive = aiSelectedProvider === provider.id;
+                    html += `<div class="ai-model-dropdown-item ${isActive ? 'active' : ''}"
+                        onclick="selectAiModel('${provider.id}', '${modelName}')">
+                        <span>${modelName}</span>
+                        ${isActive ? '<span style="color:var(--accent-green);">✓</span>' : ''}
+                    </div>`;
+                }
+                for (const model of models) {
+                    const isActive = aiSelectedProvider === provider.id && aiSelectedModel === model.id;
+                    html += `<div class="ai-model-dropdown-item ${isActive ? 'active' : ''}"
+                        onclick="selectAiModel('${provider.id}', '${model.id}')">
+                        <span>${model.name}</span>
+                        ${isActive ? '<span style="color:var(--accent-green);">✓</span>' : ''}
+                    </div>`;
+                }
+            }
+
+            if (!configured.length) {
+                html = '<div style="padding:16px;text-align:center;color:var(--text-secondary);font-size:0.85rem;">No providers configured. Click ⚙️ to set up.</div>';
+            }
+
+            dd.innerHTML = html;
+            dd.classList.add('show');
+
+            // Close on outside click
+            setTimeout(() => {
+                const handler = (e) => {
+                    if (!dd.contains(e.target) && e.target.id !== 'aiProviderBadge') {
+                        dd.classList.remove('show');
+                        document.removeEventListener('click', handler);
+                    }
+                };
+                document.addEventListener('click', handler);
+            }, 10);
+        }
+
+        function selectAiModel(provider, model) {
+            aiSelectedProvider = provider;
+            aiSelectedModel = model;
+            localStorage.setItem('aiProvider', provider);
+            localStorage.setItem('aiModel', model);
+            updateAiProviderBadge();
+            document.getElementById('aiModelDropdown').classList.remove('show');
+        }
+
+        // Context chips
+        function toggleAiContext(chip) {
+            const ctx = chip.dataset.context;
+            if (ctx === 'general') {
+                // General is exclusive — deselect others
+                aiActiveContexts = ['general'];
+                document.querySelectorAll('.ai-context-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                return;
+            }
+
+            // Deselect general if selecting something else
+            const generalChip = document.querySelector('.ai-context-chip[data-context="general"]');
+            if (generalChip) generalChip.classList.remove('active');
+            aiActiveContexts = aiActiveContexts.filter(c => c !== 'general');
+
+            if (chip.classList.contains('active')) {
+                chip.classList.remove('active');
+                aiActiveContexts = aiActiveContexts.filter(c => c !== ctx);
+                // If nothing selected, revert to general
+                if (!aiActiveContexts.length) {
+                    aiActiveContexts = ['general'];
+                    if (generalChip) generalChip.classList.add('active');
+                }
+            } else {
+                chip.classList.add('active');
+                aiActiveContexts.push(ctx);
+            }
+        }
+
+        function getAiContextString() {
+            return aiActiveContexts.join(',');
+        }
+
+        // Message rendering
+        function renderAiMarkdown(text) {
+            if (!text) return '';
+            let html = text;
+
+            // Code blocks (``` ... ```)
+            html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
+                return `<pre><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+            });
+
+            // Inline code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers
+            html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+            html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+
+            // Bold and italic
+            html = html.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+            html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+            // Tables (simple markdown tables)
+            html = html.replace(/^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)*)/gm, (_, header, sep, body) => {
+                const ths = header.split('|').filter(c => c.trim()).map(c => `<th>${c.trim()}</th>`).join('');
+                const rows = body.trim().split('\n').map(row => {
+                    const tds = row.split('|').filter(c => c.trim()).map(c => `<td>${c.trim()}</td>`).join('');
+                    return `<tr>${tds}</tr>`;
+                }).join('');
+                return `<table><thead><tr>${ths}</tr></thead><tbody>${rows}</tbody></table>`;
+            });
+
+            // Unordered lists
+            html = html.replace(/^[-*] (.+)$/gm, '<li>$1</li>');
+            html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+
+            // Ordered lists
+            html = html.replace(/^\d+\. (.+)$/gm, '<li>$1</li>');
+
+            // Line breaks (double newline = paragraph)
+            html = html.replace(/\n\n/g, '<br><br>');
+            html = html.replace(/\n/g, '<br>');
+
+            // Clean up extra <br> around block elements
+            html = html.replace(/<br>(<\/?(?:h[1-3]|ul|ol|li|pre|table|thead|tbody|tr|th|td)>)/g, '$1');
+            html = html.replace(/(<\/?(?:h[1-3]|ul|ol|li|pre|table|thead|tbody|tr|th|td)>)<br>/g, '$1');
+
+            return html;
+        }
+
+        function appendAiMessage(content, role, isStreaming = false) {
+            const container = document.getElementById('aiMessages');
+            const welcome = document.getElementById('aiWelcome');
+            if (welcome) welcome.style.display = 'none';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `ai-message ${role}`;
+            msgDiv.dataset.role = role;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'ai-message-avatar';
+            avatar.textContent = role === 'assistant' ? '🧠' : '👤';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'ai-message-bubble';
+
+            if (role === 'assistant' && isStreaming) {
+                bubble.innerHTML = '<div class="ai-typing"><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div></div>';
+                msgDiv.dataset.streaming = 'true';
+            } else {
+                bubble.innerHTML = role === 'assistant' ? renderAiMarkdown(content) : content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+            }
+
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(bubble);
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+
+            return msgDiv;
+        }
+
+        function updateLastAiMessage(content) {
+            const container = document.getElementById('aiMessages');
+            const msgs = container.querySelectorAll('.ai-message.assistant');
+            const lastMsg = msgs[msgs.length - 1];
+            if (!lastMsg) return;
+
+            const bubble = lastMsg.querySelector('.ai-message-bubble');
+            bubble.innerHTML = renderAiMarkdown(content);
+            lastMsg.dataset.streaming = '';
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function appendAiError(message) {
+            const container = document.getElementById('aiMessages');
+            const welcome = document.getElementById('aiWelcome');
+            if (welcome) welcome.style.display = 'none';
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'ai-message assistant error';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'ai-message-avatar';
+            avatar.textContent = '⚠️';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'ai-message-bubble';
+            bubble.textContent = message;
+
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(bubble);
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Send message
+        async function sendAiChatMessage() {
+            const input = document.getElementById('aiInput');
+            const message = input.value.trim();
+            if (!message || aiIsStreaming) return;
+
+            input.value = '';
+            aiInputAutoResize(input);
+
+            // Check provider
+            if (!aiSelectedProvider) {
+                showToast('No AI provider configured. Open settings to add one.', 'error');
+                return;
+            }
+
+            appendAiMessage(message, 'user');
+            aiIsStreaming = true;
+            updateAiSendButton();
+
+            // Hide quick actions after first message
+            const qa = document.getElementById('aiQuickActions');
+            if (qa) qa.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}/ai/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message,
+                        context: getAiContextString(),
+                        conversationId: aiCurrentConversationId,
+                        provider: aiSelectedProvider,
+                        model: aiSelectedModel
+                    })
+                });
+
+                if (!response.ok) {
+                    let errMsg = 'Request failed';
+                    try {
+                        const errData = await response.json();
+                        errMsg = errData.error || errMsg;
+                    } catch {}
+                    appendAiError(errMsg);
+                    aiIsStreaming = false;
+                    updateAiSendButton();
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let aiMessage = '';
+                let streamingStarted = false;
+                let sseBuffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    sseBuffer += decoder.decode(value, { stream: true });
+                    const lines = sseBuffer.split('\n');
+                    sseBuffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+                        try {
+                            const data = JSON.parse(trimmed.slice(6));
+
+                            if (data.type === 'meta' && data.conversationId) {
+                                aiCurrentConversationId = data.conversationId;
+                            }
+
+                            if (data.type === 'chunk' && data.content) {
+                                if (!streamingStarted) {
+                                    appendAiMessage('', 'assistant', true);
+                                    streamingStarted = true;
+                                }
+                                aiMessage += data.content;
+                                updateLastAiMessage(aiMessage);
+                            }
+
+                            if (data.type === 'error') {
+                                if (!streamingStarted) {
+                                    appendAiError(data.error || 'An error occurred');
+                                } else {
+                                    aiMessage += '\n\n⚠️ ' + (data.error || 'Stream error');
+                                    updateLastAiMessage(aiMessage);
+                                }
+                            }
+
+                            if (data.type === 'done') {
+                                // Stream complete
+                            }
+                        } catch (e) {
+                            // Skip malformed SSE lines
+                        }
+                    }
+                }
+
+                // If nothing was streamed at all
+                if (!streamingStarted && !aiMessage) {
+                    appendAiError('No response received from AI provider.');
+                }
+
+            } catch (e) {
+                appendAiError('Failed to connect: ' + e.message);
+            }
+
+            aiIsStreaming = false;
+            updateAiSendButton();
+        }
+
+        function updateAiSendButton() {
+            const btn = document.getElementById('aiSendBtn');
+            if (btn) btn.disabled = aiIsStreaming;
+        }
+
+        // Quick actions
+        async function aiQuickAction(type) {
+            if (aiIsStreaming) return;
+
+            // Check provider
+            if (!aiSelectedProvider) {
+                showToast('No AI provider configured. Open settings to add one.', 'error');
+                return;
+            }
+
+            const welcome = document.getElementById('aiWelcome');
+            if (welcome) welcome.style.display = 'none';
+
+            let endpoint = '';
+            let userLabel = '';
+
+            switch (type) {
+                case 'portfolio':
+                    endpoint = '/ai/analyze/portfolio';
+                    userLabel = '📊 Review my portfolio';
+                    break;
+                case 'watchlist':
+                    endpoint = '/ai/analyze/watchlist';
+                    userLabel = '🎯 Analyze my watchlist signals';
+                    break;
+                case 'rebalance':
+                    // Use chat with context
+                    document.getElementById('aiInput').value = 'Suggest rebalancing moves for my portfolio. Consider current allocation, risk, and market conditions.';
+                    // Enable portfolio + market context
+                    aiActiveContexts = ['portfolio', 'market'];
+                    document.querySelectorAll('.ai-context-chip').forEach(c => {
+                        c.classList.toggle('active', aiActiveContexts.includes(c.dataset.context));
+                    });
+                    sendAiChatMessage();
+                    return;
+                case 'news':
+                    document.getElementById('aiInput').value = 'Give me a brief digest of what matters in the market today and how it might affect my portfolio.';
+                    aiActiveContexts = ['portfolio', 'market'];
+                    document.querySelectorAll('.ai-context-chip').forEach(c => {
+                        c.classList.toggle('active', aiActiveContexts.includes(c.dataset.context));
+                    });
+                    sendAiChatMessage();
+                    return;
+                case 'position':
+                    document.getElementById('aiInput').value = '';
+                    const sym = prompt('Enter ticker symbol to analyze (e.g., AAPL):');
+                    if (!sym) return;
+                    endpoint = `/ai/analyze/position/${sym.toUpperCase()}`;
+                    userLabel = `🔍 Deep-dive analysis of ${sym.toUpperCase()}`;
+                    break;
+                default:
+                    return;
+            }
+
+            appendAiMessage(userLabel, 'user');
+            aiIsStreaming = true;
+            updateAiSendButton();
+
+            // Hide quick actions
+            const qa = document.getElementById('aiQuickActions');
+            if (qa) qa.style.display = 'none';
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        provider: aiSelectedProvider,
+                        model: aiSelectedModel
+                    })
+                });
+
+                if (!response.ok) {
+                    let errMsg = 'Request failed';
+                    try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch {}
+                    appendAiError(errMsg);
+                    aiIsStreaming = false;
+                    updateAiSendButton();
+                    return;
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let aiMessage = '';
+                let streamingStarted = false;
+                let sseBuffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    sseBuffer += decoder.decode(value, { stream: true });
+                    const lines = sseBuffer.split('\n');
+                    sseBuffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+                        try {
+                            const data = JSON.parse(trimmed.slice(6));
+
+                            if (data.type === 'meta' && data.conversationId) {
+                                aiCurrentConversationId = data.conversationId;
+                            }
+
+                            if (data.type === 'chunk' && data.content) {
+                                if (!streamingStarted) {
+                                    appendAiMessage('', 'assistant', true);
+                                    streamingStarted = true;
+                                }
+                                aiMessage += data.content;
+                                updateLastAiMessage(aiMessage);
+                            }
+
+                            if (data.type === 'error') {
+                                if (!streamingStarted) {
+                                    appendAiError(data.error || 'An error occurred');
+                                } else {
+                                    aiMessage += '\n\n⚠️ ' + (data.error || 'Stream error');
+                                    updateLastAiMessage(aiMessage);
+                                }
+                            }
+                        } catch (e) {}
+                    }
+                }
+
+                if (!streamingStarted && !aiMessage) {
+                    appendAiError('No response received from AI provider.');
+                }
+
+            } catch (e) {
+                appendAiError('Failed to connect: ' + e.message);
+            }
+
+            aiIsStreaming = false;
+            updateAiSendButton();
+        }
+
+        // Input handling
+        function aiInputKeydown(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendAiChatMessage();
+            }
+        }
+
+        function aiInputAutoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+        }
+
+        // New chat
+        function newAiChat() {
+            aiCurrentConversationId = null;
+            const container = document.getElementById('aiMessages');
+            container.innerHTML = '';
+
+            const welcome = document.getElementById('aiWelcome');
+            if (welcome) {
+                welcome.style.display = '';
+                container.appendChild(welcome);
+            } else {
+                container.innerHTML = `<div class="ai-welcome" id="aiWelcome">
+                    <div class="ai-welcome-icon">🧠</div>
+                    <h3>Oracle AI Assistant</h3>
+                    <p>Ask me about your portfolio, market trends, or investment strategies. Select context chips above to include your data.</p>
+                </div>`;
+            }
+
+            const qa = document.getElementById('aiQuickActions');
+            if (qa) qa.style.display = '';
+
+            // Reset context to general
+            aiActiveContexts = ['general'];
+            document.querySelectorAll('.ai-context-chip').forEach(c => {
+                c.classList.toggle('active', c.dataset.context === 'general');
+            });
+        }
+
+        // Settings panel
+        function openAiSettings() {
+            closeAiConversations();
+            document.getElementById('aiPanelOverlay').classList.add('show');
+            document.getElementById('aiSettingsPanel').classList.add('show');
+            renderAiProviderSettings();
+        }
+
+        function closeAiSettings() {
+            document.getElementById('aiPanelOverlay').classList.remove('show');
+            document.getElementById('aiSettingsPanel').classList.remove('show');
+        }
+
+        function closeAiPanels() {
+            closeAiSettings();
+            closeAiConversations();
+        }
+
+        async function renderAiProviderSettings() {
+            const container = document.getElementById('aiProvidersList');
+            try {
+                aiProviders = await api('/ai/providers');
+            } catch (e) {
+                container.innerHTML = '<div style="color:var(--accent-red);">Failed to load providers</div>';
+                return;
+            }
+
+            let html = '';
+            for (const p of aiProviders) {
+                const statusIcon = p.configured ? '✅' : (p.requiresKey ? '❌' : '⚡');
+                const statusTitle = p.configured ? 'Configured' : (p.requiresKey ? 'Not configured' : 'No key needed');
+
+                html += `<div class="ai-provider-card" id="ai-provider-${p.id}">
+                    <div class="ai-provider-card-header">
+                        <div class="ai-provider-name">
+                            <span class="ai-provider-status" title="${statusTitle}">${statusIcon}</span>
+                            ${p.name}
+                        </div>
+                    </div>
+                    <div class="ai-provider-fields">`;
+
+                if (p.requiresKey) {
+                    html += `<input type="password" class="ai-provider-input" id="ai-key-${p.id}"
+                        placeholder="API Key" value="${p.configured ? '••••••••' : ''}">`;
+                }
+
+                if (p.id === 'ollama' || p.id === 'custom') {
+                    html += `<input type="text" class="ai-provider-input" id="ai-url-${p.id}"
+                        placeholder="Base URL (e.g., http://localhost:11434)" value="${p.baseUrl || ''}">`;
+                }
+
+                if (p.id === 'custom') {
+                    html += `<input type="text" class="ai-provider-input" id="ai-model-custom"
+                        placeholder="Model name" value="${p.modelPreference || ''}">`;
+                }
+
+                if (p.models && p.models.length > 0) {
+                    html += `<select class="ai-provider-input" id="ai-model-${p.id}">`;
+                    for (const m of p.models) {
+                        const sel = m.id === p.modelPreference ? 'selected' : '';
+                        html += `<option value="${m.id}" ${sel}>${m.name}</option>`;
+                    }
+                    html += `</select>`;
+                }
+
+                html += `</div>
+                    <div class="ai-provider-actions">
+                        <button class="ai-btn-sm primary" onclick="saveAiProvider('${p.id}')">💾 Save</button>
+                        <button class="ai-btn-sm" onclick="testAiProvider('${p.id}')">🧪 Test</button>
+                        ${p.configured ? `<button class="ai-btn-sm danger" onclick="removeAiProvider('${p.id}')">🗑️ Remove</button>` : ''}
+                    </div>
+                </div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        async function saveAiProvider(providerId) {
+            const keyInput = document.getElementById(`ai-key-${providerId}`);
+            const urlInput = document.getElementById(`ai-url-${providerId}`);
+            const modelSelect = document.getElementById(`ai-model-${providerId}`);
+            const customModelInput = document.getElementById('ai-model-custom');
+
+            const body = {};
+            if (keyInput && keyInput.value && !keyInput.value.startsWith('••')) {
+                body.apiKey = keyInput.value;
+            }
+            if (urlInput) body.baseUrl = urlInput.value;
+            if (modelSelect) body.model = modelSelect.value;
+            if (providerId === 'custom' && customModelInput) body.model = customModelInput.value;
+
+            try {
+                await api(`/ai/providers/${providerId}/key`, {
+                    method: 'PUT',
+                    body: JSON.stringify(body)
+                });
+                showToast(`${providerId} provider saved!`, 'success');
+                await renderAiProviderSettings();
+                aiProviders = await api('/ai/providers');
+                updateAiProviderBadge();
+            } catch (e) {
+                showToast('Failed to save: ' + e.message, 'error');
+            }
+        }
+
+        async function testAiProvider(providerId) {
+            try {
+                showToast(`Testing ${providerId}...`, 'info');
+                const result = await api(`/ai/providers/${providerId}/test`);
+                if (result.success) {
+                    showToast(`✅ ${providerId} connection successful!`, 'success');
+                } else {
+                    showToast(`❌ ${providerId} test failed: ${result.error || 'Unknown error'}`, 'error');
+                }
+            } catch (e) {
+                showToast(`❌ Test failed: ${e.message}`, 'error');
+            }
+        }
+
+        async function removeAiProvider(providerId) {
+            if (!confirm(`Remove API key for ${providerId}?`)) return;
+            try {
+                await api(`/ai/providers/${providerId}/key`, { method: 'DELETE' });
+                showToast(`${providerId} key removed`, 'info');
+                await renderAiProviderSettings();
+                aiProviders = await api('/ai/providers');
+                updateAiProviderBadge();
+            } catch (e) {
+                showToast('Failed to remove: ' + e.message, 'error');
+            }
+        }
+
+        // Conversations panel
+        function openAiConversations() {
+            closeAiSettings();
+            document.getElementById('aiPanelOverlay').classList.add('show');
+            document.getElementById('aiConversationPanel').classList.add('show');
+            loadAiConversations();
+        }
+
+        function closeAiConversations() {
+            document.getElementById('aiPanelOverlay').classList.remove('show');
+            document.getElementById('aiConversationPanel').classList.remove('show');
+        }
+
+        async function loadAiConversations() {
+            const container = document.getElementById('aiConversationList');
+            try {
+                aiConversations = await api('/ai/conversations');
+            } catch (e) {
+                container.innerHTML = '<div style="padding:16px;color:var(--text-secondary);font-size:0.85rem;">Failed to load conversations</div>';
+                return;
+            }
+
+            if (!aiConversations.length) {
+                container.innerHTML = '<div style="padding:16px;color:var(--text-secondary);font-size:0.85rem;text-align:center;">No conversations yet.<br>Start chatting!</div>';
+                return;
+            }
+
+            let html = '';
+            for (const conv of aiConversations) {
+                const date = new Date(conv.updated_at || conv.created_at);
+                const timeStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+                const isActive = conv.id === aiCurrentConversationId;
+                const contextBadge = conv.context && conv.context !== 'general' ?
+                    `<span style="font-size:0.7rem;background:var(--bg-tertiary);padding:1px 6px;border-radius:8px;">${conv.context}</span>` : '';
+
+                html += `<div class="ai-conv-item ${isActive ? 'active' : ''}" onclick="loadAiConversation(${conv.id})">
+                    <div style="overflow:hidden;">
+                        <div class="ai-conv-title">${(conv.title || 'Untitled').replace(/</g, '&lt;')}</div>
+                        <div class="ai-conv-meta">${timeStr} ${contextBadge}</div>
+                    </div>
+                    <button class="ai-conv-delete" onclick="event.stopPropagation();deleteAiConversation(${conv.id})" title="Delete">🗑️</button>
+                </div>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        async function loadAiConversation(convId) {
+            try {
+                const conv = await api(`/ai/conversations/${convId}`);
+                aiCurrentConversationId = convId;
+
+                // Clear messages
+                const container = document.getElementById('aiMessages');
+                container.innerHTML = '';
+
+                // Render messages
+                if (conv.messages && conv.messages.length) {
+                    for (const msg of conv.messages) {
+                        appendAiMessage(msg.content, msg.role);
+                    }
+                }
+
+                // Hide welcome and quick actions
+                const welcome = document.getElementById('aiWelcome');
+                if (welcome) welcome.style.display = 'none';
+                const qa = document.getElementById('aiQuickActions');
+                if (qa) qa.style.display = 'none';
+
+                closeAiConversations();
+            } catch (e) {
+                showToast('Failed to load conversation: ' + e.message, 'error');
+            }
+        }
+
+        async function deleteAiConversation(convId) {
+            if (!confirm('Delete this conversation?')) return;
+            try {
+                await api(`/ai/conversations/${convId}`, { method: 'DELETE' });
+                if (aiCurrentConversationId === convId) {
+                    newAiChat();
+                }
+                loadAiConversations();
+            } catch (e) {
+                showToast('Failed to delete: ' + e.message, 'error');
+            }
         }
 
         // ============ KEYBOARD SHORTCUTS ============

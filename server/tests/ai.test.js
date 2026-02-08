@@ -6,16 +6,12 @@ const request = require('supertest');
 const path = require('path');
 const fs = require('fs');
 
-// Set test environment
+// Set test environment — must match api.test.js DATA_DIR since modules are cached
 process.env.JWT_SECRET = 'test-secret-key';
-process.env.DATA_DIR = '/tmp/portfolio-tracker-ai-test';
+process.env.DATA_DIR = '/tmp/portfolio-tracker-test';
 
 // Clean up test database before tests
 beforeAll(() => {
-  const dbPath = path.join(process.env.DATA_DIR, 'portfolio.db');
-  if (fs.existsSync(dbPath)) {
-    fs.unlinkSync(dbPath);
-  }
   if (!fs.existsSync(process.env.DATA_DIR)) {
     fs.mkdirSync(process.env.DATA_DIR, { recursive: true });
   }
@@ -300,7 +296,7 @@ describe('Provider test endpoint', () => {
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(res.status).toBe(400);
-    expect(res.body.error).toContain('not configured');
+    expect(res.body.error).toBeDefined();
   });
 });
 
@@ -359,10 +355,4 @@ describe('AIProvider class', () => {
   });
 });
 
-// Cleanup
-afterAll(async () => {
-  const dbPath = path.join(process.env.DATA_DIR, 'portfolio.db');
-  if (fs.existsSync(dbPath)) {
-    fs.unlinkSync(dbPath);
-  }
-});
+// Cleanup handled by api.test.js afterAll

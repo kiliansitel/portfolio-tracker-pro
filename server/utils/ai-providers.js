@@ -76,6 +76,15 @@ const PROVIDER_DEFS = {
     ],
     requiresKey: true
   },
+  openclaw: {
+    name: 'OpenClaw',
+    baseUrl: `http://127.0.0.1:${process.env.OPENCLAW_GATEWAY_PORT || 18789}/v1`,
+    models: [
+      { id: 'openclaw', name: 'Default (Claude)' }
+    ],
+    requiresKey: true,
+    description: 'Route through your local OpenClaw gateway — uses your existing AI subscription'
+  },
   custom: {
     name: 'Custom (OpenAI-compatible)',
     baseUrl: '',
@@ -112,6 +121,7 @@ class AIProvider {
     switch (this.providerName) {
       case 'openai':
       case 'openrouter':
+      case 'openclaw':
       case 'custom':
         yield* this._chatOpenAICompatible(messages, model, options);
         break;
@@ -145,6 +155,8 @@ class AIProvider {
           return await this._testOllama();
         case 'openrouter':
           return await this._testOpenRouter();
+        case 'openclaw':
+          return await this._testOpenAI();
         case 'custom':
           return await this._testCustom();
         default:
@@ -248,11 +260,7 @@ class AIProvider {
 
     const resp = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
+      headers: this._anthropicHeaders(),
       body: JSON.stringify(body)
     });
 
@@ -410,21 +418,27 @@ class AIProvider {
     return resp.ok;
   }
 
+  _anthropicHeaders() {
+    const headers = { 'Content-Type': 'application/json', 'anthropic-version': '2023-06-01' };
+    // Setup tokens (sk-ant-oat*) use Bearer auth; API keys use x-api-key
+    if (this.apiKey.startsWith('sk-ant-oat')) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    } else {
+      headers['x-api-key'] = this.apiKey;
+    }
+    return headers;
+  }
+
   async _testAnthropic() {
     const resp = await fetch(`${this.baseUrl}/messages`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': this.apiKey,
-        'anthropic-version': '2023-06-01'
-      },
+      headers: this._anthropicHeaders(),
       body: JSON.stringify({
         model: 'claude-3-5-haiku-20241022',
         max_tokens: 1,
         messages: [{ role: 'user', content: 'hi' }]
       })
     });
-    // 200 = valid, 401/403 = invalid key
     return resp.status === 200;
   }
 
