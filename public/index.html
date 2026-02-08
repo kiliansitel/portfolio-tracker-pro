@@ -1479,6 +1479,38 @@
             font-weight: 600;
         }
 
+        /* Copy/Share action bar on AI messages */
+        .ai-message-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .ai-message.assistant:hover .ai-message-actions,
+        .ai-message.assistant .ai-message-actions.visible {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .ai-message-actions { opacity: 0.6; }
+        }
+        .ai-message-action-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .ai-message-action-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
         /* Typing indicator */
         .ai-usage-info {
             font-size: 0.7rem;
@@ -7718,6 +7750,50 @@
             return msgDiv;
         }
 
+        function createMessageActions(rawMarkdown) {
+            const actions = document.createElement('div');
+            actions.className = 'ai-message-actions';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'ai-message-action-btn';
+            copyBtn.innerHTML = '📋 Copy';
+            copyBtn.onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(rawMarkdown);
+                    copyBtn.innerHTML = '✅ Copied';
+                    setTimeout(() => copyBtn.innerHTML = '📋 Copy', 2000);
+                } catch { showToast('Failed to copy', 'error'); }
+            };
+            actions.appendChild(copyBtn);
+
+            if (navigator.share) {
+                const shareBtn = document.createElement('button');
+                shareBtn.className = 'ai-message-action-btn';
+                shareBtn.innerHTML = '📤 Share';
+                shareBtn.onclick = async () => {
+                    try {
+                        await navigator.share({ title: 'Oracle Analysis', text: rawMarkdown });
+                    } catch (e) { if (e.name !== 'AbortError') showToast('Share failed', 'error'); }
+                };
+                actions.appendChild(shareBtn);
+            }
+
+            return actions;
+        }
+
+        function appendMessageActions(aiMessage) {
+            const cleanMarkdown = aiMessage.replace(/<<<.*?>>>/gs, '').trim();
+            const container = document.getElementById('aiMessages');
+            const msgs = container.querySelectorAll('.ai-message.assistant');
+            const lastAssistant = msgs[msgs.length - 1];
+            if (lastAssistant) {
+                const bubble = lastAssistant.querySelector('.ai-message-bubble');
+                if (bubble && !bubble.querySelector('.ai-message-actions')) {
+                    bubble.appendChild(createMessageActions(cleanMarkdown));
+                }
+            }
+        }
+
         function updateLastAiMessage(content) {
             const container = document.getElementById('aiMessages');
             const msgs = container.querySelectorAll('.ai-message.assistant');
@@ -7884,6 +7960,7 @@
 
                 // Parse and show dynamic suggestions
                 parseSuggestions(aiMessage);
+                appendMessageActions(aiMessage);
                 // Refresh conversation sidebar (new or continued conversation)
                 loadAiConversations();
 
@@ -8073,6 +8150,7 @@
                 }
 
                 parseSuggestions(aiMessage);
+                appendMessageActions(aiMessage);
                 // Refresh conversation sidebar so analysis appears
                 loadAiConversations();
 
@@ -8371,6 +8449,7 @@
                 }
 
                 parseSuggestions(aiMessage);
+                appendMessageActions(aiMessage);
 
             } catch (err) {
                 appendAiError('Failed to connect: ' + err.message);
