@@ -1,6 +1,28 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.19.1 (2026-02-07) ← CURRENT
+## v0.20.0 "Compass" (2026-02-08) ← CURRENT
+Position source tracking, exchange/location fields, compact number formatting, demo database.
+
+**New Features:**
+- 📍 **Position Source Tracking** — Positions now have `source` (manual/wallet) and `location` (exchange/cold storage) fields
+- 🏦 **Exchange/Location Field** — Specify where you hold each position (Binance, Kraken, Ledger, Cold Storage, etc.) with autocomplete suggestions
+- 🔄 **Smart Wallet Sync** — Wallet sync upgrades manual positions to wallet-tracked when real on-chain data becomes available
+- 🔌 **Graceful Wallet Disconnect** — Removing a wallet converts positions back to manual instead of deleting them
+- 📐 **Compact Number Formatting** — Large values display as $1.5M, $2.3B instead of breaking mobile layout
+- 📊 **Transaction Source/Location** — Transactions also track which exchange/location they occurred on
+- 🎁 **Demo Database** — Ships with pre-loaded demo portfolio (demo/DemoPass123!) for instant exploration
+- 🪙 **SPL Token Tracking** — Solana SPL tokens (JUP, BONK, WIF, PYTH, RENDER, HNT, JTO + more)
+- 🏛️ **DeFi Position Tracking** — Aave aTokens, Compound cTokens, Rocket Pool rETH, Lido stETH
+
+**Fixes:**
+- 🔧 Wallet-synced positions no longer overwrite manually added positions
+- 🔧 Mobile layout no longer breaks with large portfolio values
+- 🔧 Performance chart Y-axis uses compact numbers
+- 🔧 Stale wallet data cleaned up properly on wallet address change
+
+---
+
+## v0.19.1 (2026-02-07)
 ERC-20 token tracking, self-update system, UI polish.
 
 **New Features:**

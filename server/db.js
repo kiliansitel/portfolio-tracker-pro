@@ -7,6 +7,16 @@ const { logger } = require('./utils/logger');
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/app/data') ? '/app/data' : __dirname);
 const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 
+// Seed demo database on fresh install: if no DB exists yet, copy demo-portfolio.db as starting point
+if (!fs.existsSync(DB_PATH)) {
+  const seedPath = path.join(__dirname, 'demo-portfolio.db');
+  if (fs.existsSync(seedPath)) {
+    fs.copyFileSync(seedPath, DB_PATH);
+    // eslint-disable-next-line no-console
+    console.log('📦 Fresh install detected — seeded database from demo-portfolio.db');
+  }
+}
+
 let db;
 
 // Save database to file (debounced for performance)
@@ -114,6 +124,8 @@ async function initDatabase() {
       symbol TEXT NOT NULL,
       quantity REAL NOT NULL,
       entry_price REAL NOT NULL,
+      source TEXT DEFAULT 'manual',
+      location TEXT DEFAULT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (portfolio_id) REFERENCES portfolios(id),
@@ -169,6 +181,8 @@ async function initDatabase() {
       fees REAL DEFAULT 0,
       executed_at TEXT NOT NULL,
       notes TEXT,
+      source TEXT DEFAULT 'manual',
+      location TEXT DEFAULT NULL,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (portfolio_id) REFERENCES portfolios(id)
     )
@@ -178,6 +192,10 @@ async function initDatabase() {
   try { db.run(`ALTER TABLE transactions ADD COLUMN action TEXT NOT NULL DEFAULT 'buy'`); } catch (e) { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN fees REAL DEFAULT 0`); } catch (e) { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN executed_at TEXT`); } catch (e) { /* exists */ }
+  try { db.run("ALTER TABLE transactions ADD COLUMN source TEXT DEFAULT 'manual'"); } catch (e) { /* exists */ }
+  try { db.run("ALTER TABLE transactions ADD COLUMN location TEXT DEFAULT NULL"); } catch (e) { /* exists */ }
+  // Backfill source for wallet-created transactions
+  try { db.exec("UPDATE transactions SET source = 'wallet' WHERE notes LIKE 'wallet-tx:%'"); } catch (e) { /* ignore */ }
   // Migrate old 'date' column data to 'executed_at' if both exist
   try { db.run(`UPDATE transactions SET executed_at = date WHERE executed_at IS NULL AND date IS NOT NULL`); } catch (e) { /* ignore */ }
 
@@ -190,6 +208,12 @@ async function initDatabase() {
   try { db.run(`ALTER TABLE positions ADD COLUMN expiry_date TEXT`); } catch (e) { /* exists */ }
   try { db.run(`ALTER TABLE positions ADD COLUMN multiplier REAL DEFAULT 1`); } catch (e) { /* exists */ }
   try { db.run(`ALTER TABLE positions ADD COLUMN current_price REAL`); } catch (e) { /* exists */ }
+  try { db.run("ALTER TABLE positions ADD COLUMN source TEXT DEFAULT 'manual'"); } catch (e) { /* exists */ }
+  try { db.run("ALTER TABLE positions ADD COLUMN location TEXT DEFAULT NULL"); } catch (e) { /* exists */ }
+
+  // Backfill source for existing wallet-synced positions — only those that still say 'wallet-synced |' at the start
+  // Don't re-override positions that were intentionally converted back to manual
+  try { db.exec("UPDATE positions SET source = 'wallet' WHERE notes LIKE 'wallet-synced |%' AND source = 'manual'"); } catch (e) { /* ignore */ }
 
   // Portfolio enhancements
   try { db.run(`ALTER TABLE portfolios ADD COLUMN is_default INTEGER DEFAULT 0`); } catch (e) { /* exists */ }
@@ -360,7 +384,7 @@ async function initDatabase() {
   }
 
   saveDatabaseImmediate(); // Use immediate save for init
-  console.log('📦 Database initialized');
+  logger.info('📦 Database initialized');
 }
 
 function getDb() {

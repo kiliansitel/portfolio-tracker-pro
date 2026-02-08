@@ -1,6 +1,7 @@
 const express = require('express');
 const webpush = require('web-push');
 const { dbRun, dbGet, dbAll } = require('../db');
+const { logger } = require('../utils/logger');
 
 const router = express.Router();
 
@@ -91,14 +92,14 @@ async function sendPushNotification(userId, payload) {
     
     try {
       await webpush.sendNotification(pushSubscription, JSON.stringify(payload));
-      console.log('Push notification sent successfully');
+      logger.info('Push notification sent successfully');
     } catch (error) {
       console.error('Error sending push notification:', error);
       
       // If subscription is invalid, remove it
       if (error.statusCode === 410) {
         dbRun('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
-        console.log('Removed invalid push subscription');
+        logger.info('Removed invalid push subscription');
       }
     }
   });

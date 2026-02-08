@@ -5,10 +5,10 @@
 <h1 align="center">Portfolio Tracker Pro</h1>
 
 <p align="center">
-  A TradingView-inspired portfolio tracker with real-time prices, interactive charts, and multi-user support.
+  A TradingView-inspired portfolio tracker with real-time prices, interactive charts, crypto wallet tracking, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.19.1-blue)
+![Version](https://img.shields.io/badge/version-0.20.0-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -31,6 +31,11 @@
 - 👥 **Multi-User** — JWT auth with per-user portfolios
 - 🔒 **Security Hardened** — CSP, CORS lockdown, input validation, audit logging
 - ⚡ **Fast** — LocalStorage caching, debounced DB writes, indexed queries
+- 📍 **Position Source Tracking** — Track where each position is held (exchange, wallet, cold storage)
+- 🏦 **Exchange/Location** — Autocomplete for Binance, Kraken, Ledger, Keytrade Bank, etc.
+- 📐 **Compact Numbers** — Large values auto-format ($1.5M, $2.3B)
+- 🎁 **Demo Mode** — Ships with pre-loaded demo portfolio for instant exploration
+- 🪙 **42 Token Tracking** — ERC-20 (20) + SPL (14) + DeFi (8) auto-detected tokens
 - 🏗️ **Modular Architecture** — Clean route modules, utility services, middleware layers
 
 ## Tech Stack
@@ -66,6 +71,11 @@ npm install && npm start
 
 Open http://localhost:8080
 
+### Demo Account
+A pre-loaded demo portfolio is included for exploration:
+- **Username:** demo
+- **Password:** DemoPass123!
+
 📖 **[Full Manual](docs/MANUAL.md)** — Complete user guide, API reference, and self-hosting docs
 
 📦 **[Installation Guide](docs/INSTALL.md)** — Docker, reverse proxy, environment variables, backups
@@ -98,6 +108,8 @@ Open http://localhost:8080
 | GET | `/api/wallets/summary` | On-chain value summary |
 | POST | `/api/wallets/:id/fetch-transactions` | Fetch chain transactions |
 | GET | `/api/wallets/:id/transactions` | List chain transactions |
+| GET | `/api/wallets/:id/tokens` | List wallet tokens |
+| POST | `/api/wallets/:id/sync-tokens` | Sync tokens only |
 | GET | `/api/info` | App version & environment |
 
 ## Screenshots
@@ -145,6 +157,7 @@ Open http://localhost:8080
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.20.0 "Compass"** — Position source tracking, exchange/location fields, compact numbers, demo database, SPL tokens, DeFi tracking
 - **v0.19.1** — ERC-20 token tracking, self-update system, UI polish
 - **v0.19.0 "Chain"** — Blockchain wallet tracking (13 chains), positions redesign, auto-sync, on-chain transactions
 - **v0.18.2 "Vault"** — Historical OHLCV storage, auto-snapshots, Docker/CI fixes, Playwright caching
@@ -199,7 +212,14 @@ See [VERSIONS.md](VERSIONS.md) for full changelog.
 
 ### 🚧 In Progress
 
-### 🧠 v0.20.0 "Oracle" — AI Intelligence Layer
+### 📍 v0.20.0 "Compass" — Source Tracking & Polish
+- [x] Position source/location tracking
+- [x] Demo database with example data
+- [x] Compact number formatting for mobile
+- [x] SPL token tracking (Solana)
+- [x] DeFi position tracking
+
+### 🧠 v0.21.0 "Oracle" — AI Intelligence Layer
 The killer feature: connect any LLM to analyze your portfolio.
 - [ ] Multi-provider support (OpenAI, Anthropic, Google, Ollama, OpenClaw)
 - [ ] API key management with encryption
@@ -221,10 +241,9 @@ The killer feature: connect any LLM to analyze your portfolio.
 - [x] Token → position sync (wallet tokens auto-create positions)
 - [x] DeFi position tracking (Aave, Compound, Rocket Pool, Lido)
 
-
 ### 🏦 Broker Integrations
-- [ ] [Keytrade Bank API](https://developer.keytradebank.be/apis)
-- [ ] Interactive Brokers
+- [ ] Exchange/broker API integration (Keytrade Bank, IBKR)
+- [ ] Import positions from exchange CSV
 - [ ] More brokers TBD
 
 ### 🌐 Platform

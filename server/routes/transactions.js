@@ -63,7 +63,7 @@ router.get('/portfolios/:id/transactions', (req, res) => {
 // Add transaction
 router.post('/portfolios/:id/transactions', transactionValidation, (req, res) => {
   const { id } = req.params;
-  const { symbol, type, action, quantity, price, fees, notes, executed_at } = req.body;
+  const { symbol, type, action, quantity, price, fees, notes, executed_at, location } = req.body;
   
   const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
   if (!portfolio) {
@@ -71,12 +71,12 @@ router.post('/portfolios/:id/transactions', transactionValidation, (req, res) =>
   }
   
   const result = dbRun(
-    'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, notes, executed_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, symbol.toUpperCase(), type || 'stock', action || 'buy', quantity, price, fees || 0, notes || null, executed_at || new Date().toISOString().split('T')[0]]
+    'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, notes, executed_at, source, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [id, symbol.toUpperCase(), type || 'stock', action || 'buy', quantity, price, fees || 0, notes || null, executed_at || new Date().toISOString().split('T')[0], 'manual', location || null]
   );
   
   res.json({
-    id: result,
+    id: result.lastInsertRowid,
     portfolio_id: parseInt(id),
     symbol: symbol.toUpperCase(),
     type: type || 'stock',
@@ -84,7 +84,9 @@ router.post('/portfolios/:id/transactions', transactionValidation, (req, res) =>
     quantity, price,
     fees: fees || 0,
     executed_at: executed_at || new Date().toISOString().split('T')[0],
-    notes
+    notes,
+    source: 'manual',
+    location: location || null
   });
 });
 
