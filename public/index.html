@@ -1630,6 +1630,27 @@
             background: var(--bg-tertiary);
         }
 
+        .ai-onboard-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple, #8b5cf6));
+            color: #fff !important;
+            border-color: transparent !important;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 8px 18px;
+            animation: onboard-pulse 2s ease-in-out infinite;
+        }
+
+        .ai-onboard-btn:hover {
+            opacity: 0.9;
+            color: #fff !important;
+            border-color: transparent !important;
+        }
+
+        @keyframes onboard-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+        }
+
         /* Input bar */
         .ai-input-bar {
             display: flex;
@@ -7558,6 +7579,75 @@
         let aiIsStreaming = false;
         let aiActiveContexts = ['general'];
         let aiConversations = [];
+        let aiOnboardingChecked = false;
+
+        // Check if user needs onboarding (no positions in any portfolio)
+        async function checkOnboardingNeeded() {
+            try {
+                const resp = await fetch(`${API_BASE}/portfolios`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const portfolios = await resp.json();
+                let hasPositions = false;
+                for (const pf of portfolios) {
+                    if (pf.positions && pf.positions.length > 0) {
+                        hasPositions = true;
+                        break;
+                    }
+                }
+                return !hasPositions;
+            } catch {
+                return false;
+            }
+        }
+
+        // Update the welcome screen based on onboarding state
+        function updateWelcomeForOnboarding(needsOnboarding) {
+            const welcome = document.getElementById('aiWelcome');
+            if (!welcome) return;
+
+            // Check if AI provider is configured first
+            const hasProvider = aiProviders && aiProviders.some(p => p.configured);
+
+            if (!hasProvider) {
+                // Step 1: No AI provider — guide to settings
+                welcome.innerHTML = `
+                    <div class="ai-welcome-icon">⚙️</div>
+                    <h3>Set Up Oracle</h3>
+                    <p>To use Oracle, connect an AI provider first. Add your API key for OpenAI, Anthropic, or any compatible service in Settings.</p>
+                `;
+                const qa = document.getElementById('aiQuickActions');
+                if (qa) {
+                    qa.querySelectorAll('.ai-onboard-btn').forEach(b => b.remove());
+                    const setupBtn = document.createElement('button');
+                    setupBtn.className = 'ai-quick-btn ai-onboard-btn';
+                    setupBtn.textContent = '⚙️ Open AI Settings';
+                    setupBtn.onclick = () => {
+                        // Navigate to settings — look for settings panel trigger
+                        const settingsTab = document.querySelector('[data-tab="settings"]') || document.querySelector('[onclick*="settings"]');
+                        if (settingsTab) settingsTab.click();
+                        else showToast('Go to Settings → AI Providers', 'info');
+                    };
+                    qa.prepend(setupBtn);
+                }
+            } else if (needsOnboarding) {
+                // Step 2: Has AI but no positions — portfolio onboarding
+                welcome.innerHTML = `
+                    <div class="ai-welcome-icon">🚀</div>
+                    <h3>Welcome to Oracle!</h3>
+                    <p>It looks like you don't have any positions yet. I can help you build your first portfolio — just tell me about your goals and I'll suggest a personalized portfolio you can add with one click.</p>
+                `;
+                const qa = document.getElementById('aiQuickActions');
+                if (qa) {
+                    qa.querySelectorAll('.ai-onboard-btn').forEach(b => b.remove());
+                    const onboardBtn = document.createElement('button');
+                    onboardBtn.className = 'ai-quick-btn ai-onboard-btn';
+                    onboardBtn.textContent = '🚀 Build My Portfolio';
+                    onboardBtn.onclick = () => aiQuickAction('onboarding');
+                    qa.prepend(onboardBtn);
+                }
+            }
+        }
 
         // Initialize AI when page is shown
         async function initAi() {
@@ -7566,6 +7656,14 @@
                 updateAiProviderBadge();
             } catch (e) {
                 console.warn('AI init failed:', e);
+            }
+            // Check onboarding once per session
+            if (!aiOnboardingChecked) {
+                aiOnboardingChecked = true;
+                const needsOnboarding = await checkOnboardingNeeded();
+                if (needsOnboarding && !aiCurrentConversationId) {
+                    updateWelcomeForOnboarding(true);
+                }
             }
         }
 
@@ -8184,6 +8282,26 @@
                 case 'position':
                     openTickerSearchModal();
                     return;
+                case 'onboarding':
+                    // Send onboarding message via regular chat with portfolio+market context
+                    {
+                        const onboardingMessage = `I'm new here and need help building my first portfolio. Walk me through it step by step — ask me about my goals, risk tolerance, timeline, and budget. Then suggest a complete portfolio I can add with one click.`;
+                        // Activate portfolio + market context chips
+                        aiActiveContexts = [];
+                        document.querySelectorAll('.ai-context-chip').forEach(c => c.classList.remove('active'));
+                        ['portfolio', 'market'].forEach(ctx => {
+                            const chip = document.querySelector(`.ai-context-chip[data-context="${ctx}"]`);
+                            if (chip) { chip.classList.add('active'); aiActiveContexts.push(ctx); }
+                        });
+                        const qa = document.getElementById('aiQuickActions');
+                        if (qa) qa.style.display = 'none';
+                        const input = document.getElementById('aiInput');
+                        if (input) {
+                            input.value = onboardingMessage;
+                            sendAiChatMessage();
+                        }
+                    }
+                    return;
                 default:
                     return;
             }
@@ -8590,25 +8708,24 @@
         }
 
         // New chat
-        function newAiChat() {
+        async function newAiChat() {
             aiCurrentConversationId = null;
             const container = document.getElementById('aiMessages');
             container.innerHTML = '';
 
-            const welcome = document.getElementById('aiWelcome');
-            if (welcome) {
-                welcome.style.display = '';
-                container.appendChild(welcome);
-            } else {
-                container.innerHTML = `<div class="ai-welcome" id="aiWelcome">
-                    <div class="ai-welcome-icon">🧠</div>
-                    <h3>Oracle AI Assistant</h3>
-                    <p>Ask me about your portfolio, market trends, or investment strategies. Select context chips above to include your data.</p>
-                </div>`;
-            }
+            // Rebuild default welcome
+            container.innerHTML = `<div class="ai-welcome" id="aiWelcome">
+                <div class="ai-welcome-icon">🧠</div>
+                <h3>Oracle AI Assistant</h3>
+                <p>Ask me about your portfolio, market trends, or investment strategies. Select context chips above to include your data.</p>
+            </div>`;
 
             const qa = document.getElementById('aiQuickActions');
-            if (qa) qa.style.display = '';
+            if (qa) {
+                qa.style.display = '';
+                // Remove any previous onboarding button
+                qa.querySelectorAll('.ai-onboard-btn').forEach(b => b.remove());
+            }
             const sug = document.getElementById('aiSuggestions');
             if (sug) { sug.style.display = 'none'; sug.innerHTML = ''; }
 
@@ -8617,6 +8734,12 @@
             document.querySelectorAll('.ai-context-chip').forEach(c => {
                 c.classList.toggle('active', c.dataset.context === 'general');
             });
+
+            // Re-check onboarding state
+            const needsOnboarding = await checkOnboardingNeeded();
+            if (needsOnboarding) {
+                updateWelcomeForOnboarding(true);
+            }
         }
 
         // Settings panel

@@ -103,6 +103,16 @@ async function buildSystemPrompt(userId, context) {
     `- Add position: [[[ACTION:position:SYMBOL:QUANTITY:PRICE]]]\n` +
     `Example: "I'd recommend setting an alert for TSLA at $420 [[[ACTION:alert:TSLA:420:above]]] to catch the breakout."\n` +
     `Only suggest actions that make sense in context. Don't force them.\n\n` +
+    `## Onboarding\n` +
+    `If the user asks you to help build their first portfolio or says they're new:\n` +
+    `1. Start by welcoming them warmly. Ask about their investment goals (growth/income/preservation/speculation) and risk tolerance (conservative/moderate/aggressive).\n` +
+    `2. After they answer, ask about their time horizon and how much cash they want to invest.\n` +
+    `3. Then ask about any convictions — sectors, themes, or specific stocks/crypto they like.\n` +
+    `4. Keep it conversational — ask 2-3 questions at a time max, not all at once.\n` +
+    `5. After gathering enough info, suggest a COMPLETE portfolio (8-15 positions) with specific allocations.\n` +
+    `   Use [[[ACTION:position:SYMBOL:QUANTITY:PRICE]]] for EACH suggested position so they can add with one click.\n` +
+    `   Include a diversified mix appropriate to their profile. Use current market prices from context.\n` +
+    `   Show a summary table with ticker, name, allocation %, quantity, and price.\n\n` +
     `## Follow-up Suggestions\n` +
     `At the very end of every response, suggest 3 follow-up questions on the LAST line.\n` +
     `Format: <<<Q1|||Q2|||Q3>>>\n` +
