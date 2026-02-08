@@ -1385,6 +1385,11 @@
                         <button class="btn-add" onclick="showAddPositionModal()" title="Add Position">+</button>
                     </div>
                     <div class="card-body">
+                        <div style="margin-bottom:10px;">
+                            <input type="text" id="positionSearchInput" placeholder="🔍 Search positions..." 
+                                oninput="filterPositions(this.value)"
+                                style="width:100%;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);font-size:0.9rem;box-sizing:border-box;">
+                        </div>
                         <div id="positionsList"></div>
                     </div>
                 </div>
@@ -1563,6 +1568,7 @@
                                 <div class="theme-toggle">
                                     <button class="theme-btn" data-theme="light" onclick="setTheme('light')">☀️</button>
                                     <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')">🌙</button>
+                                    <button class="theme-btn" data-theme="auto" onclick="setThemeAuto()">🔄</button>
                                 </div>
                             </div>
                         </div>
@@ -4128,6 +4134,31 @@
             localStorage.setItem('collapsedPosGroups', JSON.stringify(collapsed));
         }
         
+        function filterPositions(query) {
+            const cards = document.querySelectorAll('#positionsList .position-card');
+            const q = query.toLowerCase().trim();
+            let groups = document.querySelectorAll('#positionsList [style*="text-transform:uppercase"]');
+            
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = (!q || text.includes(q)) ? '' : 'none';
+            });
+            
+            // Also filter group headers - hide if all children hidden
+            groups.forEach(group => {
+                let next = group.nextElementSibling;
+                let hasVisible = false;
+                while (next && !next.style?.textTransform?.includes('uppercase') && !next.matches?.('[style*="text-transform:uppercase"]')) {
+                    if (next.classList?.contains('position-card') && next.style.display !== 'none') {
+                        hasVisible = true;
+                    }
+                    next = next.nextElementSibling;
+                    if (!next || (next.textContent?.includes('▶') && next.style?.textTransform)) break;
+                }
+                group.style.display = (!q || hasVisible) ? '' : 'none';
+            });
+        }
+
         function renderPositions() {
             const el = document.getElementById('positionsList');
             try {
@@ -5801,6 +5832,65 @@
         }
 
         // ============ IMPORT ============
+        
+        // Detect broker CSV format and return column mapping
+        function detectBrokerFormat(headers) {
+            const h = headers.map(x => x.toLowerCase().trim());
+            const joined = h.join('|');
+            
+            // Keytrade Bank (Belgian broker)
+            if (joined.includes('isin') && (joined.includes('beurs') || joined.includes('exchange')) && joined.includes('hoeveelheid')) {
+                return {
+                    broker: 'Keytrade Bank',
+                    symbol: h.findIndex(x => x.includes('isin') || x.includes('ticker') || x.includes('symbool')),
+                    name: h.findIndex(x => x.includes('naam') || x.includes('name') || x.includes('omschrijving')),
+                    qty: h.findIndex(x => x.includes('hoeveelheid') || x.includes('aantal')),
+                    price: h.findIndex(x => x.includes('koers') || x.includes('prijs') || x.includes('aankoopprijs')),
+                    type: -1,
+                    location: -1,
+                    notes: -1,
+                    separator: ';'
+                };
+            }
+            // IBKR / Interactive Brokers
+            if (joined.includes('financial instrument') || (joined.includes('symbol') && joined.includes('asset class'))) {
+                return {
+                    broker: 'Interactive Brokers',
+                    symbol: h.findIndex(x => x === 'symbol'),
+                    name: h.findIndex(x => x.includes('description') || x.includes('financial instrument')),
+                    qty: h.findIndex(x => x.includes('quantity') || x.includes('position')),
+                    price: h.findIndex(x => x.includes('cost basis') || x.includes('avg price') || x.includes('cost price')),
+                    type: h.findIndex(x => x.includes('asset class')),
+                    location: -1,
+                    notes: -1,
+                };
+            }
+            // DeGiro
+            if (joined.includes('product') && joined.includes('lokale waarde')) {
+                return {
+                    broker: 'DeGiro',
+                    symbol: h.findIndex(x => x.includes('isin') || x.includes('symbol')),
+                    name: h.findIndex(x => x.includes('product')),
+                    qty: h.findIndex(x => x.includes('aantal') || x.includes('quantity')),
+                    price: h.findIndex(x => x.includes('koers') || x.includes('slotkoers') || x.includes('prijs')),
+                    type: -1,
+                    location: -1,
+                    notes: -1,
+                };
+            }
+            // Generic / Portfolio Tracker Pro format
+            return {
+                broker: 'Generic',
+                symbol: h.findIndex(x => x.includes('symbol') || x.includes('ticker') || x.includes('isin')),
+                name: h.findIndex(x => x.includes('name')),
+                qty: h.findIndex(x => x.includes('quantity') || x.includes('qty') || x.includes('shares') || x.includes('amount')),
+                price: h.findIndex(x => x.includes('entry') || x.includes('price') || x.includes('cost') || x.includes('avg')),
+                type: h.findIndex(x => x.includes('type') || x.includes('class')),
+                location: h.findIndex(x => x.includes('location') || x.includes('exchange') || x.includes('broker')),
+                notes: h.findIndex(x => x.includes('notes') || x.includes('comment')),
+            };
+        }
+
         async function importPositionsCSV(input) {
             const file = input.files[0];
             if (!file) return;
@@ -5812,19 +5902,29 @@
             
             try {
                 const text = await file.text();
-                const lines = text.trim().split('\n');
-                const headers = lines[0].toLowerCase().split(',').map(h => h.trim());
+                // Detect separator (semicolon for some European brokers)
+                const firstLine = text.split('\n')[0];
+                const sep = firstLine.includes(';') && !firstLine.includes(',') ? ';' : ',';
                 
-                // Find column indices
-                const symbolIdx = headers.findIndex(h => h.includes('symbol'));
-                const nameIdx = headers.findIndex(h => h.includes('name'));
-                const typeIdx = headers.findIndex(h => h.includes('type'));
-                const qtyIdx = headers.findIndex(h => h.includes('quantity') || h.includes('qty'));
-                const priceIdx = headers.findIndex(h => h.includes('entry') || h.includes('price') || h.includes('cost'));
-                const notesIdx = headers.findIndex(h => h.includes('notes'));
+                const lines = text.trim().split('\n');
+                const headers = lines[0].split(sep).map(h => h.trim().replace(/^["']|["']$/g, ''));
+                
+                const format = detectBrokerFormat(headers);
+                if (format.broker !== 'Generic') {
+                    showToast(`Detected ${format.broker} format`, 'success');
+                }
+                
+                // Find column indices (use detected format, fall back to generic search)
+                const symbolIdx = format.symbol >= 0 ? format.symbol : headers.findIndex(h => h.toLowerCase().includes('symbol'));
+                const nameIdx = format.name >= 0 ? format.name : headers.findIndex(h => h.toLowerCase().includes('name'));
+                const typeIdx = format.type >= 0 ? format.type : headers.findIndex(h => h.toLowerCase().includes('type'));
+                const qtyIdx = format.qty >= 0 ? format.qty : headers.findIndex(h => h.toLowerCase().includes('quantity') || h.toLowerCase().includes('qty'));
+                const priceIdx = format.price >= 0 ? format.price : headers.findIndex(h => h.toLowerCase().includes('entry') || h.toLowerCase().includes('price') || h.toLowerCase().includes('cost'));
+                const locationIdx = format.location >= 0 ? format.location : headers.findIndex(h => h.toLowerCase().includes('location'));
+                const notesIdx = format.notes >= 0 ? format.notes : headers.findIndex(h => h.toLowerCase().includes('notes'));
                 
                 if (symbolIdx === -1 || qtyIdx === -1 || priceIdx === -1) {
-                    alert('CSV must have Symbol, Quantity, and Entry Price columns');
+                    alert(`CSV must have Symbol, Quantity, and Price columns.\nDetected columns: ${headers.join(', ')}`);
                     return;
                 }
                 
@@ -5832,12 +5932,12 @@
                 let failed = 0;
                 
                 for (let i = 1; i < lines.length; i++) {
-                    const cols = parseCSVLine(lines[i]);
+                    const cols = sep === ';' ? lines[i].split(';').map(c => c.trim().replace(/^["']|["']$/g, '')) : parseCSVLine(lines[i]);
                     if (cols.length < 3) continue;
                     
                     const symbol = cols[symbolIdx]?.trim().toUpperCase();
-                    const quantity = parseFloat(cols[qtyIdx]);
-                    const entry_price = parseFloat(cols[priceIdx]?.replace(/[$,]/g, ''));
+                    const quantity = parseFloat(cols[qtyIdx]?.replace(/[,]/g, '.').replace(/[^\d.\-]/g, ''));
+                    const entry_price = parseFloat(cols[priceIdx]?.replace(/[,]/g, '.').replace(/[$€£\s]/g, ''));
                     
                     if (!symbol || isNaN(quantity) || isNaN(entry_price)) {
                         failed++;
@@ -5845,16 +5945,20 @@
                     }
                     
                     try {
+                        const body = {
+                            symbol,
+                            name: nameIdx >= 0 ? cols[nameIdx]?.trim() : '',
+                            type: typeIdx >= 0 ? cols[typeIdx]?.toLowerCase() || 'stock' : 'stock',
+                            quantity,
+                            entry_price,
+                            notes: notesIdx >= 0 ? cols[notesIdx]?.trim() : ''
+                        };
+                        if (locationIdx >= 0 && cols[locationIdx]?.trim()) {
+                            body.location = cols[locationIdx].trim();
+                        }
                         await api(`/portfolios/${portfolioId}/positions`, {
                             method: 'POST',
-                            body: JSON.stringify({
-                                symbol,
-                                name: nameIdx >= 0 ? cols[nameIdx] : '',
-                                type: typeIdx >= 0 ? cols[typeIdx]?.toLowerCase() || 'stock' : 'stock',
-                                quantity,
-                                entry_price,
-                                notes: notesIdx >= 0 ? cols[notesIdx] : ''
-                            })
+                            body: JSON.stringify(body)
                         });
                         imported++;
                     } catch (e) {
@@ -5862,7 +5966,7 @@
                     }
                 }
                 
-                alert(`Imported ${imported} positions` + (failed > 0 ? `, ${failed} failed` : ''));
+                showToast(`Imported ${imported} positions` + (failed > 0 ? `, ${failed} failed` : ''), imported > 0 ? 'success' : 'error');
                 await loadPortfolio();
                 renderPositions();
                 updateSummary();
@@ -5985,9 +6089,32 @@
         }
         
         function loadTheme() {
-            const saved = localStorage.getItem('theme') || 'dark';
-            setTheme(saved);
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                setTheme(saved);
+            } else {
+                // Auto-detect system preference
+                const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                setTheme(prefersDark ? 'dark' : 'light');
+            }
         }
+
+        function setThemeAuto() {
+            localStorage.removeItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            setTheme(prefersDark ? 'dark' : 'light');
+            // Highlight auto button
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector('.theme-btn[data-theme="auto"]').classList.add('active');
+            showToast('Theme follows system preference', 'success');
+        }
+
+        // Listen for system theme changes (auto-follow when no manual preference)
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+            if (!localStorage.getItem('theme')) {
+                setTheme(e.matches ? 'dark' : 'light');
+            }
+        });
 
         // ============ APP UPDATES ============
         let updateState = { updateAvailable: false, channel: 'beta' };
@@ -6264,6 +6391,46 @@
         } else {
             showAuth();
         }
+
+        // ============ KEYBOARD SHORTCUTS ============
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts when typing in inputs
+            const tag = document.activeElement?.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+                // Escape blurs input
+                if (e.key === 'Escape') document.activeElement.blur();
+                return;
+            }
+
+            switch(e.key) {
+                case 'Escape':
+                    // Close any open modal
+                    document.querySelectorAll('.modal').forEach(m => {
+                        if (m.style.display === 'flex' || m.style.display === 'block') {
+                            m.style.display = 'none';
+                        }
+                    });
+                    break;
+                case '/':
+                    e.preventDefault();
+                    // Focus position search if on portfolio page, otherwise ticker search
+                    const posSearch = document.getElementById('positionSearchInput');
+                    const activePage = document.querySelector('.page[style*="display: block"], .page.active');
+                    if (activePage?.id === 'page-portfolio' && posSearch) {
+                        posSearch.focus();
+                    } else {
+                        const tickerSearch = document.getElementById('tickerSearch');
+                        if (tickerSearch) tickerSearch.focus();
+                    }
+                    break;
+                case '1': if (e.altKey) { e.preventDefault(); switchPage('dashboard'); } break;
+                case '2': if (e.altKey) { e.preventDefault(); switchPage('portfolio'); } break;
+                case '3': if (e.altKey) { e.preventDefault(); switchPage('watchlist'); } break;
+                case '4': if (e.altKey) { e.preventDefault(); switchPage('alerts'); } break;
+                case '5': if (e.altKey) { e.preventDefault(); switchPage('wallets'); } break;
+                case '6': if (e.altKey) { e.preventDefault(); switchPage('settings'); } break;
+            }
+        });
 
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
