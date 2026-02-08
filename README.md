@@ -8,7 +8,7 @@
   A TradingView-inspired portfolio tracker with real-time prices, interactive charts, crypto wallet tracking, and multi-user support.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.20.0-blue)
+![Version](https://img.shields.io/badge/version-0.20.1-blue)
 ![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -145,6 +145,7 @@ A pre-loaded demo portfolio is included for exploration:
 
 See [VERSIONS.md](VERSIONS.md) for full changelog.
 
+- **v0.20.1** — Password change, email edit, backup/restore, PWA, position search, keyboard shortcuts, smart broker import
 - **v0.20.0 "Compass"** — Position source tracking, exchange/location fields, compact numbers, demo database, SPL tokens, DeFi tracking
 - **v0.19.1** — ERC-20 token tracking, self-update system, UI polish
 - **v0.19.0 "Chain"** — Blockchain wallet tracking (13 chains), positions redesign, auto-sync, on-chain transactions
@@ -231,12 +232,12 @@ The killer feature: connect any LLM to analyze your portfolio.
 
 ### 🏦 Broker Integrations
 - [ ] Exchange/broker API integration (Keytrade Bank, IBKR)
-- [ ] Import positions from exchange CSV
+- [x] Import positions from broker CSV (Keytrade, IBKR, DeGiro, generic)
 - [ ] More brokers TBD
 
 ### 🌐 Platform
 - [ ] Google Cloud Run demo instance
-- [ ] PWA with offline support
+- [x] PWA with offline support
 - [ ] Mobile app (React Native or Capacitor)
 - [ ] Multi-user sharing (read-only portfolio links)
 

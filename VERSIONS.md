@@ -1,6 +1,34 @@
 # Portfolio Tracker Pro — Version History
 
-## v0.20.0 "Compass" (2026-02-08) ← CURRENT
+## v0.20.1 (2026-02-08) ← CURRENT
+Account management, PWA, UX improvements, and smart broker import.
+
+**New Features:**
+- 🔐 **Change Password** — Change password from Settings with current password verification (Argon2id)
+- 📧 **Edit Email** — Update email address from Settings with inline editing
+- 💾 **Full Database Backup** — Download entire database as a single file from Settings
+- 📥 **Database Restore** — Upload and restore from a backup file with validation
+- 📱 **PWA Support** — Installable as a native app (manifest, icons, offline caching via service worker)
+- 🔍 **Position Search** — Instant search/filter bar on the Positions page
+- 🔄 **Auto Theme** — Follows system dark/light preference (new 🔄 button alongside ☀️🌙)
+- ⌨️ **Keyboard Shortcuts** — `/` search, `Esc` close modals, `Alt+1-6` navigate pages
+- 🏦 **Smart Broker CSV Import** — Auto-detects Keytrade Bank, Interactive Brokers, DeGiro formats
+- 🇪🇺 **European CSV Support** — Semicolon separators, comma decimals, location column mapping
+
+**Fixes:**
+- 🔧 CI pipeline fixed (Jest forceExit for setInterval/setTimeout timeouts)
+- 🔧 Screenshot paths fixed for private repo (relative instead of absolute URLs)
+- 🔧 Manual section 16.2 updated to reference Settings password change
+- 🔧 About section version corrected to v0.20.0
+
+**Docs:**
+- 📖 Manual updated with 20+ screenshots covering all features
+- 📖 New sections: Change Password, Edit Email, Backup & Restore, Backup API endpoints
+- 📖 README features list compacted from 23 to 11 items
+
+---
+
+## v0.20.0 "Compass" (2026-02-08)
 Position source tracking, exchange/location fields, compact number formatting, demo database.
 
 **New Features:**
