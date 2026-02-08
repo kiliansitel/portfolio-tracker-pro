@@ -306,18 +306,18 @@ describe('Context builders', () => {
   const { buildPortfolioContext, buildWatchlistContext, buildMarketContext } = require('../utils/ai-providers');
   const { dbAll, dbGet } = require('../db');
 
-  test('buildPortfolioContext returns markdown', () => {
+  test('buildPortfolioContext returns markdown', async () => {
     // Get user by querying
     const user = dbGet("SELECT id FROM users WHERE username = 'aitest'");
-    const ctx = buildPortfolioContext(user.id, dbAll, dbGet);
+    const ctx = await buildPortfolioContext(user.id, dbAll, dbGet);
     expect(typeof ctx).toBe('string');
     // User may or may not have portfolios, but should return something
     expect(ctx.length).toBeGreaterThan(0);
   });
 
-  test('buildWatchlistContext returns markdown', () => {
+  test('buildWatchlistContext returns markdown', async () => {
     const user = dbGet("SELECT id FROM users WHERE username = 'aitest'");
-    const ctx = buildWatchlistContext(user.id, dbAll);
+    const ctx = await buildWatchlistContext(user.id, dbAll);
     expect(typeof ctx).toBe('string');
     expect(ctx.length).toBeGreaterThan(0);
   });

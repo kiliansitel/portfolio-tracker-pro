@@ -121,6 +121,7 @@ class AIProvider {
    */
   async *chat(messages, options = {}) {
     const model = options.model || this.getDefaultModel();
+    this.lastUsage = null;
 
     switch (this.providerName) {
       case 'openai':
@@ -318,6 +319,19 @@ class AIProvider {
       if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
         yield event.delta.text;
       }
+    }
+
+    // Capture usage from final message (Anthropic SDK exposes this after stream ends)
+    try {
+      const finalMsg = await stream.finalMessage();
+      if (finalMsg?.usage) {
+        this.lastUsage = {
+          input: finalMsg.usage.input_tokens || 0,
+          output: finalMsg.usage.output_tokens || 0
+        };
+      }
+    } catch (e) {
+      // Usage capture is best-effort
     }
   }
 
@@ -588,11 +602,39 @@ async function buildPortfolioContext(userId, dbAll, dbGet) {
   return md;
 }
 
-function buildWatchlistContext(userId, dbAll) {
+async function buildWatchlistContext(userId, dbAll) {
   const watchlists = dbAll('SELECT * FROM watchlists WHERE user_id = ? ORDER BY name', [userId]);
 
   if (!watchlists.length) {
     return 'The user has no watchlists yet.';
+  }
+
+  // Collect all unique symbols across watchlists for live price fetching
+  const allItems = [];
+  for (const wl of watchlists) {
+    const items = dbAll(
+      'SELECT * FROM watchlist_items WHERE watchlist_id = ? ORDER BY symbol',
+      [wl.id]
+    );
+    allItems.push(...items);
+  }
+
+  const uniqueSymbols = [...new Set(allItems.map(i => i.symbol))];
+
+  // Fetch live prices for all watchlist symbols
+  let livePrices = {};
+  try {
+    const { fetchYahooPrice } = require('./yahoo');
+    const priceResults = await Promise.allSettled(
+      uniqueSymbols.map(s => fetchYahooPrice(s))
+    );
+    for (const result of priceResults) {
+      if (result.status === 'fulfilled' && result.value?.price) {
+        livePrices[result.value.symbol] = result.value;
+      }
+    }
+  } catch (e) {
+    // If price fetching fails, continue without live prices
   }
 
   let md = '## User\'s Watchlists\n\n';
@@ -609,12 +651,20 @@ function buildWatchlistContext(userId, dbAll) {
       continue;
     }
 
+    md += '| Symbol | Current Price | Day Change | User Notes | Alerts |\n';
+    md += '|--------|--------------|------------|------------|--------|\n';
+
     for (const item of items) {
-      md += `- **${item.symbol}**`;
-      if (item.notes) md += ` — ${item.notes}`;
-      if (item.alert_above) md += ` (alert above: $${item.alert_above})`;
-      if (item.alert_below) md += ` (alert below: $${item.alert_below})`;
-      md += '\n';
+      const priceData = livePrices[item.symbol];
+      const currentPrice = priceData?.price ? `$${priceData.price.toFixed(2)}` : 'N/A';
+      const dayChange = priceData?.changePercent != null ? `${priceData.changePercent >= 0 ? '+' : ''}${priceData.changePercent.toFixed(2)}%` : 'N/A';
+      const notes = item.notes || '—';
+      const alerts = [];
+      if (item.alert_above) alerts.push(`above $${item.alert_above}`);
+      if (item.alert_below) alerts.push(`below $${item.alert_below}`);
+      const alertStr = alerts.length ? alerts.join(', ') : '—';
+
+      md += `| ${item.symbol} | ${currentPrice} | ${dayChange} | ${notes} | ${alertStr} |\n`;
     }
     md += '\n';
   }

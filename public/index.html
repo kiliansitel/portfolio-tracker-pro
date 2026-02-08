@@ -338,6 +338,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
+            z-index: 10;
         }
 
         .card-body { padding: 16px; }
@@ -892,6 +894,71 @@
             font-size: 0.8rem;
             color: var(--text-secondary);
             font-style: italic;
+        }
+
+        /* Watchlist Dropdown */
+        #watchlistDropdown { position: relative; display: inline-block; }
+        #watchlistSelected {
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            transition: background 0.15s, border-color 0.15s;
+        }
+        #watchlistSelected:hover {
+            background: var(--hover);
+            border-color: var(--accent);
+        }
+        #watchlistOptions {
+            display: none;
+            position: fixed;
+            background-color: #1e222d;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            min-width: 240px;
+            z-index: 99999;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+            overflow: hidden;
+            animation: dropdownFadeIn 0.15s ease;
+        }
+        [data-theme="light"] #watchlistOptions {
+            background-color: #ffffff;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        }
+        @keyframes dropdownFadeIn {
+            from { opacity: 0; transform: translateY(-4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .watchlist-dropdown-item {
+            padding: 11px 16px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            transition: background 0.12s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .watchlist-dropdown-item:hover {
+            background: var(--hover);
+        }
+        .watchlist-dropdown-item.active {
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+        }
+        .watchlist-dropdown-item .wl-count {
+            font-size: 0.75rem;
+            opacity: 0.7;
+            background: rgba(255,255,255,0.15);
+            padding: 2px 7px;
+            border-radius: 10px;
         }
 
         /* Watchlist Categories - Collapsible */
@@ -1479,7 +1546,76 @@
             font-weight: 600;
         }
 
+        /* Copy/Share action bar on AI messages */
+        .ai-message-actions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .ai-message.assistant:hover .ai-message-actions,
+        .ai-message.assistant .ai-message-actions.visible {
+            opacity: 1;
+        }
+        @media (max-width: 768px) {
+            .ai-message-actions { opacity: 0.6; }
+        }
+        .ai-message-action-btn {
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 2px 8px;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .ai-message-action-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .ai-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 6px 12px;
+            margin: 4px 4px 4px 0;
+            border: 1px solid var(--accent-color, #4a9eff);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--accent-color, #4a9eff);
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .ai-action-btn:hover {
+            background: var(--accent-color, #4a9eff);
+            color: white;
+        }
+        .ai-action-btn.executed {
+            border-color: #22c55e;
+            color: #22c55e;
+            cursor: default;
+            opacity: 0.7;
+        }
+        .ai-action-btn.executed:hover {
+            background: transparent;
+            color: #22c55e;
+        }
+
         /* Typing indicator */
+        .ai-usage-info {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            opacity: 0.5;
+            padding: 2px 14px 0;
+            margin-top: -4px;
+        }
+
         .ai-typing {
             display: flex;
             gap: 4px;
@@ -1559,6 +1695,27 @@
             border-color: var(--accent-blue);
             color: var(--text-primary);
             background: var(--bg-tertiary);
+        }
+
+        .ai-onboard-btn {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple, #8b5cf6));
+            color: #fff !important;
+            border-color: transparent !important;
+            font-weight: 600;
+            font-size: 0.85rem;
+            padding: 8px 18px;
+            animation: onboard-pulse 2s ease-in-out infinite;
+        }
+
+        .ai-onboard-btn:hover {
+            opacity: 0.9;
+            color: #fff !important;
+            border-color: transparent !important;
+        }
+
+        @keyframes onboard-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); }
+            50% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
         }
 
         /* Input bar */
@@ -2192,9 +2349,9 @@
             <div class="page" id="page-watchlist">
                 <div class="card">
                     <div class="card-header">
-                        <span style="display:inline-flex;align-items:center;gap:6px;">👁️ <div id="watchlistDropdown" style="position:relative;display:inline-block;">
-                            <div id="watchlistSelected" onclick="toggleWatchlistDropdown()" style="cursor:pointer;font-weight:600;font-size:0.95rem;display:flex;align-items:center;gap:4px;"><span id="watchlistLabel">Watchlist</span> <span style="font-size:0.7rem;opacity:0.6;">▼</span></div>
-                            <div id="watchlistOptions" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;min-width:220px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,0.4);overflow:hidden;"></div>
+                        <span style="display:inline-flex;align-items:center;gap:6px;">👁️ <div id="watchlistDropdown">
+                            <div id="watchlistSelected" onclick="toggleWatchlistDropdown()"><span id="watchlistLabel">Watchlist</span> <span style="font-size:0.7rem;opacity:0.6;">▼</span></div>
+                            <div id="watchlistOptions"></div>
                         </div></span>
                         <button class="btn-add" onclick="showAddWatchlistModal()" title="Add Ticker">+</button>
                     </div>
@@ -3574,6 +3731,7 @@
             }
             localStorage.setItem('lastPage', page);
             // Render content when switching pages
+            if (page === 'dashboard' || page === 'portfolio') loadPortfolio();
             if (page === 'alerts') renderAlerts();
             if (page === 'history') {
                 // Switching to history page
@@ -3715,10 +3873,32 @@
 
         function toggleWatchlistDropdown() {
             const opts = document.getElementById('watchlistOptions');
-            opts.style.display = opts.style.display === 'none' ? 'block' : 'none';
+            let backdrop = document.getElementById('wlDropdownBackdrop');
+            if (opts.style.display === 'none' || !opts.style.display) {
+                // Create backdrop overlay
+                if (!backdrop) {
+                    backdrop = document.createElement('div');
+                    backdrop.id = 'wlDropdownBackdrop';
+                    backdrop.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99998;background:transparent;';
+                    backdrop.onclick = closeWatchlistDropdown;
+                    document.body.appendChild(backdrop);
+                }
+                backdrop.style.display = 'block';
+                // Position fixed dropdown below the trigger
+                const trigger = document.getElementById('watchlistSelected');
+                const rect = trigger.getBoundingClientRect();
+                opts.style.top = (rect.bottom + 6) + 'px';
+                opts.style.left = rect.left + 'px';
+                opts.style.display = 'block';
+            } else {
+                opts.style.display = 'none';
+                if (backdrop) backdrop.style.display = 'none';
+            }
         }
         function closeWatchlistDropdown() {
             document.getElementById('watchlistOptions').style.display = 'none';
+            const backdrop = document.getElementById('wlDropdownBackdrop');
+            if (backdrop) backdrop.style.display = 'none';
         }
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {
@@ -4085,7 +4265,7 @@
             
             try {
                 if (editingWatchlistItemId) {
-                    await api(`/watchlist-items/${editingWatchlistItemId}`, { method: 'PUT', body: JSON.stringify(data) });
+                    await api(`/watchlists/items/${editingWatchlistItemId}`, { method: 'PUT', body: JSON.stringify(data) });
                     editingWatchlistItemId = null;
                 } else {
                     await api(`/watchlists/${watchlistId}/items`, { method: 'POST', body: JSON.stringify(data) });
@@ -5508,7 +5688,7 @@
                 const current = allWatchlists.find(w => w.id === watchlistId);
                 label.textContent = (current?.name || 'Watchlist') + ' (' + (current?.items?.length || 0) + ')';
                 opts.innerHTML = allWatchlists.map(w =>
-                    `<div onclick="switchWatchlist(${w.id});closeWatchlistDropdown()" style="padding:10px 14px;cursor:pointer;font-size:0.9rem;color:var(--text-primary);${w.id === watchlistId ? 'background:var(--accent);color:#fff;font-weight:600;' : ''}" onmouseover="if(${w.id}!==${watchlistId})this.style.background='var(--hover)'" onmouseout="if(${w.id}!==${watchlistId})this.style.background='transparent'">${w.name} (${(w.items||[]).length})</div>`
+                    `<div class="watchlist-dropdown-item ${w.id === watchlistId ? 'active' : ''}" onclick="switchWatchlist(${w.id});closeWatchlistDropdown()"><span>${w.name}</span><span class="wl-count">(${(w.items||[]).length})</span></div>`
                 ).join('');
             }
             
@@ -7489,6 +7669,59 @@
         let aiIsStreaming = false;
         let aiActiveContexts = ['general'];
         let aiConversations = [];
+        let aiOnboardingChecked = false;
+
+        // Check if user needs onboarding (no positions in any portfolio)
+        async function checkOnboardingNeeded() {
+            try {
+                const resp = await fetch(`${API_BASE}/portfolios`, {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                const portfolios = await resp.json();
+                console.log('[ONBOARD] portfolios:', portfolios.length);
+                if (!portfolios.length) return true;
+                for (const pf of portfolios) {
+                    const posResp = await fetch(`${API_BASE}/portfolios/${pf.id}/positions`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const positions = await posResp.json();
+                    console.log('[ONBOARD] portfolio', pf.id, 'positions:', positions.length);
+                    if (Array.isArray(positions) && positions.length > 0) return false;
+                }
+                return true;
+            } catch (e) {
+                console.log('[ONBOARD] error:', e.message);
+                return true; // Assume onboarding needed if check fails
+            }
+        }
+
+        // Update the welcome screen based on onboarding state
+        function updateWelcomeForOnboarding(needsOnboarding) {
+            const welcome = document.getElementById('aiWelcome');
+            const qa = document.getElementById('aiQuickActions');
+
+            // Always add "Build My Portfolio" to quick actions (for all users)
+            if (qa && !qa.querySelector('.ai-onboard-btn')) {
+                const onboardBtn = document.createElement('button');
+                onboardBtn.className = 'ai-quick-btn' + (needsOnboarding ? ' ai-onboard-btn' : '');
+                onboardBtn.textContent = '🚀 Build My Portfolio';
+                onboardBtn.onclick = () => aiQuickAction('onboarding');
+                if (needsOnboarding) {
+                    qa.prepend(onboardBtn); // First position + pulsing glow for empty portfolios
+                } else {
+                    qa.appendChild(onboardBtn); // Last position, normal style for existing users
+                }
+            }
+
+            // Update welcome message for empty portfolios
+            if (welcome && needsOnboarding) {
+                welcome.innerHTML = `
+                    <div class="ai-welcome-icon">🚀</div>
+                    <h3>Welcome to Oracle!</h3>
+                    <p>Let's build your first portfolio! Tell me your goals and budget, and I'll suggest a personalized portfolio you can add with one click. Or explore any of the actions below.</p>
+                `;
+            }
+        }
 
         // Initialize AI when page is shown
         async function initAi() {
@@ -7497,6 +7730,13 @@
                 updateAiProviderBadge();
             } catch (e) {
                 console.warn('AI init failed:', e);
+            }
+            // Check onboarding once per session — always add Build Portfolio button
+            if (!aiOnboardingChecked) {
+                aiOnboardingChecked = true;
+                const needsOnboarding = await checkOnboardingNeeded();
+                console.log('[ONBOARD] needsOnboarding:', needsOnboarding, 'providers:', aiProviders?.length);
+                updateWelcomeForOnboarding(needsOnboarding);
             }
         }
 
@@ -7628,6 +7868,80 @@
             return aiActiveContexts.join(',');
         }
 
+        // ─── Action tag parsing ────────────────────────────────
+        function parseActions(text) {
+            const actions = [];
+            const cleanText = text.replace(/\[\[\[ACTION:(.*?)\]\]\]/g, (match, actionStr) => {
+                const parts = actionStr.split(':');
+                const type = parts[0];
+                const params = parts.slice(1);
+                let label = '';
+                let icon = '';
+                switch (type) {
+                    case 'alert':
+                        icon = '⚡'; label = `Set ${params[0]} alert at $${params[1]} (${params[2] || 'above'})`;
+                        break;
+                    case 'watchlist':
+                        icon = '👁️'; label = `Add ${params[0]} to watchlist`;
+                        break;
+                    case 'position':
+                        icon = '➕'; label = `Add ${params[1]} ${params[0]} @ $${params[2]}`;
+                        break;
+                    default:
+                        return '';
+                }
+                actions.push({ type, params, label, icon });
+                return '';
+            });
+            return { cleanText, actions };
+        }
+
+        function createActionButtons(actions) {
+            if (!actions.length) return null;
+            const container = document.createElement('div');
+            container.style.cssText = 'margin-top: 8px; display: flex; flex-wrap: wrap;';
+            for (const action of actions) {
+                const btn = document.createElement('button');
+                btn.className = 'ai-action-btn';
+                btn.innerHTML = `${action.icon} ${action.label}`;
+                btn.onclick = async () => {
+                    console.log('[AI-ACTION] Button clicked:', action.type, action.params);
+                    if (btn.classList.contains('executed')) return;
+                    btn.disabled = true;
+                    btn.innerHTML = `⏳ ${action.label}`;
+                    try {
+                        console.log('[AI-ACTION] Sending fetch to', `${API_BASE}/ai/action`, { type: action.type, params: action.params });
+                        const resp = await fetch(`${API_BASE}/ai/action`, {
+                            method: 'POST',
+                            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: action.type, params: action.params })
+                        });
+                        const data = await resp.json();
+                        console.log('[AI-ACTION] Response:', data);
+                        if (data.success) {
+                            btn.innerHTML = `✅ ${data.message}`;
+                            btn.classList.add('executed');
+                            showToast(data.message, 'success');
+                            // Refresh relevant data so it appears immediately in the UI
+                            if (action.type === 'position') await loadPortfolio();
+                            if (action.type === 'watchlist') await loadWatchlists();
+                            if (action.type === 'alert') await loadAlerts();
+                        } else {
+                            btn.innerHTML = `❌ ${data.error || 'Failed'}`;
+                            showToast(data.error || 'Action failed', 'error');
+                        }
+                    } catch (e) {
+                        console.error('[AI-ACTION] Error:', e);
+                        btn.innerHTML = `❌ Error`;
+                        showToast('Action failed', 'error');
+                    }
+                    btn.disabled = false;
+                };
+                container.appendChild(btn);
+            }
+            return container;
+        }
+
         // Message rendering
         function renderAiMarkdown(text) {
             if (!text) return '';
@@ -7698,8 +8012,16 @@
             if (role === 'assistant' && isStreaming) {
                 bubble.innerHTML = '<div class="ai-typing"><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div><div class="ai-typing-dot"></div></div>';
                 msgDiv.dataset.streaming = 'true';
+            } else if (role === 'assistant') {
+                const { cleanText, actions: msgActions } = parseActions(content);
+                bubble.innerHTML = renderAiMarkdown(cleanText);
+                if (msgActions.length > 0) {
+                    const actionEl = createActionButtons(msgActions);
+                    actionEl.className = 'ai-action-container';
+                    bubble.appendChild(actionEl);
+                }
             } else {
-                bubble.innerHTML = role === 'assistant' ? renderAiMarkdown(content) : content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+                bubble.innerHTML = content.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
             }
 
             msgDiv.appendChild(avatar);
@@ -7710,6 +8032,73 @@
             return msgDiv;
         }
 
+        function createMessageActions(rawMarkdown) {
+            const actions = document.createElement('div');
+            actions.className = 'ai-message-actions';
+
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'ai-message-action-btn';
+            copyBtn.innerHTML = '📋 Copy';
+            copyBtn.onclick = async () => {
+                try {
+                    // clipboard API requires HTTPS — fallback for HTTP
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(rawMarkdown);
+                    } else {
+                        const ta = document.createElement('textarea');
+                        ta.value = rawMarkdown;
+                        ta.style.cssText = 'position:fixed;left:-9999px';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                    }
+                    copyBtn.innerHTML = '✅ Copied';
+                    setTimeout(() => copyBtn.innerHTML = '📋 Copy', 2000);
+                } catch { showToast('Failed to copy', 'error'); }
+            };
+            actions.appendChild(copyBtn);
+
+            {
+                const shareBtn = document.createElement('button');
+                shareBtn.className = 'ai-message-action-btn';
+                shareBtn.innerHTML = '📤 Share';
+                shareBtn.onclick = async () => {
+                    try {
+                        if (navigator.share) {
+                            await navigator.share({ title: 'Oracle Analysis', text: rawMarkdown });
+                        } else {
+                            // Fallback: copy and notify
+                            const ta = document.createElement('textarea');
+                            ta.value = rawMarkdown;
+                            ta.style.cssText = 'position:fixed;left:-9999px';
+                            document.body.appendChild(ta);
+                            ta.select();
+                            document.execCommand('copy');
+                            document.body.removeChild(ta);
+                            showToast('Copied to clipboard — paste to share!', 'success');
+                        }
+                    } catch (e) { if (e.name !== 'AbortError') showToast('Share failed', 'error'); }
+                };
+                actions.appendChild(shareBtn);
+            }
+
+            return actions;
+        }
+
+        function appendMessageActions(aiMessage) {
+            const cleanMarkdown = aiMessage.replace(/\[\[\[ACTION:.*?\]\]\]/g, '').replace(/<<<.*?>>>/gs, '').trim();
+            const container = document.getElementById('aiMessages');
+            const msgs = container.querySelectorAll('.ai-message.assistant');
+            const lastAssistant = msgs[msgs.length - 1];
+            if (lastAssistant) {
+                const bubble = lastAssistant.querySelector('.ai-message-bubble');
+                if (bubble && !bubble.querySelector('.ai-message-actions')) {
+                    bubble.appendChild(createMessageActions(cleanMarkdown));
+                }
+            }
+        }
+
         function updateLastAiMessage(content) {
             const container = document.getElementById('aiMessages');
             const msgs = container.querySelectorAll('.ai-message.assistant');
@@ -7717,7 +8106,16 @@
             if (!lastMsg) return;
 
             const bubble = lastMsg.querySelector('.ai-message-bubble');
-            bubble.innerHTML = renderAiMarkdown(content);
+            const { cleanText, actions } = parseActions(content);
+            bubble.innerHTML = renderAiMarkdown(cleanText);
+            // Re-add action buttons on each update (streaming adds content incrementally)
+            const existingActions = bubble.querySelector('.ai-action-container');
+            if (existingActions) existingActions.remove();
+            if (actions.length > 0) {
+                const actionEl = createActionButtons(actions);
+                actionEl.className = 'ai-action-container';
+                bubble.appendChild(actionEl);
+            }
             lastMsg.dataset.streaming = '';
             container.scrollTop = container.scrollHeight;
         }
@@ -7742,6 +8140,22 @@
             msgDiv.appendChild(bubble);
             container.appendChild(msgDiv);
             container.scrollTop = container.scrollHeight;
+        }
+
+        function appendAiUsageInfo(data) {
+            if (!data.model && !data.durationMs) return;
+            const container = document.getElementById('aiMessages');
+            const msgs = container.querySelectorAll('.ai-message.assistant');
+            const lastMsg = msgs[msgs.length - 1];
+            if (!lastMsg) return;
+            const info = document.createElement('div');
+            info.className = 'ai-usage-info';
+            let text = '';
+            if (data.model) text += data.model.replace('anthropic/', '').replace('claude-', 'Claude ').replace(/-/g, ' ');
+            if (data.durationMs) text += ` · ${(data.durationMs / 1000).toFixed(1)}s`;
+            if (data.usage) text += ` · ~${((data.usage.input || 0) + (data.usage.output || 0)).toLocaleString()} tokens`;
+            info.textContent = text;
+            lastMsg.after(info);
         }
 
         // Send message
@@ -7844,7 +8258,7 @@
                             }
 
                             if (data.type === 'done') {
-                                // Stream complete
+                                appendAiUsageInfo(data);
                             }
                         } catch (e) {
                             // Skip malformed SSE lines
@@ -7860,6 +8274,7 @@
 
                 // Parse and show dynamic suggestions
                 parseSuggestions(aiMessage);
+                appendMessageActions(aiMessage);
                 // Refresh conversation sidebar (new or continued conversation)
                 loadAiConversations();
 
@@ -7938,25 +8353,35 @@
                     userLabel = '🎯 Analyze my watchlist signals';
                     break;
                 case 'rebalance':
-                    // Use chat with context
-                    document.getElementById('aiInput').value = 'Suggest rebalancing moves for my portfolio. Consider current allocation, risk, and market conditions.';
-                    // Enable portfolio + market context
-                    aiActiveContexts = ['portfolio', 'market'];
-                    document.querySelectorAll('.ai-context-chip').forEach(c => {
-                        c.classList.toggle('active', aiActiveContexts.includes(c.dataset.context));
-                    });
-                    sendAiChatMessage();
-                    return;
+                    endpoint = '/ai/analyze/rebalance';
+                    userLabel = '⚖️ Rebalance my portfolio';
+                    break;
                 case 'news':
-                    document.getElementById('aiInput').value = 'Give me a brief digest of what matters in the market today and how it might affect my portfolio.';
-                    aiActiveContexts = ['portfolio', 'market'];
-                    document.querySelectorAll('.ai-context-chip').forEach(c => {
-                        c.classList.toggle('active', aiActiveContexts.includes(c.dataset.context));
-                    });
-                    sendAiChatMessage();
-                    return;
+                    endpoint = '/ai/analyze/news';
+                    userLabel = '📰 News digest for my holdings';
+                    break;
                 case 'position':
                     openTickerSearchModal();
+                    return;
+                case 'onboarding':
+                    // Send onboarding message via regular chat with portfolio+market context
+                    {
+                        const onboardingMessage = `I'm new here and need help building my first portfolio. Walk me through it step by step — ask me about my goals, risk tolerance, timeline, and budget. Then suggest a complete portfolio I can add with one click.`;
+                        // Activate portfolio + market context chips
+                        aiActiveContexts = [];
+                        document.querySelectorAll('.ai-context-chip').forEach(c => c.classList.remove('active'));
+                        ['portfolio', 'market'].forEach(ctx => {
+                            const chip = document.querySelector(`.ai-context-chip[data-context="${ctx}"]`);
+                            if (chip) { chip.classList.add('active'); aiActiveContexts.push(ctx); }
+                        });
+                        const qa = document.getElementById('aiQuickActions');
+                        if (qa) qa.style.display = 'none';
+                        const input = document.getElementById('aiInput');
+                        if (input) {
+                            input.value = onboardingMessage;
+                            sendAiChatMessage();
+                        }
+                    }
                     return;
                 default:
                     return;
@@ -8035,6 +8460,10 @@
                                     updateLastAiMessage(aiMessage);
                                 }
                             }
+
+                            if (data.type === 'done') {
+                                appendAiUsageInfo(data);
+                            }
                         } catch (e) {}
                     }
                 }
@@ -8045,6 +8474,7 @@
                 }
 
                 parseSuggestions(aiMessage);
+                appendMessageActions(aiMessage);
                 // Refresh conversation sidebar so analysis appears
                 loadAiConversations();
 
@@ -8332,7 +8762,7 @@
                                 }
                             }
                             if (data.type === 'done') {
-                                // Stream complete
+                                appendAiUsageInfo(data);
                             }
                         } catch {}
                     }
@@ -8343,6 +8773,7 @@
                 }
 
                 parseSuggestions(aiMessage);
+                appendMessageActions(aiMessage);
 
             } catch (err) {
                 appendAiError('Failed to connect: ' + err.message);
@@ -8358,25 +8789,28 @@
         }
 
         // New chat
-        function newAiChat() {
+        async function newAiChat() {
             aiCurrentConversationId = null;
             const container = document.getElementById('aiMessages');
             container.innerHTML = '';
 
-            const welcome = document.getElementById('aiWelcome');
-            if (welcome) {
-                welcome.style.display = '';
-                container.appendChild(welcome);
-            } else {
-                container.innerHTML = `<div class="ai-welcome" id="aiWelcome">
-                    <div class="ai-welcome-icon">🧠</div>
-                    <h3>Oracle AI Assistant</h3>
-                    <p>Ask me about your portfolio, market trends, or investment strategies. Select context chips above to include your data.</p>
-                </div>`;
-            }
+            // Rebuild default welcome
+            container.innerHTML = `<div class="ai-welcome" id="aiWelcome">
+                <div class="ai-welcome-icon">🧠</div>
+                <h3>Oracle AI Assistant</h3>
+                <p>Ask me about your portfolio, market trends, or investment strategies. Select context chips above to include your data.</p>
+            </div>`;
 
             const qa = document.getElementById('aiQuickActions');
-            if (qa) qa.style.display = '';
+            if (qa) {
+                qa.style.display = '';
+                // Remove previous onboarding buttons (will be re-added by updateWelcomeForOnboarding)
+                qa.querySelectorAll('.ai-onboard-btn').forEach(b => b.remove());
+                // Also remove non-pulsing build buttons
+                qa.querySelectorAll('.ai-quick-btn').forEach(b => {
+                    if (b.textContent.includes('Build My Portfolio')) b.remove();
+                });
+            }
             const sug = document.getElementById('aiSuggestions');
             if (sug) { sug.style.display = 'none'; sug.innerHTML = ''; }
 
@@ -8385,6 +8819,10 @@
             document.querySelectorAll('.ai-context-chip').forEach(c => {
                 c.classList.toggle('active', c.dataset.context === 'general');
             });
+
+            // Re-check onboarding state — always add Build Portfolio option
+            const needsOnboarding = await checkOnboardingNeeded();
+            updateWelcomeForOnboarding(needsOnboarding);
         }
 
         // Settings panel

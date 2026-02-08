@@ -95,6 +95,24 @@ async function buildSystemPrompt(userId, context) {
     `- Reference the user's actual portfolio data when available — generic advice is useless.\n` +
     `- End with a clear takeaway or action item when relevant.\n` +
     `- Disclaimer: You provide analysis, not financial advice.\n\n` +
+    `## Actions\n` +
+    `You can suggest portfolio actions that the user can execute with one click.\n` +
+    `Include action tags INLINE in your response where relevant (not at the end):\n` +
+    `- Set price alert: [[[ACTION:alert:SYMBOL:PRICE:above]]] or [[[ACTION:alert:SYMBOL:PRICE:below]]]\n` +
+    `- Add to watchlist: [[[ACTION:watchlist:SYMBOL]]]\n` +
+    `- Add position: [[[ACTION:position:SYMBOL:QUANTITY:PRICE]]]\n` +
+    `Example: "I'd recommend setting an alert for TSLA at $420 [[[ACTION:alert:TSLA:420:above]]] to catch the breakout."\n` +
+    `Only suggest actions that make sense in context. Don't force them.\n\n` +
+    `## Onboarding\n` +
+    `If the user asks you to help build their first portfolio or says they're new:\n` +
+    `1. Start by welcoming them warmly. Ask about their investment goals (growth/income/preservation/speculation) and risk tolerance (conservative/moderate/aggressive).\n` +
+    `2. After they answer, ask about their time horizon and how much cash they want to invest.\n` +
+    `3. Then ask about any convictions — sectors, themes, or specific stocks/crypto they like.\n` +
+    `4. Keep it conversational — ask 2-3 questions at a time max, not all at once.\n` +
+    `5. After gathering enough info, suggest a COMPLETE portfolio (8-15 positions) with specific allocations.\n` +
+    `   Use [[[ACTION:position:SYMBOL:QUANTITY:PRICE]]] for EACH suggested position so they can add with one click.\n` +
+    `   Include a diversified mix appropriate to their profile. Use current market prices from context.\n` +
+    `   Show a summary table with ticker, name, allocation %, quantity, and price.\n\n` +
     `## Follow-up Suggestions\n` +
     `At the very end of every response, suggest 3 follow-up questions on the LAST line.\n` +
     `Format: <<<Q1|||Q2|||Q3>>>\n` +
@@ -110,7 +128,7 @@ async function buildSystemPrompt(userId, context) {
 
   // Handle analysis follow-ups: rebuild the same context the analysis had
   // 'analysis' (legacy) falls back to portfolio+market context
-  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.some(c => c.startsWith('analysis-position:'))) {
+  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.includes('analysis-rebalance') || contexts.some(c => c.startsWith('analysis-position:'))) {
     // Switch to analysis-style system prompt for continuity
     systemContent = `You are Oracle, an expert financial analyst built into Portfolio Tracker Pro.\n\n` +
       `## Analysis Guidelines\n` +
@@ -129,7 +147,16 @@ async function buildSystemPrompt(userId, context) {
       systemContent += buildMarketContext() + '\n';
     }
     if (contexts.includes('analysis-watchlist')) {
-      systemContent += buildWatchlistContext(userId, dbAll) + '\n';
+      systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    if (contexts.includes('analysis-news')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    if (contexts.includes('analysis-rebalance')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
       systemContent += buildMarketContext() + '\n';
     }
     const posContext = contexts.find(c => c.startsWith('analysis-position:'));
@@ -171,7 +198,7 @@ async function buildSystemPrompt(userId, context) {
     systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
   }
   if (contexts.includes('watchlist')) {
-    systemContent += buildWatchlistContext(userId, dbAll) + '\n';
+    systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
   }
   if (contexts.includes('market')) {
     systemContent += buildMarketContext() + '\n';
@@ -397,9 +424,10 @@ router.post('/chat', async (req, res) => {
   res.write(`data: ${JSON.stringify({ type: 'meta', conversationId: convId })}\n\n`);
 
   let fullResponse = '';
+  const startTime = Date.now();
 
   try {
-    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
+    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 4096 });
 
     for await (const chunk of stream) {
       fullResponse += chunk;
@@ -431,7 +459,13 @@ router.post('/chat', async (req, res) => {
       }
     }
 
-    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`);
+    // Build done event with usage info
+    const durationMs = Date.now() - startTime;
+    const usage = instance.lastUsage || {
+      input: Math.round(apiMessages.map(m => m.content).join('').length / 4),
+      output: Math.round(fullResponse.length / 4)
+    };
+    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId, model: selectedModel, durationMs, usage })}\n\n`);
   } catch (err) {
     console.error('AI CHAT ERROR:', err.message, err.cause?.message || err.cause, err.code);
     res.write(`data: ${JSON.stringify({ type: 'error', error: err.message })}\n\n`);
@@ -532,6 +566,14 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
     `- For position deep dives: include technical levels, fundamental value, and a clear recommendation.\n` +
     `- Keep it focused — aim for 800-1200 words max. Quality over quantity.\n` +
     `- Disclaimer: Analysis, not financial advice.\n\n` +
+    `## Actions\n` +
+    `You can suggest portfolio actions that the user can execute with one click.\n` +
+    `Include action tags INLINE in your response where relevant (not at the end):\n` +
+    `- Set price alert: [[[ACTION:alert:SYMBOL:PRICE:above]]] or [[[ACTION:alert:SYMBOL:PRICE:below]]]\n` +
+    `- Add to watchlist: [[[ACTION:watchlist:SYMBOL]]]\n` +
+    `- Add position: [[[ACTION:position:SYMBOL:QUANTITY:PRICE]]]\n` +
+    `Example: "I'd recommend setting an alert for TSLA at $420 [[[ACTION:alert:TSLA:420:above]]] to catch the breakout."\n` +
+    `Only suggest actions that make sense in context. Don't force them.\n\n` +
     `## Follow-up Suggestions\n` +
     `Last line of every response: <<<Q1|||Q2|||Q3>>> (under 8 words each, specific and actionable)\n\n` +
     systemExtra;
@@ -564,10 +606,11 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
   res.write(`data: ${JSON.stringify({ type: 'meta', conversationId: convId })}\n\n`);
 
   let fullResponse = '';
+  const startTime = Date.now();
 
   try {
     console.log(`ANALYZE: provider=${selectedProvider} model=${selectedModel} baseUrl=${instance.baseUrl} hasKey=${!!instance.apiKey}`);
-    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
+    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 4096 });
 
     for await (const chunk of stream) {
       fullResponse += chunk;
@@ -580,7 +623,13 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
       [convId, 'assistant', fullResponse]
     );
 
-    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId })}\n\n`);
+    // Build done event with usage info
+    const durationMs = Date.now() - startTime;
+    const usage = instance.lastUsage || {
+      input: Math.round(apiMessages.map(m => m.content).join('').length / 4),
+      output: Math.round(fullResponse.length / 4)
+    };
+    res.write(`data: ${JSON.stringify({ type: 'done', conversationId: convId, model: selectedModel, durationMs, usage })}\n\n`);
   } catch (err) {
     console.error('AI ANALYSIS ERROR:', err.message, err.cause?.message || err.cause, err.code);
     console.error('AI ANALYSIS STACK:', err.stack);
@@ -608,16 +657,28 @@ Be specific with numbers from my portfolio data.`;
 
 // POST /analyze/watchlist — watchlist entry/exit signals
 router.post('/analyze/watchlist', async (req, res) => {
-  const watchlistData = buildWatchlistContext(req.user.id, dbAll);
+  const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
   const marketData = buildMarketContext();
 
-  const userPrompt = `Analyze my watchlist items and provide for each:
-1. **Current Assessment** — brief overview of each stock's situation
-2. **Entry Signals** — what conditions might make it a good buy
-3. **Risk Factors** — key concerns or red flags
-4. **Priority Ranking** — rank the watchlist items by attractiveness
+  const userPrompt = `Analyze my watchlist and provide actionable entry/exit signals:
 
-Consider current market conditions and be specific.`;
+1. **Signal Summary Table** — for each watchlist item, show:
+   | Ticker | Signal | Price Target | Confidence | Timeframe |
+   (Signal = Strong Buy / Buy / Hold / Sell / Strong Sell)
+
+2. **Top 3 Entry Opportunities** — the best buys right now:
+   - Entry price zone (specific range)
+   - Stop-loss level
+   - Target price (with upside %)
+   - Catalyst or reason to act NOW
+
+3. **Avoid / Exit Warnings** — any watchlist items showing red flags:
+   - What's wrong (technical breakdown, fundamental deterioration)
+   - If already held, suggested exit strategy
+
+4. **Key Levels to Watch** — for each ticker, the ONE price level that matters most right now (support to buy, resistance to sell)
+
+Be specific with price levels and percentages. No vague "might go up" — give concrete numbers.`;
 
   await runAnalysis(req, res, watchlistData + '\n' + marketData, userPrompt, 'analysis-watchlist');
 });
@@ -674,6 +735,213 @@ router.post('/analyze/position/:symbol', async (req, res) => {
 Be specific and reference the position data provided.`;
 
   await runAnalysis(req, res, positionContext + '\n' + marketData, userPrompt, `analysis-position:${upperSymbol}`);
+});
+
+// POST /analyze/news — AI-powered news digest for holdings
+router.post('/analyze/news', async (req, res) => {
+  // Get user's position symbols
+  const positions = dbAll(`
+    SELECT DISTINCT p.symbol FROM positions p
+    JOIN portfolios pf ON p.portfolio_id = pf.id
+    WHERE pf.user_id = ?
+    ORDER BY p.quantity * COALESCE(p.current_price, p.entry_price) DESC
+    LIMIT 10
+  `, [req.user.id]);
+
+  const symbols = positions.map(p => p.symbol);
+
+  // Fetch news from Yahoo for top holdings
+  let newsContext = '## Recent News for Your Holdings\n\n';
+
+  if (symbols.length === 0) {
+    newsContext += 'No positions found. Add some positions first.\n';
+  } else {
+    try {
+      const { fetchYahooNews } = require('../utils/yahoo');
+      const newsResults = await Promise.allSettled(
+        symbols.slice(0, 5).map(sym => fetchYahooNews(sym))
+      );
+
+      for (let i = 0; i < newsResults.length; i++) {
+        const result = newsResults[i];
+        const sym = symbols[i];
+        if (result.status === 'fulfilled' && result.value?.length > 0) {
+          newsContext += `### ${sym}\n`;
+          for (const article of result.value.slice(0, 3)) {
+            newsContext += `- **${article.title}** (${article.publisher || 'Unknown'}, ${article.date || 'recent'})\n`;
+          }
+          newsContext += '\n';
+        }
+      }
+    } catch (e) {
+      newsContext += 'Unable to fetch news at this time.\n';
+    }
+  }
+
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+
+  const userPrompt = `Based on the recent news for my holdings, provide:
+1. **Key Headlines** — what happened and why it matters for my portfolio
+2. **Impact Assessment** — which positions are most affected (positive or negative)
+3. **Action Items** — any immediate concerns or opportunities
+4. **Market Mood** — overall sentiment for my holdings
+
+Be concise and focus on what's actionable.`;
+
+  await runAnalysis(req, res, newsContext + '\n' + portfolioData, userPrompt, 'analysis-news');
+});
+
+// POST /analyze/rebalance — rebalancing suggestions with concrete targets
+router.post('/analyze/rebalance', async (req, res) => {
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+  const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
+  const marketData = buildMarketContext();
+
+  const userPrompt = `Analyze my current portfolio allocation and provide a concrete rebalancing plan:
+
+1. **Current Allocation** — show my current asset class/sector weights as a table
+2. **Target Allocation** — propose a target allocation with specific percentages, tailored to my portfolio size and existing positions
+3. **Specific Trades** — list exact trades to execute:
+   - What to sell (symbol, quantity or %, dollar amount)
+   - What to buy (symbol, quantity or %, dollar amount)
+   - Priority order (do this first, then this)
+4. **Rationale** — why these changes improve the portfolio
+5. **Risk Impact** — how the rebalanced portfolio compares to current (volatility, max drawdown, correlation)
+
+Consider my watchlist items as potential buy candidates. Be specific with numbers — no vague suggestions.`;
+
+  await runAnalysis(req, res, portfolioData + '\n' + watchlistData + '\n' + marketData, userPrompt, 'analysis-rebalance');
+});
+
+// ═══════════════════════════════════════════════════════════════════
+// Action Execution (AI-suggested inline actions)
+// ═══════════════════════════════════════════════════════════════════
+
+router.post('/action', async (req, res) => {
+  const { type, params } = req.body;
+  logger.info('AI action request', { type, params, userId: req.user?.id, username: req.user?.username });
+
+  if (!type || !Array.isArray(params)) {
+    return res.status(400).json({ error: 'Missing type or params' });
+  }
+
+  try {
+    switch (type) {
+      case 'alert': {
+        const [symbol, price, direction] = params;
+        if (!symbol || !price) {
+          return res.status(400).json({ error: 'Missing symbol or price for alert' });
+        }
+        // Schema: alerts(user_id, symbol, condition, value, is_active)
+        // condition maps to direction (above/below)
+        dbRun(
+          'INSERT INTO alerts (user_id, symbol, condition, value, is_active) VALUES (?, ?, ?, ?, 1)',
+          [req.user.id, symbol.toUpperCase(), direction || 'above', parseFloat(price)]
+        );
+        return res.json({ success: true, message: `Alert set: ${symbol.toUpperCase()} ${direction || 'above'} $${price}` });
+      }
+      case 'watchlist': {
+        const [symbol] = params;
+        if (!symbol) {
+          return res.status(400).json({ error: 'Missing symbol for watchlist' });
+        }
+        // Get or create default watchlist
+        let watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+        if (!watchlist) {
+          const result = dbRun('INSERT INTO watchlists (user_id, name) VALUES (?, ?)', [req.user.id, 'My Watchlist']);
+          watchlist = { id: result.lastInsertRowid };
+        }
+        // Check if already exists (UNIQUE constraint on watchlist_id, symbol)
+        const existing = dbGet('SELECT id FROM watchlist_items WHERE watchlist_id = ? AND symbol = ?', [watchlist.id, symbol.toUpperCase()]);
+        if (existing) {
+          return res.json({ success: true, message: `${symbol.toUpperCase()} is already on your watchlist` });
+        }
+        dbRun('INSERT INTO watchlist_items (watchlist_id, symbol) VALUES (?, ?)', [watchlist.id, symbol.toUpperCase()]);
+        return res.json({ success: true, message: `${symbol.toUpperCase()} added to watchlist` });
+      }
+      case 'position': {
+        const [symbol, quantity, price] = params;
+        if (!symbol || !quantity || !price) {
+          return res.status(400).json({ error: 'Missing symbol, quantity, or price for position' });
+        }
+        // Get first portfolio
+        const portfolio = dbGet('SELECT id FROM portfolios WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+        if (!portfolio) {
+          return res.status(400).json({ error: 'No portfolio found. Create one first.' });
+        }
+        // Schema: positions(portfolio_id, symbol, quantity, entry_price, type)
+        // Check for existing position (UNIQUE on portfolio_id, symbol)
+        const existingPos = dbGet('SELECT id, quantity, entry_price FROM positions WHERE portfolio_id = ? AND symbol = ?', [portfolio.id, symbol.toUpperCase()]);
+        const parsedQty = parseFloat(quantity);
+        const parsedPrice = parseFloat(price);
+        const upperSymbol = symbol.toUpperCase();
+
+        if (existingPos) {
+          // Update: average in the new position
+          const totalQty = existingPos.quantity + parsedQty;
+          const avgPrice = ((existingPos.quantity * existingPos.entry_price) + (parsedQty * parsedPrice)) / totalQty;
+          dbRun(
+            'UPDATE positions SET quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            [totalQty, avgPrice, existingPos.id]
+          );
+          // Also create a buy transaction for history
+          dbRun(
+            `INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, notes, source)
+             VALUES (?, ?, 'stock', 'buy', ?, ?, 0, datetime('now'), 'Added via Oracle AI', 'ai')`,
+            [portfolio.id, upperSymbol, parsedQty, parsedPrice]
+          );
+          // Auto-add to default watchlist if not already there
+          try {
+            const watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+            if (watchlist) {
+              const existingWl = dbGet('SELECT id FROM watchlist_items WHERE watchlist_id = ? AND symbol = ?', [watchlist.id, upperSymbol]);
+              if (!existingWl) {
+                dbRun('INSERT INTO watchlist_items (watchlist_id, symbol, name, category) VALUES (?, ?, ?, ?)',
+                  [watchlist.id, upperSymbol, upperSymbol, 'general']);
+                logger.info(`Auto-added ${upperSymbol} to watchlist ${watchlist.id} for user ${req.user.id}`);
+              }
+            }
+          } catch (wlErr) {
+            logger.error('Auto-add to watchlist failed:', wlErr.message);
+          }
+
+          return res.json({ success: true, message: `Updated ${upperSymbol}: now ${totalQty} shares @ $${avgPrice.toFixed(2)} avg` });
+        }
+        dbRun(
+          'INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type) VALUES (?, ?, ?, ?, ?)',
+          [portfolio.id, upperSymbol, parsedQty, parsedPrice, 'stock']
+        );
+        // Create a buy transaction for history
+        dbRun(
+          `INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, notes, source)
+           VALUES (?, ?, 'stock', 'buy', ?, ?, 0, datetime('now'), 'Added via Oracle AI', 'ai')`,
+          [portfolio.id, upperSymbol, parsedQty, parsedPrice]
+        );
+
+        // Auto-add to default watchlist if not already there
+        try {
+          const watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+          if (watchlist) {
+            const existingWl = dbGet('SELECT id FROM watchlist_items WHERE watchlist_id = ? AND symbol = ?', [watchlist.id, upperSymbol]);
+            if (!existingWl) {
+              dbRun('INSERT INTO watchlist_items (watchlist_id, symbol, name, category) VALUES (?, ?, ?, ?)',
+                [watchlist.id, upperSymbol, upperSymbol, 'general']);
+              logger.info(`Auto-added ${upperSymbol} to watchlist ${watchlist.id} for user ${req.user.id}`);
+            }
+          }
+        } catch (wlErr) {
+          logger.error('Auto-add to watchlist failed:', wlErr.message);
+        }
+
+        return res.json({ success: true, message: `Added ${quantity} ${upperSymbol} @ $${price}` });
+      }
+      default:
+        return res.status(400).json({ error: `Unknown action type: ${type}` });
+    }
+  } catch (err) {
+    logger.error('AI action error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

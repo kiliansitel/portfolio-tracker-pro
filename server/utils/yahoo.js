@@ -163,10 +163,30 @@ function clearCache() {
 // Periodically clean cache
 setInterval(clearCache, 300000); // Every 5 minutes
 
+async function fetchYahooNews(symbol) {
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/search?q=${encodeURIComponent(symbol)}&newsCount=5&quotesCount=0`;
+    const resp = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' }
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    return (data.news || []).map(n => ({
+      title: n.title,
+      publisher: n.publisher,
+      link: n.link,
+      date: n.providerPublishTime ? new Date(n.providerPublishTime * 1000).toLocaleDateString() : null
+    }));
+  } catch {
+    return [];
+  }
+}
+
 module.exports = {
   fetchYahooPrice,
   fetchYahooChart,
   fetchHistoricalPrice,
+  fetchYahooNews,
   priceCache,
   CACHE_TTL,
 };
