@@ -591,6 +591,31 @@
 
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* Loading Skeletons */
+        .skeleton {
+            background: linear-gradient(90deg, var(--bg-tertiary) 25%, var(--bg-secondary) 50%, var(--bg-tertiary) 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 8px;
+        }
+        @keyframes shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-card { height: 60px; margin-bottom: 8px; }
+
+        /* Sort dropdown inline */
+        .sort-dropdown {
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            min-width: 130px;
+        }
+
         /* News Styles */
         .news-filter {
             padding: 8px 16px;
@@ -1385,10 +1410,18 @@
                         <button class="btn-add" onclick="showAddPositionModal()" title="Add Position">+</button>
                     </div>
                     <div class="card-body">
-                        <div style="margin-bottom:10px;">
+                        <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
                             <input type="text" id="positionSearchInput" placeholder="🔍 Search positions..." 
                                 oninput="filterPositions(this.value)"
-                                style="width:100%;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);font-size:0.9rem;box-sizing:border-box;">
+                                style="flex:1;padding:10px 12px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:8px;color:var(--text-primary);font-size:0.9rem;box-sizing:border-box;">
+                            <select id="positionSortSelect" class="sort-dropdown" onchange="onPositionSortChange(this.value)">
+                                <option value="default">Default</option>
+                                <option value="name-asc">Name A-Z</option>
+                                <option value="name-desc">Name Z-A</option>
+                                <option value="value-desc">Value ↓</option>
+                                <option value="pnl-desc">P&L % ↓</option>
+                                <option value="change-desc">Daily % ↓</option>
+                            </select>
                         </div>
                         <div id="positionsList"></div>
                     </div>
@@ -1406,6 +1439,14 @@
                         <button class="btn-add" onclick="showAddWatchlistModal()" title="Add Ticker">+</button>
                     </div>
                     <div class="card-body">
+                        <div style="margin-bottom:10px;">
+                            <select id="watchlistSortSelect" class="sort-dropdown" onchange="onWatchlistSortChange(this.value)" style="width:100%;">
+                                <option value="default">Sort: Default</option>
+                                <option value="name-asc">Name A-Z</option>
+                                <option value="price-desc">Price ↓</option>
+                                <option value="change-desc">Change % ↓</option>
+                            </select>
+                        </div>
                         <div id="watchlistItems"></div>
                     </div>
                 </div>
@@ -1526,6 +1567,13 @@
                                     <div class="setting-desc">Set your available cash for dry powder tracking</div>
                                 </div>
                                 <input type="number" id="settingsCash" style="width: 120px; padding: 8px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-primary);" onchange="updateCashSetting()">
+                            </div>
+                            <div class="setting-item">
+                                <div>
+                                    <div class="setting-label">Duplicate Portfolio</div>
+                                    <div class="setting-desc">Create a copy of your current portfolio with all positions</div>
+                                </div>
+                                <button class="btn btn-primary" onclick="duplicatePortfolio()" style="padding:8px 16px;font-size:0.85rem;">📋 Duplicate</button>
                             </div>
                         </div>
                         <div class="settings-section">
@@ -2615,6 +2663,7 @@
             document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
             document.getElementById(`page-${page}`)?.classList.add('active');
             document.getElementById('userDropdown').classList.remove('show');
+            localStorage.setItem('lastPage', page);
             // Render content when switching pages
             if (page === 'alerts') renderAlerts();
             if (page === 'history') {
@@ -2642,6 +2691,25 @@
             const title = document.getElementById('addPositionTitle');
             if (title) title.textContent = 'Add Position';
             showModal('addPositionModal');
+        }
+
+        // Feature 2: Quick-add from watchlist
+        function quickAddFromWatchlist(symbol) {
+            showAddPositionModal();
+            const symInput = document.querySelector('#positionForm [name="symbol"]');
+            if (symInput) symInput.value = symbol;
+        }
+
+        // Feature 1: Position sort change handler
+        function onPositionSortChange(value) {
+            localStorage.setItem('positionSort', value);
+            renderPositions();
+        }
+
+        // Feature 9: Watchlist sort change handler
+        function onWatchlistSortChange(value) {
+            localStorage.setItem('watchlistSort', value);
+            renderWatchlist();
         }
 
         function showAddWatchlistModal() {
@@ -3138,7 +3206,7 @@
             const el = document.getElementById('alertsList');
             
             if (alerts.length === 0) {
-                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-text">No price alerts set</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add alerts via the + button</p></div>';
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔔</div><div class="empty-state-text">No alerts set. Create price alerts to get notified!</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add alerts via the + button</p></div>';
                 return;
             }
             
@@ -3276,7 +3344,7 @@
             if (!el) return;
 
             if (walletsData.length === 0) {
-                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔗</div><div class="empty-state-text">No wallets connected</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add a blockchain wallet to track on-chain balances</p></div>';
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔗</div><div class="empty-state-text">No wallets connected. Add a blockchain wallet to track on-chain!</div><p style="color:var(--text-secondary);font-size:0.9rem;">Add a blockchain wallet to track on-chain balances</p></div>';
                 return;
             }
 
@@ -3630,7 +3698,7 @@
                 }
                 
                 if (transactions.length === 0) {
-                    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📜</div><div class="empty-state-text">No transactions yet</div></div>';
+                    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📝</div><div class="empty-state-text">No transactions recorded yet.</div></div>';
                     return;
                 }
                 
@@ -3774,6 +3842,20 @@
                 showToast('Cash updated: ' + fc(cash), 'success');
             } catch (e) {
                 console.error(e);
+            }
+        }
+
+        // Feature 5: Duplicate portfolio
+        async function duplicatePortfolio() {
+            if (!token || !portfolioId) { showToast('No portfolio selected', 'error'); return; }
+            if (!confirm('Duplicate the current portfolio with all positions?')) return;
+            try {
+                const result = await api(`/portfolios/${portfolioId}/duplicate`, { method: 'POST' });
+                showToast(`Portfolio duplicated as "${result.name}"`, 'success');
+                await loadPortfolio();
+                renderPositions();
+            } catch (e) {
+                showToast('Failed to duplicate: ' + e.message, 'error');
             }
         }
 
@@ -4165,8 +4247,19 @@
         function renderPositions() {
             const el = document.getElementById('positionsList');
             try {
+            // Restore sort dropdown
+            const sortSel = document.getElementById('positionSortSelect');
+            if (sortSel && !sortSel._restored) {
+                sortSel.value = localStorage.getItem('positionSort') || 'default';
+                sortSel._restored = true;
+            }
+            
+            if (positions === null || positions === undefined) {
+                el.innerHTML = '<div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div>';
+                return;
+            }
             if (positions.length === 0) {
-                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💼</div><div class="empty-state-text">No positions yet</div><button class="btn btn-primary" onclick="showAddPositionModal()">Add Your First Position</button></div>';
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💼</div><div class="empty-state-text">No positions yet. Add your first position with the + button above!</div><button class="btn btn-primary" onclick="showAddPositionModal()">Add Your First Position</button></div>';
                 return;
             }
             
@@ -4190,6 +4283,14 @@
                 const changePct = q.changePercent || 0;
                 return { ...pos, currentPrice, value, cost, pnl, pnlPct, changePct, mult };
             });
+            
+            // Apply position sort
+            const posSort = localStorage.getItem('positionSort') || 'default';
+            if (posSort === 'name-asc') enriched.sort((a, b) => a.symbol.localeCompare(b.symbol));
+            else if (posSort === 'name-desc') enriched.sort((a, b) => b.symbol.localeCompare(a.symbol));
+            else if (posSort === 'value-desc') enriched.sort((a, b) => b.value - a.value);
+            else if (posSort === 'pnl-desc') enriched.sort((a, b) => b.pnlPct - a.pnlPct);
+            else if (posSort === 'change-desc') enriched.sort((a, b) => b.changePct - a.changePct);
             
             // Summary calculations
             const totalValue = enriched.reduce((s, p) => s + p.value, 0);
@@ -4224,6 +4325,56 @@
                 </div>
             </div>`;
             
+            // Helper to render a single position card
+            function renderPosCard(pos) {
+                    const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
+                    const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
+                    const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
+                    const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-orange);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
+                    
+                    const qtyInfo = pos.quantity > 0 && pos.entry_price > 0 ? `<span style="margin-left:4px">· ${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</span>` : '';
+                    const locBadge = pos.location ? `<span class="location-badge">${pos.location}</span>` : '';
+                    const pnlDisplay = pos.cost > 0 ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : fc(pos.value);
+                    // Position notes (Feature 6)
+                    const notesText = pos.notes && !pos.notes.includes('wallet-synced') ? pos.notes : '';
+                    const notesHtml = notesText ? `<div style="font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:2px;" title="${notesText.replace(/"/g, '&quot;')}">${notesText.length > 50 ? notesText.substring(0, 50) + '…' : notesText}</div>` : '';
+                    
+                    return `<div class="swipe-container" data-id="${pos.id}" data-type="position">
+                        <div class="swipe-actions">
+                            <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
+                            <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
+                        </div>
+                        <div class="swipe-content position-card" onclick="showPositionDetail(${pos.id})">
+                            <div class="pos-row-main">
+                                <div class="pos-left">
+                                    ${logoHtml(pos.symbol, 32)}
+                                    <div class="pos-left-info">
+                                        <span class="pos-symbol">${pos.symbol}${optionInfo}</span>
+                                        <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}
+                                    </div>
+                                </div>
+                                <div class="pos-value">${fc(pos.value)}</div>
+                            </div>
+                            <div class="pos-row-sub">
+                                <div class="pos-sub-left">
+                                    <span>${fp(pos.currentPrice)}</span>
+                                    <span class="${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</span>
+                                    ${qtyInfo}
+                                    ${locBadge}
+                                </div>
+                                <div class="pos-sub-right pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pnlDisplay}</div>
+                            </div>
+                            ${notesHtml}
+                        </div>
+                    </div>`;
+            }
+            
+            if (posSort !== 'default') {
+                // Flat sorted list (no grouping)
+                for (const pos of enriched) {
+                    html += renderPosCard(pos);
+                }
+            } else {
             // Group by type
             const groups = {
                 crypto:  { label: '🪙 Crypto',  items: [] },
@@ -4255,46 +4406,12 @@
                 html += `<div class="pos-group-items" id="pos-group-${groupKey}" style="max-height: ${isCollapsed ? '0px' : 'none'};">`;
                 
                 for (const pos of group.items) {
-                    const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
-                    const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
-                    const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
-                    const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-orange);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
-                    
-                    const qtyInfo = pos.quantity > 0 && pos.entry_price > 0 ? `<span style="margin-left:4px">· ${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</span>` : '';
-                    const locBadge = pos.location ? `<span class="location-badge">${pos.location}</span>` : '';
-                    const pnlDisplay = pos.cost > 0 ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : fc(pos.value);
-                    
-                    html += `<div class="swipe-container" data-id="${pos.id}" data-type="position">
-                        <div class="swipe-actions">
-                            <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
-                            <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
-                        </div>
-                        <div class="swipe-content position-card" onclick="showPositionDetail(${pos.id})">
-                            <div class="pos-row-main">
-                                <div class="pos-left">
-                                    ${logoHtml(pos.symbol, 32)}
-                                    <div class="pos-left-info">
-                                        <span class="pos-symbol">${pos.symbol}${optionInfo}</span>
-                                        <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}
-                                    </div>
-                                </div>
-                                <div class="pos-value">${fc(pos.value)}</div>
-                            </div>
-                            <div class="pos-row-sub">
-                                <div class="pos-sub-left">
-                                    <span>${fp(pos.currentPrice)}</span>
-                                    <span class="${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</span>
-                                    ${qtyInfo}
-                                    ${locBadge}
-                                </div>
-                                <div class="pos-sub-right pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pnlDisplay}</div>
-                            </div>
-                        </div>
-                    </div>`;
+                    html += renderPosCard(pos);
                 }
                 
                 html += '</div>'; // close pos-group-items
             }
+            } // close else (default grouping)
             
             el.innerHTML = html;
             setupSwipeHandlers();
@@ -4485,12 +4602,81 @@
                 ).join('');
             }
             
+            // Restore watchlist sort dropdown
+            const wSortSel = document.getElementById('watchlistSortSelect');
+            if (wSortSel && !wSortSel._restored) {
+                wSortSel.value = localStorage.getItem('watchlistSort') || 'default';
+                wSortSel._restored = true;
+            }
+            
             const el = document.getElementById('watchlistItems');
+            
+            if (watchlist === null || watchlist === undefined) {
+                el.innerHTML = '<div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div><div class="skeleton skeleton-card"></div>';
+                return;
+            }
             if (watchlist.length === 0) {
-                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👁️</div><div class="empty-state-text">Watchlist empty</div><button class="btn btn-primary" onclick="showAddWatchlistModal()">Add Ticker</button></div>';
+                el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👀</div><div class="empty-state-text">Your watchlist is empty. Add tickers to start tracking!</div><button class="btn btn-primary" onclick="showAddWatchlistModal()">Add Ticker</button></div>';
                 return;
             }
             
+            // Enrich watchlist items with price data for sorting
+            const enrichedWL = watchlist.map(item => {
+                const q = priceCache[item.symbol];
+                return { ...item, _price: q?.price || 0, _change: q?.changePercent || 0 };
+            });
+            
+            // Apply watchlist sort
+            const wSort = localStorage.getItem('watchlistSort') || 'default';
+            if (wSort === 'name-asc') enrichedWL.sort((a, b) => a.symbol.localeCompare(b.symbol));
+            else if (wSort === 'price-desc') enrichedWL.sort((a, b) => b._price - a._price);
+            else if (wSort === 'change-desc') enrichedWL.sort((a, b) => b._change - a._change);
+            
+            // Helper to render a single watchlist item card
+            function renderWLCard(item) {
+                const price = item._price;
+                const change = item._change;
+                    
+                    let alertBadge = '';
+                    let target = '';
+                    if (item.alert_below && price > 0 && price <= item.alert_below) {
+                        alertBadge = '<span class="alert-badge buy">🔔 BUY</span>';
+                    } else if (item.alert_above && price > 0 && price >= item.alert_above) {
+                        alertBadge = '<span class="alert-badge sell">🔔 SELL</span>';
+                    }
+                    if (item.alert_below) target = `Target: ${fp(item.alert_below)}`;
+                    
+                    return `<div class="swipe-container" data-id="${item.id}" data-type="watchlist">
+                        <div class="swipe-actions">
+                            <div class="swipe-action edit" onclick="editWatchlistItem(${item.id})">✏️</div>
+                            <div class="swipe-action delete" onclick="deleteWatchlistItem(${item.id})">🗑️</div>
+                        </div>
+                        <div class="swipe-content watchlist-item" style="display:flex;align-items:center;">
+                            <div class="watch-info" onclick="selectTicker('${item.symbol}')" style="display:flex;align-items:center;gap:10px;flex:1;">
+                                ${logoHtml(item.symbol, 32)}
+                                <div>
+                                    <div><span class="watch-symbol">${item.symbol}</span>${alertBadge}</div>
+                                    <div class="watch-name">${item.name || ''}</div>
+                                    ${target ? `<div class="watch-target">${target}</div>` : ''}
+                                </div>
+                            </div>
+                            <div class="watch-price" style="text-align:right;">
+                                <div>${price > 0 ? fp(price) : '--'}</div>
+                                <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
+                            </div>
+                            <button onclick="event.stopPropagation();quickAddFromWatchlist('${item.symbol}')" title="Add to positions" style="margin-left:8px;background:none;border:none;color:var(--accent);font-size:1.1rem;cursor:pointer;padding:4px 6px;border-radius:4px;">➕</button>
+                        </div>
+                    </div>`;
+            }
+            
+            let html = '';
+            
+            if (wSort !== 'default') {
+                // Flat sorted list (no category grouping)
+                for (const item of enrichedWL) {
+                    html += renderWLCard(item);
+                }
+            } else {
             // Group by category
             const categories = {};
             const categoryNames = {
@@ -4501,13 +4687,12 @@
                 industrial: '🏭 Industrial', general: '📈 General'
             };
             
-            for (const item of watchlist) {
+            for (const item of enrichedWL) {
                 const cat = item.category || 'general';
                 if (!categories[cat]) categories[cat] = [];
                 categories[cat].push(item);
             }
             
-            let html = '';
             const catOrder = ['tech', 'robotics', 'crypto', 'indices', 'etf', 'commodities', 'forex', 'energy', 'resources', 'safe', 'industrial', 'general'];
             // Include any categories in data that aren't in catOrder
             const allCats = [...catOrder, ...Object.keys(categories).filter(c => !catOrder.includes(c))];
@@ -4526,42 +4711,11 @@
                     <div class="category-items" id="cat-${cat}" style="max-height: ${isCollapsed ? '0px' : 'none'};">`;
                 
                 for (const item of categories[cat]) {
-                    const q = priceCache[item.symbol];
-                    const price = q?.price || 0;
-                    const change = q?.changePercent || 0;
-                    
-                    let alertBadge = '';
-                    let target = '';
-                    if (item.alert_below && price > 0 && price <= item.alert_below) {
-                        alertBadge = '<span class="alert-badge buy">🔔 BUY</span>';
-                    } else if (item.alert_above && price > 0 && price >= item.alert_above) {
-                        alertBadge = '<span class="alert-badge sell">🔔 SELL</span>';
-                    }
-                    if (item.alert_below) target = `Target: ${fp(item.alert_below)}`;
-                    
-                    html += `<div class="swipe-container" data-id="${item.id}" data-type="watchlist">
-                        <div class="swipe-actions">
-                            <div class="swipe-action edit" onclick="editWatchlistItem(${item.id})">✏️</div>
-                            <div class="swipe-action delete" onclick="deleteWatchlistItem(${item.id})">🗑️</div>
-                        </div>
-                        <div class="swipe-content watchlist-item">
-                            <div class="watch-info" onclick="selectTicker('${item.symbol}')" style="display:flex;align-items:center;gap:10px;">
-                                ${logoHtml(item.symbol, 32)}
-                                <div>
-                                    <div><span class="watch-symbol">${item.symbol}</span>${alertBadge}</div>
-                                    <div class="watch-name">${item.name || ''}</div>
-                                    ${target ? `<div class="watch-target">${target}</div>` : ''}
-                                </div>
-                            </div>
-                            <div class="watch-price">
-                                <div>${price > 0 ? fp(price) : '--'}</div>
-                                <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
-                            </div>
-                        </div>
-                    </div>`;
+                    html += renderWLCard(item);
                 }
                 html += '</div></div>'; // Close category-items and watchlist-category
             }
+            } // close else (default grouping)
             el.innerHTML = html;
             setupSwipeHandlers();
         }
@@ -6434,6 +6588,39 @@
                 case '6': if (e.altKey) { e.preventDefault(); switchPage('settings'); } break;
             }
         });
+
+        // ============ SESSION TIMEOUT ============
+        (function checkSessionExpiry() {
+            if (!token) return;
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                const exp = payload.exp * 1000;
+                const now = Date.now();
+                const oneHour = 60 * 60 * 1000;
+                
+                if (exp - now < oneHour && exp > now) {
+                    showToast('⏰ Session expires soon. Re-login to continue.', 'warning');
+                } else if (exp <= now) {
+                    showToast('Session expired. Redirecting to login...', 'error');
+                    setTimeout(() => logout(), 2000);
+                } else {
+                    // Check again 1 hour before expiry
+                    const checkIn = Math.max(exp - now - oneHour, 60000);
+                    setTimeout(checkSessionExpiry, checkIn);
+                }
+            } catch(e) { /* ignore parse errors */ }
+        })();
+
+        // Handle 401 responses globally
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            const res = await originalFetch.apply(this, args);
+            if (res.status === 401 && token && !args[0]?.toString().includes('/auth/login')) {
+                showToast('Session expired. Please login again.', 'error');
+                setTimeout(() => logout(), 1500);
+            }
+            return res;
+        };
 
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {

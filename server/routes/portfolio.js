@@ -36,6 +36,33 @@ router.put('/:id', idParamValidation, (req, res) => {
   res.json({ message: 'Portfolio updated' });
 });
 
+// Duplicate portfolio
+router.post('/:id/duplicate', idParamValidation, (req, res) => {
+  const { id } = req.params;
+  
+  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+  if (!portfolio) {
+    return res.status(404).json({ error: 'Portfolio not found' });
+  }
+  
+  const newName = `Copy of ${portfolio.name}`;
+  const result = dbRun('INSERT INTO portfolios (user_id, name, cash) VALUES (?, ?, ?)', 
+    [req.user.id, newName, portfolio.cash || 0]);
+  const newPortfolioId = result.lastInsertRowid;
+  
+  // Copy all positions from source
+  const positions = dbAll('SELECT * FROM positions WHERE portfolio_id = ?', [id]);
+  for (const pos of positions) {
+    dbRun(
+      `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type, notes, source, location, multiplier, strike_price, expiry_date) 
+       VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?)`,
+      [newPortfolioId, pos.symbol, pos.quantity, pos.entry_price, pos.type || 'stock', pos.notes, pos.location, pos.multiplier || 1, pos.strike_price, pos.expiry_date]
+    );
+  }
+  
+  res.json({ id: newPortfolioId, user_id: req.user.id, name: newName, cash: portfolio.cash || 0 });
+});
+
 // Delete portfolio
 router.delete('/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
