@@ -4,6 +4,10 @@ const { fetchYahooPrice, fetchYahooChart } = require('../utils/yahoo');
 
 const router = express.Router();
 
+// Cache for options chain data
+const priceCache = new Map();
+const CACHE_TTL = 300000; // 5 minutes
+
 // Yahoo crumb for authenticated endpoints (options chain)
 let yahooCrumb = null;
 let yahooCookies = null;

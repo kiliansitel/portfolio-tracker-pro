@@ -899,6 +899,8 @@
             bottom: 0;
             display: flex;
             align-items: stretch;
+            opacity: 0;
+            pointer-events: none;
         }
         .swipe-action {
             width: 70px;
@@ -935,12 +937,10 @@
             }
             .swipe-container:hover .swipe-actions {
                 opacity: 1;
+                pointer-events: auto;
             }
             .swipe-container:hover .swipe-content {
-                transform: translateX(-140px);
-            }
-            .swipe-container:has(.swipe-actions > .swipe-action:only-child):hover .swipe-content {
-                transform: translateX(-70px);
+                transform: none;
             }
         }
 
@@ -3898,11 +3898,11 @@
                             <div class="pos-center">
                                 <div class="pos-price">${fp(pos.currentPrice)}</div>
                                 <div class="pos-change ${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</div>
-                                <div class="pos-qty">${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</div>
+                                <div class="pos-qty">${pos.quantity}${pos.type === 'option' ? 'x' : ''}${pos.entry_price > 0 ? ` @ ${fp(pos.entry_price)}` : ''}</div>
                             </div>
                             <div class="pos-right">
                                 <div class="pos-value">${fc(pos.value)}</div>
-                                <div class="pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)</div>
+                                <div class="pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pos.cost > 0 ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : fc(pos.value)}</div>
                             </div>
                         </div>
                     </div>`;
