@@ -1,4 +1,11 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.8 (2026-02-09)
+- 🐛 P&L shows "—" with "Set cost basis" badge when entry price is $0 (wallet sync positions)
+- 🐛 Positions with no cost basis excluded from total P&L calculation
+- 🐛 Performance snapshot logic no longer records misleading $0 entry prices
+- 🐛 Service worker switched to network-first for HTML, cache bumped to v22
+- 🐛 CSV/PDF exports handle missing cost basis gracefully
+
 ## v0.21.7 (2026-02-09)
 - ✨ CoinMarketCap portfolio CSV import support
 - Auto-detects CMC export format and maps columns

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.7-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.21.8-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -118,6 +118,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.21.8** | Fix P&L display for wallet-synced positions, service worker cache |
 | **v0.21.7** | CoinMarketCap portfolio CSV import support |
 | **v0.21.6** | Configurable context window (num_ctx) for Ollama models |
 | **v0.21.5** | Fix Ollama model persistence, JWT session survival in Docker |

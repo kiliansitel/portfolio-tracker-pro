@@ -31,7 +31,7 @@ async function collectDailySnapshot(portfolioId) {
 
     try {
       const priceData = await fetchYahooPrice(pos.symbol);
-      const price = priceData?.price || pos.entry_price;
+      const price = priceData?.price || (pos.entry_price > 0 ? pos.entry_price : 0);
       const value = pos.quantity * price * mult;
       positionsValue += value;
 
@@ -43,16 +43,18 @@ async function collectDailySnapshot(portfolioId) {
         value
       });
     } catch (err) {
-      // Fallback to entry price
-      const value = pos.quantity * pos.entry_price * mult;
+      // Fallback to entry price (skip if $0 — wallet-synced with no cost basis)
+      const fallbackPrice = pos.entry_price > 0 ? pos.entry_price : 0;
+      const value = pos.quantity * fallbackPrice * mult;
       positionsValue += value;
       priceResults.push({
         symbol: pos.symbol,
         quantity: pos.quantity,
-        price: pos.entry_price,
+        price: fallbackPrice,
         multiplier: mult,
         value,
-        error: err.message
+        error: err.message,
+        noCostBasis: pos.entry_price <= 0
       });
     }
 

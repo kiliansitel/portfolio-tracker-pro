@@ -5514,12 +5514,13 @@
                 }
                 const q = priceCache[pos.symbol] || {};
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
-                const cost = pos.entry_price * pos.quantity * mult;
+                const hasValidCost = pos.entry_price > 0;
+                const cost = hasValidCost ? pos.entry_price * pos.quantity * mult : 0;
                 const value = currentPrice * pos.quantity * mult;
-                const pnl = value - cost;
-                const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                const pnl = hasValidCost ? value - cost : 0;
+                const pnlPct = hasValidCost && cost > 0 ? (pnl / cost) * 100 : 0;
                 const changePct = q.changePercent || 0;
-                return { ...pos, currentPrice, value, cost, pnl, pnlPct, changePct, mult };
+                return { ...pos, currentPrice, value, cost, pnl, pnlPct, changePct, mult, hasValidCost };
             });
             
             // Apply position sort
@@ -5530,10 +5531,10 @@
             else if (posSort === 'pnl-desc') enriched.sort((a, b) => b.pnlPct - a.pnlPct);
             else if (posSort === 'change-desc') enriched.sort((a, b) => b.changePct - a.changePct);
             
-            // Summary calculations
+            // Summary calculations — exclude positions with no cost basis from P&L
             const totalValue = enriched.reduce((s, p) => s + p.value, 0);
-            const totalPnl = enriched.reduce((s, p) => s + p.pnl, 0);
-            const totalCost = enriched.reduce((s, p) => s + p.cost, 0);
+            const totalPnl = enriched.filter(p => p.hasValidCost).reduce((s, p) => s + p.pnl, 0);
+            const totalCost = enriched.filter(p => p.hasValidCost).reduce((s, p) => s + p.cost, 0);
             const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
             const todaysChange = enriched.reduce((s, p) => {
                 const prevVal = p.value / (1 + (p.changePct / 100));
@@ -5572,7 +5573,8 @@
                     
                     const qtyInfo = pos.quantity > 0 && pos.entry_price > 0 ? `<span style="margin-left:4px">· ${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</span>` : '';
                     const locBadge = pos.location ? `<span class="location-badge">${pos.location}</span>` : '';
-                    const pnlDisplay = pos.cost > 0 ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : fc(pos.value);
+                    const costBasisHint = !pos.hasValidCost ? '<span style="font-size:0.6rem;color:var(--accent-orange);margin-left:4px;" title="Entry price unknown — set cost basis for P&L">⚠️ Set cost basis</span>' : '';
+                    const pnlDisplay = pos.hasValidCost ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '—';
                     // Position notes (Feature 6)
                     const notesText = pos.notes && !pos.notes.includes('wallet-synced') ? pos.notes : '';
                     const notesHtml = notesText ? `<div style="font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:2px;" title="${notesText.replace(/"/g, '&quot;')}">${notesText.length > 50 ? notesText.substring(0, 50) + '…' : notesText}</div>` : '';
@@ -5588,7 +5590,7 @@
                                     ${logoHtml(pos.symbol, 32)}
                                     <div class="pos-left-info">
                                         <span class="pos-symbol">${pos.symbol}${optionInfo}</span>
-                                        <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}
+                                        <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}${costBasisHint}
                                     </div>
                                 </div>
                                 <div class="pos-value">${fc(pos.value)}</div>
@@ -5600,7 +5602,7 @@
                                     ${qtyInfo}
                                     ${locBadge}
                                 </div>
-                                <div class="pos-sub-right pos-pnl ${pos.pnl >= 0 ? 'positive' : 'negative'}">${pnlDisplay}</div>
+                                <div class="pos-sub-right pos-pnl ${pos.hasValidCost ? (pos.pnl >= 0 ? 'positive' : 'negative') : ''}">${pnlDisplay}</div>
                             </div>
                             ${notesHtml}
                         </div>
@@ -5678,10 +5680,11 @@
             }
             const q = priceCache[pos.symbol] || {};
             const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
-            const cost = pos.entry_price * pos.quantity * mult;
+            const hasValidCost = pos.entry_price > 0;
+            const cost = hasValidCost ? pos.entry_price * pos.quantity * mult : 0;
             const value = currentPrice * pos.quantity * mult;
-            const pnl = value - cost;
-            const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+            const pnl = hasValidCost ? value - cost : 0;
+            const pnlPct = hasValidCost && cost > 0 ? (pnl / cost) * 100 : 0;
             const changePct = q.changePercent || 0;
             
             currentDetailId = posId;
@@ -5695,8 +5698,8 @@
             // Build detail body
             const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
             const changeClass = changePct >= 0 ? 'positive' : 'negative';
-            const pnlClass = pnl >= 0 ? 'positive' : 'negative';
-            const pnlDisplay = cost > 0 ? `${pnl >= 0 ? '+' : ''}${fc(pnl)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)` : fc(value);
+            const pnlClass = hasValidCost ? (pnl >= 0 ? 'positive' : 'negative') : '';
+            const pnlDisplay = hasValidCost ? `${pnl >= 0 ? '+' : ''}${fc(pnl)} (${pnlPct >= 0 ? '+' : ''}${pnlPct.toFixed(2)}%)` : '— (no cost basis)';
             
             let bodyHtml = '';
             
@@ -6120,18 +6123,22 @@
                 // Options default to 100x multiplier (100 shares per contract)
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 totalValue += currentPrice * pos.quantity * mult;
-                totalCost += pos.entry_price * pos.quantity * mult;
+                // Only include positions with valid entry price in P&L calculation
+                if (pos.entry_price > 0) {
+                    totalCost += pos.entry_price * pos.quantity * mult;
+                }
             }
             
             const cashUsd = currentPortfolio?.cash || 0; // Raw USD from server, fc() will convert
-            const pnl = totalValue - totalCost;
-            const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
+            const hasAnyCost = totalCost > 0;
+            const pnl = hasAnyCost ? totalValue - totalCost : 0;
+            const pnlPct = hasAnyCost ? (pnl / totalCost) * 100 : 0;
             
             document.getElementById('totalValue').textContent = fc(totalValue + cashUsd);
-            document.getElementById('totalPnL').textContent = (pnl >= 0 ? '+' : '') + fc(pnl);
-            document.getElementById('totalPnL').className = 'summary-value ' + (pnl >= 0 ? 'positive' : 'negative');
-            document.getElementById('totalPnLPct').textContent = (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%';
-            document.getElementById('totalPnLPct').className = 'summary-sub ' + (pnlPct >= 0 ? 'positive' : 'negative');
+            document.getElementById('totalPnL').textContent = hasAnyCost ? (pnl >= 0 ? '+' : '') + fc(pnl) : '—';
+            document.getElementById('totalPnL').className = 'summary-value ' + (hasAnyCost ? (pnl >= 0 ? 'positive' : 'negative') : '');
+            document.getElementById('totalPnLPct').textContent = hasAnyCost ? (pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2) + '%' : '';
+            document.getElementById('totalPnLPct').className = 'summary-sub ' + (hasAnyCost ? (pnlPct >= 0 ? 'positive' : 'negative') : '');
             document.getElementById('cashValue').textContent = fc(cashUsd);
             
             // Save snapshot if logged in
@@ -6938,19 +6945,20 @@
                 const optQuote = optSym ? priceCache[optSym] : null;
                 const currentPrice = pos.type === 'option' ? (optQuote?.price || pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
-                const cost = pos.entry_price * pos.quantity * mult;
+                const hasValidCost = pos.entry_price > 0;
+                const cost = hasValidCost ? pos.entry_price * pos.quantity * mult : 0;
                 const value = currentPrice * pos.quantity * mult;
-                const pnl = value - cost;
-                const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+                const pnl = hasValidCost ? value - cost : 0;
+                const pnlPct = hasValidCost && cost > 0 ? (pnl / cost) * 100 : 0;
                 return [
                     pos.symbol,
                     pos.name || '',
                     pos.type,
                     pos.quantity,
-                    pos.entry_price.toFixed(2),
+                    pos.entry_price > 0 ? pos.entry_price.toFixed(2) : 'N/A',
                     currentPrice.toFixed(2),
-                    pnl.toFixed(2),
-                    pnlPct.toFixed(2) + '%',
+                    hasValidCost ? pnl.toFixed(2) : 'N/A',
+                    hasValidCost ? pnlPct.toFixed(2) + '%' : 'N/A',
                     (pos.notes || '').replace(/,/g, ';')
                 ];
             });
@@ -7003,10 +7011,12 @@
                 const currentPrice = pos.type === 'option' ? (optQuote?.price || pos.current_price || pos.entry_price) : (q?.price || pos.entry_price);
                 const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
                 totalValue += currentPrice * pos.quantity * mult;
-                totalCost += pos.entry_price * pos.quantity * mult;
+                if (pos.entry_price > 0) {
+                    totalCost += pos.entry_price * pos.quantity * mult;
+                }
             });
             
-            const pnl = totalValue - totalCost;
+            const pnl = totalCost > 0 ? totalValue - totalCost : 0;
             const pnlPct = totalCost > 0 ? (pnl / totalCost) * 100 : 0;
             
             const html = `

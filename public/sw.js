@@ -1,6 +1,6 @@
 // Service Worker for Portfolio Tracker Pro — Push Notifications + Offline Cache
 
-const CACHE_NAME = 'portfolio-tracker-v21';
+const CACHE_NAME = 'portfolio-tracker-v22';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -45,25 +45,33 @@ self.addEventListener('fetch', (event) => {
   // API calls: network only (don't cache dynamic data)
   if (url.pathname.startsWith('/api/')) return;
 
+  // Navigation requests (HTML pages): network-first so updates are always picked up
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      }).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
   // Static assets: cache-first, fallback to network
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request).then((response) => {
-        // Cache successful responses for static assets
         if (response.ok && (url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || 
             url.pathname.endsWith('.svg') || url.pathname.endsWith('.png') || 
-            url.pathname.endsWith('.jpg') || url.pathname === '/')) {
+            url.pathname.endsWith('.jpg'))) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
         return response;
-      }).catch(() => {
-        // Offline fallback for navigation requests
-        if (event.request.mode === 'navigate') {
-          return caches.match('/index.html');
-        }
-      });
+      }).catch(() => null);
     })
   );
 });
