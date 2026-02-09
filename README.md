@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.21.3-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -24,10 +24,12 @@
 ## Quick Start
 
 ```bash
-docker run -d -p 8080:8080 -v portfolio-data:/app/data kiliansitel/portfolio-tracker-pro:latest
+docker run -d -p 8080:8080 -e JWT_SECRET=$(openssl rand -hex 32) -v portfolio-data:/app/data kiliansitel/portfolio-tracker-pro:latest
 ```
 
 Open **http://localhost:8080** → create an account → start tracking.
+
+> 🔑 **Set `JWT_SECRET`** for persistent sessions across container restarts.
 
 > **Demo account included** — Username: `demo` / Password: `DemoPass123!`
 
@@ -116,6 +118,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.21.3** | Docker UX, auto-sync wallets, watchlist auto-add, watchlist switching fix |
 | **v0.21.2** | Ollama/LM Studio model auto-detection, login error fix |
 | **v0.21.1** | Docker path fix, wallet delete button, chain address validation |
 | **v0.21.0** "Oracle" | AI chat assistant, multi-provider, streaming SSE, conversation persistence |

@@ -1,4 +1,14 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.3 (2026-02-09)
+- 🐳 Docker: detect Docker environment, show `docker pull` instructions instead of git pull (#7)
+- 🔄 Wallets: auto-sync balance + create position immediately on add (#6)
+- 📋 Auto-add position symbols to default watchlist (manual, wallet, AI)
+- 🔧 Watchlist switching: fix price loading + remove interfering backdrop
+- 📖 README: add JWT_SECRET to Docker quick start command
+- 🧪 CI: relax coverage thresholds for growing codebase
+
+---
+
 ## v0.21.2 (2026-02-09)
 - 🤖 Ollama/LM Studio model auto-detection — fetches available models from `/api/tags`
 - 🐛 Fix wrong password showing "Session expired" instead of "Invalid credentials"
