@@ -1,4 +1,9 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.9 (2026-02-09)
+- 🐛 Self-destructing service worker that kills stale SW cache for all existing users
+- 🐛 Removed SW registration, replaced with unregister + cache clear on page load
+- 🐛 Fixed JavaScript syntax error from dangling .then() chain
+
 ## v0.21.8 (2026-02-09)
 - 🐛 P&L shows "—" with "Set cost basis" badge when entry price is $0 (wallet sync positions)
 - 🐛 Positions with no cost basis excluded from total P&L calculation
