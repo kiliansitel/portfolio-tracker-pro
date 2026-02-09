@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.3-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.21.4-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -118,6 +118,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.21.4** | Fix Ollama model selection persistence after save |
 | **v0.21.3** | Fix Ollama auto-detect on custom ports, model:tag format, Docker git suppression |
 | **v0.21.2** | Ollama/LM Studio model auto-detection, login error fix |
 | **v0.21.1** | Docker path fix, wallet delete button, chain address validation |

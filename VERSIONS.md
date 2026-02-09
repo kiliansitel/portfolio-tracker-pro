@@ -1,4 +1,10 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.4 (2026-02-09)
+- 🔧 Fix Ollama model selection persistence — dropdown no longer snaps back to first model after save
+- 🔧 Fixed provider data refresh order (refresh before re-render)
+
+---
+
 ## v0.21.3 (2026-02-09)
 - 🔧 Fix Ollama model auto-detect on custom ports (was using invalid fetch timeout option)
 - 🔧 Model name fallbacks use proper `model:tag` format (e.g. `mistral:latest`)

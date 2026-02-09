@@ -9089,8 +9089,8 @@
                     body: JSON.stringify(body)
                 });
                 showToast(`${providerId} provider saved!`, 'success');
-                await renderAiProviderSettings();
                 aiProviders = await api('/ai/providers');
+                await renderAiProviderSettings();
                 updateAiProviderBadge();
             } catch (e) {
                 showToast('Failed to save: ' + e.message, 'error');
@@ -9116,8 +9116,8 @@
             try {
                 await api(`/ai/providers/${providerId}/key`, { method: 'DELETE' });
                 showToast(`${providerId} key removed`, 'info');
-                await renderAiProviderSettings();
                 aiProviders = await api('/ai/providers');
+                await renderAiProviderSettings();
                 updateAiProviderBadge();
             } catch (e) {
                 showToast('Failed to remove: ' + e.message, 'error');
@@ -9191,8 +9191,12 @@
                 modelSelect.appendChild(option);
             }
             
-            // Select first model by default if none selected
-            if (models.length > 0 && !modelSelect.value) {
+            // Select saved modelPreference if available, otherwise first model
+            const ollamaProvider = aiProviders && aiProviders.find(p => p.id === 'ollama');
+            const preferred = ollamaProvider && ollamaProvider.modelPreference;
+            if (preferred && models.some(m => m.id === preferred)) {
+                modelSelect.value = preferred;
+            } else if (models.length > 0 && !modelSelect.value) {
                 modelSelect.value = models[0].id;
             }
         }
