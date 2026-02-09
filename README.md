@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.12-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.22.0-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -109,7 +109,7 @@ npm install && npm start
 
 | Layer | Tech |
 |-------|------|
-| Frontend | Vanilla JS, [LightweightCharts](https://tradingview.github.io/lightweight-charts/), CSS3 |
+| Frontend | Vanilla JS (12 modules), [LightweightCharts](https://tradingview.github.io/lightweight-charts/), CSS3 |
 | Backend | Node.js, Express, Helmet |
 | Database | SQLite (sql.js) |
 | Auth | JWT + Argon2id |
@@ -123,6 +123,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.22.0** | Frontend modularization (14 files) + validation fix (#9) |
 | **v0.21.12** | Global ticker search (Yahoo Finance — all markets) + alert fix |
 | **v0.21.11** | Reverse proxy compatibility + AI provider resilience |
 | **v0.21.10** | Prevent bad snapshots from failed price fetches |

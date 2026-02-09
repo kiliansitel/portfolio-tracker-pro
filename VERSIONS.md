@@ -1,4 +1,12 @@
 # Portfolio Tracker Pro — Version History
+## v0.22.0 (2026-02-09)
+- 🏗️ **Frontend modularization** — split 9,489-line index.html into 14 files
+  - `public/css/styles.css` — all CSS (2,107 lines)
+  - `public/js/` — 12 JavaScript modules (utils, auth, portfolio, watchlist, oracle, charts, etc.)
+  - `public/index.html` — clean HTML shell (~1,100 lines)
+- 🐛 Fix position creation validation — empty optional fields (entry_date, notes, etc.) no longer cause "Validation failed"
+- Fixes #9
+
 ## v0.21.12 (2026-02-09)
 - 🌍 Global ticker search — autocomplete falls back to Yahoo Finance search API when local tickers don't match
 - 🌍 Supports all markets: European (BMW.DE, ASML.AS), Asian (005930.KS Samsung), and thousands more
