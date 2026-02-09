@@ -4485,6 +4485,7 @@
                                     <div style="display:flex;gap:8px;align-items:center;">
                                         <button onclick="showWalletTx(${w.id}, '${w.chain}', '${(w.label || w.chain_name || w.chain.toUpperCase()).replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--accent-blue);padding:2px 4px;">📜 Txs</button>
                                         <button onclick="syncWallet(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;color:var(--accent-blue);padding:2px 6px;">🔄 Sync</button>
+                                        <button onclick="deleteWallet(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;color:var(--accent-red);padding:2px 6px;">🗑️</button>
                                     </div>
                                 </div>
                             </div>
