@@ -1169,7 +1169,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /wallets — add wallet
-router.post('/', walletValidation, (req, res) => {
+router.post('/', walletValidation, async (req, res) => {
   try {
     const { chain, address, label } = req.body;
 
@@ -1187,7 +1187,7 @@ router.post('/', walletValidation, (req, res) => {
       [req.user.id, chain, address, label || null]
     );
 
-    res.json({
+    const newWallet = {
       id: result.lastInsertRowid,
       user_id: req.user.id,
       chain,
@@ -1196,6 +1196,44 @@ router.post('/', walletValidation, (req, res) => {
       balance: 0,
       last_synced: null,
       created_at: new Date().toISOString(),
+    };
+
+    // Auto-sync balance and create position immediately after adding
+    try {
+      const updated = await syncWalletBalance(newWallet);
+      newWallet.balance = updated.balance;
+      newWallet.last_synced = updated.last_synced;
+
+      // Sync tokens for supported chains
+      if (TOKEN_CHAINS.includes(chain)) {
+        try { await syncWalletTokens(newWallet); } catch (e) { logger.error('Token sync on add failed:', e.message); }
+      }
+
+      // Aggregate all wallets for this chain and sync position
+      const allWalletsForChain = dbAll('SELECT * FROM wallets WHERE user_id = ? AND chain = ?', [req.user.id, chain]);
+      const totalBalance = allWalletsForChain.reduce((sum, w) => sum + (w.balance || 0), 0);
+      syncPositionsFromWallets(req.user.id, { [chain]: totalBalance });
+      syncTokenPositionsFromWallets(req.user.id);
+
+      // Fetch transactions
+      try { await fetchAndStoreTransactions(newWallet); } catch (e) { logger.error('Tx fetch on add failed:', e.message); }
+    } catch (syncErr) {
+      logger.error('Auto-sync on wallet add failed:', syncErr.message);
+      // Still return the wallet — user can manually sync later
+    }
+
+    const price = await getChainPrice(chain).catch(() => 0);
+    const tokens = TOKEN_CHAINS.includes(chain) ? getWalletTokens(newWallet.id) : [];
+    const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+    const nativeUsd = (newWallet.balance || 0) * price;
+
+    res.json({
+      ...newWallet,
+      usd_value: nativeUsd + tokensUsd,
+      chain_price: price,
+      chain_name: CHAIN_NAMES[chain] || chain.toUpperCase(),
+      tokens,
+      token_count: tokens.length,
     });
   } catch (error) {
     logger.error('Error adding wallet:', error);
