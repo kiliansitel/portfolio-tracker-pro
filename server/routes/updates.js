@@ -19,6 +19,16 @@ let lastCheckTime = null;
 let lastCheckResult = null;
 let updateInterval = null;
 
+// Detect if running inside Docker
+const IS_DOCKER = fs.existsSync('/.dockerenv') || (() => {
+  try { return fs.readFileSync('/proc/1/cgroup', 'utf8').includes('docker'); } catch { return false; }
+})();
+
+// Detect if git is available
+const HAS_GIT = (() => {
+  try { execSync('git --version', { timeout: 5000 }); return true; } catch { return false; }
+})();
+
 // ============ Helpers ============
 
 function getDefaultSettings() {
@@ -199,19 +209,21 @@ router.get('/check', async (req, res) => {
       updateAvailable = semverCompare(latestMain, currentVersion) > 0;
     }
 
-    // Also check if there are new commits on current branch
+    // Also check if there are new commits on current branch (git installs only)
     let commitsAhead = 0;
-    try {
-      execSync('git fetch origin --quiet', { cwd: APP_ROOT, timeout: 15000 });
-      const branch = getCurrentBranch();
-      const ahead = execSync(
-        `git rev-list HEAD..origin/${branch} --count`,
-        { cwd: APP_ROOT, encoding: 'utf8' }
-      ).trim();
-      commitsAhead = parseInt(ahead, 10) || 0;
-      if (commitsAhead > 0) updateAvailable = true;
-    } catch (e) {
-      logger.warn('Failed to check commits ahead:', e.message);
+    if (HAS_GIT) {
+      try {
+        execSync('git fetch origin --quiet', { cwd: APP_ROOT, timeout: 15000 });
+        const branch = getCurrentBranch();
+        const ahead = execSync(
+          `git rev-list HEAD..origin/${branch} --count`,
+          { cwd: APP_ROOT, encoding: 'utf8' }
+        ).trim();
+        commitsAhead = parseInt(ahead, 10) || 0;
+        if (commitsAhead > 0) updateAvailable = true;
+      } catch (e) {
+        logger.warn('Failed to check commits ahead:', e.message);
+      }
     }
 
     lastCheckTime = new Date().toISOString();
@@ -222,7 +234,8 @@ router.get('/check', async (req, res) => {
       updateAvailable,
       commitsAhead,
       channel,
-      checkedAt: lastCheckTime
+      checkedAt: lastCheckTime,
+      isDocker: IS_DOCKER,
     };
 
     res.json(lastCheckResult);
@@ -257,6 +270,21 @@ router.post('/apply', async (req, res) => {
 
   if (!targetBranch) {
     return res.status(400).json({ error: 'Invalid channel. Use "main" or "beta".' });
+  }
+
+  // Docker users can't git pull — tell them how to update
+  if (IS_DOCKER || !HAS_GIT) {
+    return res.status(400).json({
+      error: 'Docker installation detected',
+      isDocker: true,
+      message: 'To update, pull the latest Docker image and recreate the container:',
+      instructions: [
+        'docker pull kiliansitel/portfolio-tracker-pro:latest',
+        'docker stop <container>',
+        'docker rm <container>',
+        'docker run -d -e JWT_SECRET=<your-secret> -v portfolio-data:/app/data -p 8080:8080 kiliansitel/portfolio-tracker-pro:latest'
+      ]
+    });
   }
 
   logger.info(`Update requested: switching to ${targetBranch} by user ${req.user?.username || 'unknown'}`);
@@ -342,19 +370,21 @@ async function checkAndAutoUpdate() {
     let updateAvailable = false;
     const channel = settings.channel;
 
-    // Check commits ahead
+    // Check commits ahead (git installs only)
     let commitsAhead = 0;
-    try {
-      execSync('git fetch origin --quiet', { cwd: APP_ROOT, timeout: 15000 });
-      const branch = getCurrentBranch();
-      const ahead = execSync(
-        `git rev-list HEAD..origin/${branch} --count`,
-        { cwd: APP_ROOT, encoding: 'utf8' }
-      ).trim();
-      commitsAhead = parseInt(ahead, 10) || 0;
-      if (commitsAhead > 0) updateAvailable = true;
-    } catch (e) {
-      logger.warn('Background check - failed to check commits:', e.message);
+    if (HAS_GIT) {
+      try {
+        execSync('git fetch origin --quiet', { cwd: APP_ROOT, timeout: 15000 });
+        const branch = getCurrentBranch();
+        const ahead = execSync(
+          `git rev-list HEAD..origin/${branch} --count`,
+          { cwd: APP_ROOT, encoding: 'utf8' }
+        ).trim();
+        commitsAhead = parseInt(ahead, 10) || 0;
+        if (commitsAhead > 0) updateAvailable = true;
+      } catch (e) {
+        logger.warn('Background check - failed to check commits:', e.message);
+      }
     }
 
     if (channel === 'beta' && latestBeta && !latestBeta.startsWith('beta@')) {
@@ -374,7 +404,7 @@ async function checkAndAutoUpdate() {
       checkedAt: lastCheckTime
     };
 
-    if (updateAvailable && settings.autoUpdate) {
+    if (updateAvailable && settings.autoUpdate && HAS_GIT && !IS_DOCKER) {
       logger.info(`Auto-update: applying update on ${channel} channel (${commitsAhead} commits ahead)`);
       try {
         const branch = channel === 'beta' ? 'beta' : 'main';

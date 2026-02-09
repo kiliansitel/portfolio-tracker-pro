@@ -7563,7 +7563,15 @@
             if (result.updateAvailable) {
                 const commits = result.commitsAhead ? ` (${result.commitsAhead} commits)` : '';
                 badgeEl.innerHTML = `<span style="color: var(--accent-green); font-weight: 600;">⬆️ Update Available${commits}</span>`;
-                applyBtn.style.display = '';
+                if (result.isDocker) {
+                    applyBtn.style.display = 'none';
+                    badgeEl.innerHTML += `<div style="margin-top:8px;font-size:0.8rem;color:var(--text-secondary);background:var(--bg-secondary);padding:8px 12px;border-radius:8px;">
+                        🐳 Docker install — update via:<br>
+                        <code style="font-size:0.75rem;">docker pull kiliansitel/portfolio-tracker-pro:latest</code>
+                    </div>`;
+                } else {
+                    applyBtn.style.display = '';
+                }
                 updateState.updateAvailable = true;
             } else {
                 badgeEl.innerHTML = '<span style="color: var(--accent-green);">✅ Up to date</span>';
@@ -7622,11 +7630,15 @@
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                     body: JSON.stringify({ channel })
                 });
-                // If we get a response, great
-                if (resp.ok) {
-                    const data = await resp.json();
-                    if (!data.success) throw new Error(data.error || 'Update failed');
+                const data = await resp.json();
+                if (data.isDocker) {
+                    btn.disabled = false;
+                    btn.textContent = '⬆️ Apply Update';
+                    btn.style.opacity = '1';
+                    showToast('🐳 Docker install — run: docker pull kiliansitel/portfolio-tracker-pro:latest', 'info');
+                    return;
                 }
+                if (resp.ok && !data.success) throw new Error(data.error || 'Update failed');
             } catch (e) {
                 // Connection errors are EXPECTED — server restarted mid-response
                 // Update request ended (expected during restart)
