@@ -24,6 +24,7 @@ async function collectDailySnapshot(portfolioId) {
   // Fetch current prices and calculate positions value
   let positionsValue = 0;
   const priceResults = [];
+  let pricedPositions = 0; // Track how many positions got a real price
 
   for (let i = 0; i < positions.length; i++) {
     const pos = positions[i];
@@ -34,6 +35,7 @@ async function collectDailySnapshot(portfolioId) {
       const price = priceData?.price || (pos.entry_price > 0 ? pos.entry_price : 0);
       const value = pos.quantity * price * mult;
       positionsValue += value;
+      if (priceData?.price) pricedPositions++;
 
       priceResults.push({
         symbol: pos.symbol,
@@ -67,6 +69,23 @@ async function collectDailySnapshot(portfolioId) {
   const cash = portfolio.cash || 0;
   const totalValue = cash + positionsValue;
   const today = new Date().toISOString().split('T')[0];
+
+  // Guard: if we have positions but couldn't price ANY of them, skip snapshot
+  // to avoid storing cash-only values that misrepresent portfolio worth
+  if (positions.length > 0 && pricedPositions === 0 && positionsValue === 0) {
+    console.warn(`Skipping snapshot for portfolio ${portfolioId}: ${positions.length} positions but no prices obtained`);
+    return {
+      portfolio_id: portfolioId,
+      portfolio_name: portfolio.name,
+      date: today,
+      total_value: totalValue,
+      cash,
+      positions_value: positionsValue,
+      skipped: true,
+      reason: 'No prices obtained for any position',
+      positions: priceResults
+    };
+  }
 
   // Get previous snapshot for daily change calculation
   const prevSnapshot = dbGet(

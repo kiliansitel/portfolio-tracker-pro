@@ -16,7 +16,14 @@ router.post('/portfolios/:id/snapshot', (req, res) => {
   }
   
   const today = new Date().toISOString().split('T')[0];
-  
+
+  // Validate: positions_value should be > 0 if portfolio has positions
+  // This prevents saving cash-only snapshots when prices haven't loaded yet
+  const positionCount = dbGet('SELECT COUNT(*) as cnt FROM positions WHERE portfolio_id = ?', [id]);
+  if (positionCount && positionCount.cnt > 0 && (!positions_value || positions_value <= 0)) {
+    return res.status(400).json({ error: 'Snapshot rejected: portfolio has positions but positions_value is 0 (prices not loaded?)' });
+  }
+
   // Get yesterday's snapshot for daily change calculation
   const yesterday = dbGet(
     'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
@@ -166,7 +173,9 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
       // Check if snapshot exists
       const existing = dbGet('SELECT id FROM portfolio_snapshots WHERE portfolio_id = ? AND date = ?', [id, date]);
       
-      if (!existing && totalValue > 0) {
+      // Only create snapshot if we actually priced some positions (positionsValue > 0)
+      // This prevents creating cash-only snapshots when price fetches fail
+      if (!existing && totalValue > 0 && positionsValue > 0) {
         const prev = dbGet(
           'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
           [id, date]
@@ -267,7 +276,8 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
     
     const existing = dbGet('SELECT id FROM portfolio_snapshots WHERE portfolio_id = ? AND date = ?', [id, date]);
     
-    if (!existing && totalValue > 0) {
+    // Require positionsValue > 0 when there are active positions to avoid cash-only snapshots
+    if (!existing && totalValue > 0 && (symbols.length === 0 || positionsValue > 0)) {
       const prev = dbGet(
         'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
         [id, date]

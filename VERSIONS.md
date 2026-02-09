@@ -1,4 +1,10 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.10 (2026-02-09)
+- 🐛 Prevent bad snapshots when price fetches fail (cash-only values no longer saved)
+- 🐛 `collectDailySnapshot()` skips snapshot when positions exist but none could be priced
+- 🐛 `POST /snapshot` rejects snapshots with positions_value=0 when positions exist
+- 🐛 `POST /reconstruct` requires positionsValue > 0 when active positions exist
+
 ## v0.21.9 (2026-02-09)
 - 🐛 Self-destructing service worker that kills stale SW cache for all existing users
 - 🐛 Removed SW registration, replaced with unregister + cache clear on page load
