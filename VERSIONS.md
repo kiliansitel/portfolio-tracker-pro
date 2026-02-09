@@ -1,4 +1,16 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.11 (2026-02-09)
+- 🐛 Trust proxy support for reverse proxy (SWAG/nginx)
+- 🐛 Rate limiting removed — delegated to reverse proxy
+- 🐛 Cross-Origin-Opener-Policy header disabled for proxy compatibility
+- 🐛 Graceful handling of non-JSON responses (proxy error pages no longer crash)
+- 🐛 Token survives rapid page refreshes (don't clear on non-401 errors during init)
+- 🐛 AI provider auto-selects first configured provider (OpenClaw auto-detect)
+- 🐛 AI provider retry on failure — initAi retries, ensureAiProvider retries before chat
+- 🐛 Settings panel retry button when provider load fails
+- 🐛 Performance chart refreshes after price data loads
+- 🐛 Smart initial render — skip summary until prices are cached (prevents wrong values flash)
+
 ## v0.21.10 (2026-02-09)
 - 🐛 Prevent bad snapshots when price fetches fail (cash-only values no longer saved)
 - 🐛 `collectDailySnapshot()` skips snapshot when positions exist but none could be priced

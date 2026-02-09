@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.10-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.21.11-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -122,6 +122,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.21.11** | Reverse proxy compatibility + AI provider resilience |
 | **v0.21.10** | Prevent bad snapshots from failed price fetches |
 | **v0.21.9** | Fix service worker cache issues, JS syntax error |
 | **v0.21.8** | Fix P&L display for wallet-synced positions, service worker cache |

@@ -3254,14 +3254,26 @@
             
             const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
             
-            // Feature 10: Handle 401 session expired (but not on login attempts)
-            if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/ai/models/ollama')) {
-                showToast('Session expired. Please login again.', 'error');
-                setTimeout(() => { logout(); }, 2000);
+            // Feature 10: Handle 401 session expired (but not on login attempts or background fetches)
+            if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/ai/models/ollama') && !endpoint.includes('/ai/providers')) {
+                // Only auto-logout if we actually had a token (prevents logout during page init race)
+                if (token && !window._initialLoadInProgress) {
+                    showToast('Session expired. Please login again.', 'error');
+                    setTimeout(() => { logout(); }, 2000);
+                }
                 throw new Error('Session expired');
             }
             
-            const data = await res.json();
+            // Handle non-JSON responses (e.g. reverse proxy error pages)
+            const contentType = res.headers.get('content-type') || '';
+            let data;
+            if (contentType.includes('application/json')) {
+                data = await res.json();
+            } else {
+                const text = await res.text();
+                if (!res.ok) throw new Error(`Server error (${res.status}): ${text.substring(0, 100)}`);
+                try { data = JSON.parse(text); } catch { throw new Error(`Unexpected response (${res.status})`); }
+            }
             
             if (!res.ok) throw new Error(data.error || 'Request failed');
             return data;
@@ -7722,6 +7734,8 @@
         loadTheme();
         
         async function initApp() {
+            window._initialLoadInProgress = true;
+            setTimeout(() => { window._initialLoadInProgress = false; }, 5000);
             // Set app title from server (production vs beta)
             try {
                 const info = await fetch('/api/info').then(r => r.json());
@@ -7761,11 +7775,14 @@
             // Load user data
             await Promise.all([loadPortfolio(), loadWatchlists()]);
             
-            // Render immediately with cached data (instant!)
-            renderPositions();
+            // Render watchlist/alerts immediately, but only show summary if we have cached prices
+            const hasCachedPrices = Object.keys(priceCache || {}).length > 0;
+            if (hasCachedPrices) {
+                renderPositions();
+                updateSummary();
+            }
             renderWatchlist();
             renderAlerts();
-            updateSummary();
             updateCacheStatus();
             
             // Feature 3: Remember last page
@@ -7803,6 +7820,8 @@
                 updateSummary();
                 updateCacheStatus();
                 savePriceCache();
+                // Re-render performance chart with fresh price data
+                loadPerformance();
             }, 100);
             
             // Auto refresh every 60s
@@ -7827,15 +7846,19 @@
                         hideAuth();
                         setupSessionTimeout(token);
                         initApp();
-                    } else {
-                        // Token invalid (e.g. server secret rotated) — clear silently and show login
+                    } else if (r.status === 401) {
+                        // Token truly invalid (e.g. server secret rotated) — clear and show login
                         localStorage.removeItem('token');
                         token = null;
                         showAuth();
+                    } else {
+                        // Non-auth error (500, network issue) — keep token, try loading anyway
+                        hideAuth();
+                        initApp();
                     }
                 })
                 .catch(() => {
-                    // Network error — try loading anyway with cached token
+                    // Network error / aborted — try loading anyway with cached token
                     hideAuth();
                     setupSessionTimeout(token);
                     initApp();
@@ -7912,7 +7935,15 @@
                 aiProviders = await api('/ai/providers');
                 updateAiProviderBadge();
             } catch (e) {
-                console.warn('AI init failed:', e);
+                console.warn('AI init failed, retrying:', e);
+                // Retry once after delay
+                try {
+                    await new Promise(r => setTimeout(r, 1500));
+                    aiProviders = await api('/ai/providers');
+                    updateAiProviderBadge();
+                } catch (e2) {
+                    console.warn('AI init retry failed:', e2);
+                }
             }
             // Check onboarding once per session — always add Build Portfolio button
             if (!aiOnboardingChecked) {
@@ -7927,19 +7958,22 @@
             const badge = document.getElementById('aiProviderBadge');
             if (!badge) return;
 
-            const configured = aiProviders.filter(p => p.configured || !p.requiresKey);
-            if (!configured.length) {
+            const configured = aiProviders.filter(p => p.configured);
+            const available = aiProviders.filter(p => p.configured || !p.requiresKey);
+            if (!available.length) {
                 badge.textContent = 'No provider';
                 badge.style.color = 'var(--accent-red)';
                 return;
             }
 
-            // Auto-select first configured provider if none selected or cached one isn't actually configured
-            const cachedProvider = configured.find(p => p.id === aiSelectedProvider);
-            if (!aiSelectedProvider || !cachedProvider || !cachedProvider.configured) {
-                const firstConfigured = configured.find(p => p.configured) || configured[0];
-                aiSelectedProvider = firstConfigured.id;
-                aiSelectedModel = firstConfigured.modelPreference || (firstConfigured.models[0]?.id) || '';
+            // Always auto-select a configured provider — never stay on "No provider"
+            const cachedProvider = available.find(p => p.id === aiSelectedProvider);
+            const cachedIsConfigured = cachedProvider && cachedProvider.configured;
+            if (!aiSelectedProvider || !cachedIsConfigured) {
+                // Prefer actually configured providers (e.g. openclaw auto-detected)
+                const best = configured[0] || available[0];
+                aiSelectedProvider = best.id;
+                aiSelectedModel = best.modelPreference || (best.models[0]?.id) || '';
                 localStorage.setItem('aiProvider', aiSelectedProvider);
                 localStorage.setItem('aiModel', aiSelectedModel);
             }
@@ -8377,8 +8411,8 @@
             input.value = '';
             aiInputAutoResize(input);
 
-            // Check provider
-            if (!aiSelectedProvider) {
+            // Check provider — retry if not loaded
+            if (!(await ensureAiProvider())) {
                 showToast('No AI provider configured. Open settings to add one.', 'error');
                 return;
             }
@@ -8537,12 +8571,22 @@
             if (btn) btn.disabled = aiIsStreaming;
         }
 
+        // Ensure AI provider is loaded — retry if initial fetch failed
+        async function ensureAiProvider() {
+            if (aiSelectedProvider) return true;
+            try {
+                aiProviders = await api('/ai/providers');
+                updateAiProviderBadge();
+            } catch (e) { /* ignore */ }
+            return !!aiSelectedProvider;
+        }
+
         // Quick actions
         async function aiQuickAction(type) {
             if (aiIsStreaming) return;
 
-            // Check provider
-            if (!aiSelectedProvider) {
+            // Check provider — retry if not loaded
+            if (!(await ensureAiProvider())) {
                 showToast('No AI provider configured. Open settings to add one.', 'error');
                 return;
             }
@@ -9058,8 +9102,14 @@
             try {
                 aiProviders = await api('/ai/providers');
             } catch (e) {
-                container.innerHTML = '<div style="color:var(--accent-red);">Failed to load providers</div>';
-                return;
+                // Retry once after 1 second
+                try {
+                    await new Promise(r => setTimeout(r, 1000));
+                    aiProviders = await api('/ai/providers');
+                } catch (e2) {
+                    container.innerHTML = '<div style="color:var(--accent-red);">Failed to load providers. <a href="#" onclick="renderAiProviderSettings();return false;" style="color:var(--accent-blue);">Retry</a></div>';
+                    return;
+                }
             }
 
             let html = '';

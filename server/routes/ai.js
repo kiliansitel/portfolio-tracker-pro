@@ -52,7 +52,7 @@ function getProviderForUser(userId, providerName) {
     contextLength: row?.context_length || null
   };
 
-  if (row?.encrypted_key) {
+  if (row?.encrypted_key && row.encrypted_key !== 'auto-detected') {
     try {
       config.apiKey = decryptKey(row.encrypted_key, JWT_SECRET);
     } catch (err) {
@@ -325,11 +325,13 @@ router.put('/providers/:provider/key', (req, res) => {
     return res.status(400).json({ error: `Unknown provider: ${provider}` });
   }
 
-  if (PROVIDER_DEFS[provider].requiresKey && !apiKey) {
+  // Skip key requirement for openclaw when auto-detected via gateway token
+  const openclawAutoDetected = provider === 'openclaw' && !!process.env.OPENCLAW_GATEWAY_TOKEN;
+  if (PROVIDER_DEFS[provider].requiresKey && !apiKey && !openclawAutoDetected) {
     return res.status(400).json({ error: 'API key is required for this provider' });
   }
 
-  const encrypted = apiKey ? encryptKey(apiKey, JWT_SECRET) : '';
+  const encrypted = apiKey ? encryptKey(apiKey, JWT_SECRET) : (openclawAutoDetected ? 'auto-detected' : '');
 
   // Upsert
   const existing = dbGet(

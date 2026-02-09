@@ -14,14 +14,16 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true, // Don't count successful logins
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
 const apiLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: process.env.APP_ENV === 'beta' ? 1000 : 200, // Higher limit for beta testing
+  max: process.env.APP_ENV === 'beta' ? 1000 : 500, // Higher limit for reverse proxy users
   message: { error: 'Too many requests, please slow down' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
 const strictLimiter = rateLimit({
@@ -30,6 +32,7 @@ const strictLimiter = rateLimit({
   message: { error: 'Too many requests, please slow down' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false, xForwardedForHeader: false },
 });
 
 // Input sanitization - remove dangerous characters
@@ -88,6 +91,7 @@ const helmetConfig = {
     },
   },
   crossOriginEmbedderPolicy: false,
+  crossOriginOpenerPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" },
 };
 

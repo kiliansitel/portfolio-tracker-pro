@@ -37,6 +37,7 @@ const aiRouter = require('./routes/ai');
 const { fetchExchangeRates, SUPPORTED_CURRENCIES } = require('./utils/currency');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (SWAG/nginx)
 const PORT = process.env.PORT || 8080;
 
 // Middleware - Security Stack
@@ -63,9 +64,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Apply rate limiting
-app.use('/api/auth', authLimiter);
-app.use('/api', apiLimiter);
+// Rate limiting disabled — app runs behind reverse proxy (SWAG) which handles rate limiting
 
 // App info endpoint (public)
 const pkg = require('./package.json');
