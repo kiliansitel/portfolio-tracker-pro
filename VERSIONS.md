@@ -1,4 +1,9 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.6 (2026-02-09)
+- ✨ Configurable context window (num_ctx) for Ollama models in AI provider settings
+- Only sent when explicitly set, otherwise uses model default
+- Persisted to database per-user
+
 ## v0.21.5 (2026-02-09)
 - 🔧 Fix Ollama model selection no longer resets to hardcoded defaults (dynamic models preserved)
 - 🔧 Header model dropdown now fetches real Ollama models dynamically

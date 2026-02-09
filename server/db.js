@@ -428,6 +428,15 @@ async function initDatabase() {
     )
   `);
 
+  // Add context_length column if not exists (v0.24+)
+  try {
+    const cols = db.exec('PRAGMA table_info(ai_api_keys)');
+    const hasContextLength = cols.length > 0 && cols[0].values.some(c => c[1] === 'context_length');
+    if (!hasContextLength) {
+      db.run('ALTER TABLE ai_api_keys ADD COLUMN context_length INTEGER');
+    }
+  } catch (e) { /* table may not exist yet, CREATE TABLE above handles it */ }
+
   db.run('CREATE INDEX IF NOT EXISTS idx_ai_keys_user ON ai_api_keys(user_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_ai_messages_conversation ON ai_messages(conversation_id)');

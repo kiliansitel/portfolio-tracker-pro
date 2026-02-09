@@ -48,7 +48,8 @@ function getProviderForUser(userId, providerName) {
 
   const config = {
     model: row?.model_preference || null,
-    baseUrl: row?.base_url || PROVIDER_DEFS[providerName].baseUrl
+    baseUrl: row?.base_url || PROVIDER_DEFS[providerName].baseUrl,
+    contextLength: row?.context_length || null
   };
 
   if (row?.encrypted_key) {
@@ -286,7 +287,7 @@ function formatOllamaModelName(model) {
 // GET /providers — list providers with configuration status
 router.get('/providers', (req, res) => {
   const userKeys = dbAll(
-    'SELECT provider, model_preference, base_url, created_at FROM ai_api_keys WHERE user_id = ?',
+    'SELECT provider, model_preference, base_url, context_length, created_at FROM ai_api_keys WHERE user_id = ?',
     [req.user.id]
   );
 
@@ -308,6 +309,7 @@ router.get('/providers', (req, res) => {
     models: def.models,
     modelPreference: keyMap[id]?.model_preference || null,
     baseUrl: keyMap[id]?.base_url || def.baseUrl || null,
+    contextLength: keyMap[id]?.context_length || null,
     configuredAt: keyMap[id]?.created_at || null
   }));
 
@@ -317,7 +319,7 @@ router.get('/providers', (req, res) => {
 // PUT /providers/:provider/key — save (or update) API key
 router.put('/providers/:provider/key', (req, res) => {
   const { provider } = req.params;
-  const { apiKey, model, baseUrl } = req.body;
+  const { apiKey, model, baseUrl, contextLength } = req.body;
 
   if (!PROVIDER_DEFS[provider]) {
     return res.status(400).json({ error: `Unknown provider: ${provider}` });
@@ -337,13 +339,13 @@ router.put('/providers/:provider/key', (req, res) => {
 
   if (existing) {
     dbRun(
-      'UPDATE ai_api_keys SET encrypted_key = ?, model_preference = ?, base_url = ? WHERE id = ?',
-      [encrypted, model || null, baseUrl || null, existing.id]
+      'UPDATE ai_api_keys SET encrypted_key = ?, model_preference = ?, base_url = ?, context_length = ? WHERE id = ?',
+      [encrypted, model || null, baseUrl || null, contextLength ? parseInt(contextLength) : null, existing.id]
     );
   } else {
     dbRun(
-      'INSERT INTO ai_api_keys (user_id, provider, encrypted_key, model_preference, base_url) VALUES (?, ?, ?, ?, ?)',
-      [req.user.id, provider, encrypted, model || null, baseUrl || null]
+      'INSERT INTO ai_api_keys (user_id, provider, encrypted_key, model_preference, base_url, context_length) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.user.id, provider, encrypted, model || null, baseUrl || null, contextLength ? parseInt(contextLength) : null]
     );
   }
 

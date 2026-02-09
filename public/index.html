@@ -9077,6 +9077,11 @@
                     html += `</select>`;
                 }
 
+                if (p.id === 'ollama') {
+                    html += `<input type="number" class="ai-provider-input" id="ai-ctx-${p.id}"
+                        placeholder="Context window (e.g. 8192)" value="${p.contextLength || ''}" min="256" step="256">`;
+                }
+
                 html += `</div>
                     <div class="ai-provider-actions">
                         <button class="ai-btn-sm primary" onclick="saveAiProvider('${p.id}')">💾 Save</button>
@@ -9109,6 +9114,8 @@
             if (urlInput) body.baseUrl = urlInput.value;
             if (modelSelect) body.model = modelSelect.value;
             if (providerId === 'custom' && customModelInput) body.model = customModelInput.value;
+            const ctxInput = document.getElementById(`ai-ctx-${providerId}`);
+            if (ctxInput && ctxInput.value) body.contextLength = parseInt(ctxInput.value);
 
             try {
                 await api(`/ai/providers/${providerId}/key`, {

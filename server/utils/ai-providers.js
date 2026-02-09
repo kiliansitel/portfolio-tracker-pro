@@ -105,6 +105,7 @@ class AIProvider {
     this.apiKey = config.apiKey || null;
     this.baseUrl = config.baseUrl || PROVIDER_DEFS[name]?.baseUrl || '';
     this.model = config.model || null;
+    this.contextLength = config.contextLength || null;
   }
 
   getModels() {
@@ -407,7 +408,8 @@ class AIProvider {
       stream: true,
       options: {
         temperature: options.temperature ?? 0.7,
-        num_predict: options.maxTokens || 4096
+        num_predict: options.maxTokens || 4096,
+        ...(this.contextLength && { num_ctx: this.contextLength })
       }
     };
 
