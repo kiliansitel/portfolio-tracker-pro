@@ -9425,9 +9425,14 @@
 
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(reg => console.log('SW registered:', reg.scope))
-                .catch(err => console.warn('SW registration failed:', err));
+            // Unregister old service workers to prevent stale cache issues
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(r => r.unregister());
+            });
+            // Clear all caches
+            if (window.caches) {
+                caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+            }
         }
     </script>
 </body>
