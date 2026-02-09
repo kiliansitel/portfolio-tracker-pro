@@ -3865,28 +3865,26 @@
             }
         }
 
-        function switchWatchlist(id) {
+        async function switchWatchlist(id) {
             const wl = allWatchlists.find(w => w.id === Number(id));
             if (wl) {
                 watchlistId = wl.id;
                 watchlist = wl.items || [];
                 renderWatchlist();
+                setupSwipeHandlers();
+                // Fetch prices for any symbols not in cache
+                const missing = watchlist.filter(item => !priceCache[item.symbol]);
+                if (missing.length > 0) {
+                    await Promise.allSettled(missing.map(item => fetchQuote(item.symbol)));
+                    renderWatchlist();
+                    setupSwipeHandlers();
+                }
             }
         }
 
         function toggleWatchlistDropdown() {
             const opts = document.getElementById('watchlistOptions');
-            let backdrop = document.getElementById('wlDropdownBackdrop');
             if (opts.style.display === 'none' || !opts.style.display) {
-                // Create backdrop overlay
-                if (!backdrop) {
-                    backdrop = document.createElement('div');
-                    backdrop.id = 'wlDropdownBackdrop';
-                    backdrop.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99998;background:transparent;';
-                    backdrop.onclick = closeWatchlistDropdown;
-                    document.body.appendChild(backdrop);
-                }
-                backdrop.style.display = 'block';
                 // Position fixed dropdown below the trigger
                 const trigger = document.getElementById('watchlistSelected');
                 const rect = trigger.getBoundingClientRect();
@@ -3894,14 +3892,11 @@
                 opts.style.left = rect.left + 'px';
                 opts.style.display = 'block';
             } else {
-                opts.style.display = 'none';
-                if (backdrop) backdrop.style.display = 'none';
+                closeWatchlistDropdown();
             }
         }
         function closeWatchlistDropdown() {
             document.getElementById('watchlistOptions').style.display = 'none';
-            const backdrop = document.getElementById('wlDropdownBackdrop');
-            if (backdrop) backdrop.style.display = 'none';
         }
         // Close dropdown when clicking outside
         document.addEventListener('click', (e) => {

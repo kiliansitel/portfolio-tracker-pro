@@ -2,6 +2,7 @@ const express = require('express');
 const { dbRun, dbGet, dbAll } = require('../db');
 const { createPortfolioValidation, positionValidation, idParamValidation } = require('../validators/portfolio');
 const { strictLimiter } = require('../middleware/security');
+const { autoAddToWatchlist } = require('../utils/watchlist-sync');
 
 const router = express.Router();
 
@@ -146,6 +147,9 @@ router.post('/:id/positions', positionValidation, (req, res) => {
       entry_price: price
     });
   }
+
+  // Auto-add to watchlist regardless of new/existing
+  autoAddToWatchlist(req.user.id, symbol.toUpperCase());
 });
 
 // Update position

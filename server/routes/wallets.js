@@ -4,6 +4,7 @@ const { idParamValidation } = require('../validators/portfolio');
 const { body, validationResult } = require('express-validator');
 const { fetchYahooPrice } = require('../utils/yahoo');
 const { logger } = require('../utils/logger');
+const { autoAddToWatchlist } = require('../utils/watchlist-sync');
 
 const router = express.Router();
 
@@ -827,6 +828,7 @@ function syncPositionsFromWallets(userId, chainBalances) {
         [portfolioId, symbol, totalBalance, `wallet-synced | ${WALLET_SYNCED_NOTE}`]
       );
       updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+      autoAddToWatchlist(userId, symbol, CHAIN_NAMES[chain]);
     }
   }
 
@@ -885,6 +887,7 @@ function syncTokenPositionsFromWallets(userId) {
           [portfolioId, symbol, totalBalance, WALLET_TOKEN_NOTE]
         );
         updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+        autoAddToWatchlist(userId, symbol, token.symbol);
       } catch (e) {
         logger.info(`Failed to create wallet token position for ${symbol}: ${e.message}`);
       }
