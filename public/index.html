@@ -3254,7 +3254,7 @@
             const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
             
             // Feature 10: Handle 401 session expired (but not on login attempts)
-            if (res.status === 401 && !endpoint.includes('/auth/login')) {
+            if (res.status === 401 && !endpoint.includes('/auth/login') && !endpoint.includes('/ai/models/ollama')) {
                 showToast('Session expired. Please login again.', 'error');
                 setTimeout(() => { logout(); }, 2000);
                 throw new Error('Session expired');
@@ -7923,8 +7923,11 @@
             // Validate cached model exists in the selected provider's model list
             const p = aiProviders.find(p => p.id === aiSelectedProvider);
             if (p && p.models?.length && aiSelectedModel && !p.models.find(m => m.id === aiSelectedModel)) {
-                aiSelectedModel = p.modelPreference || p.models[0]?.id || '';
-                localStorage.setItem('aiModel', aiSelectedModel);
+                // Don't auto-correct for Ollama — its models are dynamically discovered, hardcoded list is just defaults
+                if (p.id !== 'ollama') {
+                    aiSelectedModel = p.modelPreference || p.models[0]?.id || '';
+                    localStorage.setItem('aiModel', aiSelectedModel);
+                }
             }
             const modelName = aiSelectedModel ?
                 (p?.models?.find(m => m.id === aiSelectedModel)?.name || aiSelectedModel.split('/').pop()) :
@@ -7945,7 +7948,31 @@
 
             for (const provider of configured) {
                 html += `<div class="ai-model-dropdown-section">${provider.name}</div>`;
-                const models = provider.models || [];
+                let models = provider.models || [];
+                // For Ollama, fetch dynamic models and update dropdown async
+                if (provider.id === 'ollama' && provider.baseUrl) {
+                    const ollamaSectionId = 'ollama-header-models';
+                    html += `<div id="${ollamaSectionId}"><div class="ai-model-dropdown-item" style="opacity:0.5;">🔄 Loading models...</div></div>`;
+                    (async () => {
+                        try {
+                            const resp = await api(`/ai/models/ollama?baseUrl=${encodeURIComponent(provider.baseUrl)}`);
+                            const el = document.getElementById(ollamaSectionId);
+                            if (!el) return;
+                            const fetchedModels = resp.models?.length ? resp.models : (provider.models || []);
+                            let mhtml = '';
+                            for (const m of fetchedModels) {
+                                const isActive = aiSelectedProvider === 'ollama' && aiSelectedModel === m.id;
+                                mhtml += `<div class="ai-model-dropdown-item ${isActive ? 'active' : ''}"
+                                    onclick="selectAiModel('ollama', '${m.id.replace(/'/g, "\\'")}')">
+                                    <span>${m.name}</span>
+                                    ${isActive ? '<span style="color:var(--accent-green);">✓</span>' : ''}
+                                </div>`;
+                            }
+                            el.innerHTML = mhtml;
+                        } catch(e) { console.error('Header Ollama fetch failed:', e); }
+                    })();
+                    continue;
+                }
                 if (!models.length && provider.id === 'custom') {
                     const modelName = provider.modelPreference || 'custom-model';
                     const isActive = aiSelectedProvider === provider.id;

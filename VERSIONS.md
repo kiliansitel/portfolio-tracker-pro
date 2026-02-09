@@ -1,4 +1,12 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.5 (2026-02-09)
+- 🔧 Fix Ollama model selection no longer resets to hardcoded defaults (dynamic models preserved)
+- 🔧 Header model dropdown now fetches real Ollama models dynamically
+- 🔧 JWT secret auto-persists to data volume in Docker (sessions survive container restarts)
+- 🔧 Ollama model fetch no longer triggers false "session expired" errors
+
+---
+
 ## v0.21.4 (2026-02-09)
 - 🔧 Fix Ollama model selection persistence — dropdown no longer snaps back to first model after save
 - 🔧 Fixed provider data refresh order (refresh before re-render)
