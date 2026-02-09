@@ -35,15 +35,18 @@ Open **http://localhost:8080** → create an account → start tracking.
 
 ## Features
 
-- 🧠 **Oracle AI Assistant** — Chat with your portfolio. Build a portfolio from scratch with guided onboarding. Multi-provider (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw). Streaming responses, context injection, conversation history
+- 🧠 **Oracle AI Assistant** — Chat with your portfolio. Build a portfolio from scratch with guided onboarding. Multi-provider support with streaming responses, context injection, and conversation history
+- 🤖 **6 AI Providers** — OpenAI, Anthropic, Google, Ollama (with model auto-detection), OpenRouter, and any OpenAI-compatible endpoint
+- 🦙 **Ollama Integration** — Auto-detects available models from any Ollama server (custom ports supported). Configurable context window (`num_ctx`) per model
 - 📊 **Interactive Charts** — TradingView-powered area/candlestick charts with MA overlays, allocation donut, performance tracking
-- 💼 **Full Portfolio Tracking** — Stocks, options, crypto, cash. P&L, cost basis, transaction history, source/location tracking
-- 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB + 9 more. Auto-detect ERC-20, SPL tokens, and DeFi positions
+- 💼 **Full Portfolio Tracking** — Stocks, options, crypto, cash. P&L, cost basis, transaction history, source/location tracking. Smart P&L handling shows "—" when cost basis is unknown (e.g. wallet-synced positions)
+- 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB + 9 more. Chain-specific address validation, auto-sync on add, wallet delete, ERC-20/SPL token and DeFi position detection
+- 📥 **CSV Import** — Auto-detect format for Interactive Brokers, Keytrade Bank, CoinMarketCap portfolio export, and generic CSV
 - 👀 **Smart Watchlists** — Multiple lists, category grouping, price targets, Telegram & push alerts
-- 📱 **Mobile-First PWA** — Installable on any device. Responsive design, swipe actions, compact numbers
-- 🔒 **Secure Multi-User** — JWT + Argon2id auth, CSP, rate limiting, session management
-- 💾 **Backup & Import** — Full DB backup/restore, broker CSV import (Keytrade, IBKR, DeGiro)
-- 🐳 **Docker Ready** — Multi-arch images (amd64/arm64), CI/CD pipeline, one-line deploy
+- 📱 **Mobile-First PWA** — Installable on any device. Service worker with network-first HTML caching for offline support. Responsive design, swipe actions, compact numbers
+- 🔒 **Secure Multi-User** — JWT + Argon2id auth, CSP, rate limiting, session management. JWT session persistence in Docker (survives container restarts)
+- 💾 **Backup & Restore** — Full database backup/restore with one click
+- 🐳 **Docker Ready** — Multi-arch images (amd64/arm64), CI/CD pipeline, one-line deploy. Auto-detects Docker environment and shows `docker pull` upgrade instructions
 
 <p align="center">
   <img src="screenshots/oracle-welcome.png" width="280" alt="Oracle Welcome">
@@ -109,7 +112,8 @@ npm install && npm start
 | Backend | Node.js, Express, Helmet |
 | Database | SQLite (sql.js) |
 | Auth | JWT + Argon2id |
-| AI | OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw |
+| AI | OpenAI, Anthropic, Google, Ollama, OpenRouter, Custom OpenAI-compatible |
+| Offline | Service Worker (network-first HTML caching) |
 | Infra | Docker multi-arch, GitHub Actions CI/CD |
 
 ## Version History
@@ -132,8 +136,24 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 | **v0.20.1** | Password change, backup/restore, PWA, smart broker CSV import |
 | **v0.20.0** "Compass" | Position source tracking, compact numbers, demo database, DeFi tracking |
 
+## Supported CSV Formats
+
+| Broker/Source | Auto-Detect | Notes |
+|---------------|:-----------:|-------|
+| Interactive Brokers | ✅ | Trades, dividends, positions |
+| Keytrade Bank | ✅ | Transaction export |
+| CoinMarketCap | ✅ | Portfolio CSV export |
+| Generic CSV | — | Manual column mapping |
+
 ## Roadmap
 
+- [x] ~~Docker JWT session persistence~~
+- [x] ~~Wallet management (delete, auto-sync on add)~~
+- [x] ~~Chain-specific address validation (13 chains)~~
+- [x] ~~Ollama model auto-detection & custom ports~~
+- [x] ~~CoinMarketCap CSV import~~
+- [x] ~~Configurable context window for Ollama~~
+- [x] ~~Smart P&L for wallet-synced positions~~
 - [ ] After-hours / pre-market pricing
 - [ ] Live broker API sync (Keytrade, IBKR)
 - [ ] Dividend tracking & income calendar
