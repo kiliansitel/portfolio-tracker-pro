@@ -1,6 +1,6 @@
 // Service Worker for Portfolio Tracker Pro — Push Notifications + Offline Cache
 
-const CACHE_NAME = 'portfolio-tracker-v24';
+const CACHE_NAME = 'portfolio-tracker-v21';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
