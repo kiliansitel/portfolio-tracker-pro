@@ -226,11 +226,12 @@ router.get('/models/ollama', async (req, res) => {
     return res.status(400).json({ error: 'Invalid baseUrl format' });
   }
 
-  const tagsUrl = `${baseUrl}/api/tags`;
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
+  const tagsUrl = `${cleanBaseUrl}/api/tags`;
   
   try {
     const resp = await fetch(tagsUrl, { 
-      timeout: 10000,
+      signal: AbortSignal.timeout(10000),
       headers: { 'Accept': 'application/json' }
     });
     

@@ -64,8 +64,8 @@ const PROVIDER_DEFS = {
     name: 'Ollama',
     baseUrl: 'http://localhost:11434',
     models: [
-      { id: 'llama3', name: 'LLaMA 3' },
-      { id: 'mistral', name: 'Mistral' }
+      { id: 'llama3:latest', name: 'LLaMA 3' },
+      { id: 'mistral:latest', name: 'Mistral' }
     ],
     requiresKey: false
   },

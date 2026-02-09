@@ -118,7 +118,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
-| **v0.21.3** | Docker UX, auto-sync wallets, watchlist auto-add, watchlist switching fix |
+| **v0.21.3** | Fix Ollama auto-detect on custom ports, model:tag format, Docker git suppression |
 | **v0.21.2** | Ollama/LM Studio model auto-detection, login error fix |
 | **v0.21.1** | Docker path fix, wallet delete button, chain address validation |
 | **v0.21.0** "Oracle" | AI chat assistant, multi-provider, streaming SSE, conversation persistence |

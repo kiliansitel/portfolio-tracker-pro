@@ -26,7 +26,8 @@ const IS_DOCKER = fs.existsSync('/.dockerenv') || (() => {
 
 // Detect if git is available
 const HAS_GIT = (() => {
-  try { execSync('git --version', { timeout: 5000 }); return true; } catch { return false; }
+  if (IS_DOCKER) return false;
+  try { execSync('git --version', { timeout: 5000, stdio: 'pipe' }); return true; } catch { return false; }
 })();
 
 // ============ Helpers ============
@@ -62,7 +63,7 @@ function saveSettings(settings) {
 
 function getGitCommitHash() {
   try {
-    return execSync('git rev-parse --short HEAD', { cwd: APP_ROOT, encoding: 'utf8' }).trim();
+    return execSync('git rev-parse --short HEAD', { cwd: APP_ROOT, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
   } catch (e) {
     return 'unknown';
   }
@@ -70,7 +71,7 @@ function getGitCommitHash() {
 
 function getCurrentBranch() {
   try {
-    return execSync('git branch --show-current', { cwd: APP_ROOT, encoding: 'utf8' }).trim();
+    return execSync('git branch --show-current', { cwd: APP_ROOT, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
   } catch (e) {
     return 'unknown';
   }
@@ -252,9 +253,9 @@ router.get('/status', (req, res) => {
   const settings = loadSettings();
   res.json({
     currentVersion: `v${pkg.version}`,
-    branch: getCurrentBranch(),
+    branch: HAS_GIT ? getCurrentBranch() : 'unknown',
     channel: settings.channel,
-    commitHash: getGitCommitHash(),
+    commitHash: HAS_GIT ? getGitCommitHash() : 'unknown',
     lastCheckTime: lastCheckTime || null,
     lastCheckResult: lastCheckResult || null,
     settings

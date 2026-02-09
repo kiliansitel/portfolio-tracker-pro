@@ -1,11 +1,8 @@
 # Portfolio Tracker Pro — Version History
 ## v0.21.3 (2026-02-09)
-- 🐳 Docker: detect Docker environment, show `docker pull` instructions instead of git pull (#7)
-- 🔄 Wallets: auto-sync balance + create position immediately on add (#6)
-- 📋 Auto-add position symbols to default watchlist (manual, wallet, AI)
-- 🔧 Watchlist switching: fix price loading + remove interfering backdrop
-- 📖 README: add JWT_SECRET to Docker quick start command
-- 🧪 CI: relax coverage thresholds for growing codebase
+- 🔧 Fix Ollama model auto-detect on custom ports (was using invalid fetch timeout option)
+- 🔧 Model name fallbacks use proper `model:tag` format (e.g. `mistral:latest`)
+- 🐳 Suppress `git: not found` errors in Docker containers
 
 ---
 
