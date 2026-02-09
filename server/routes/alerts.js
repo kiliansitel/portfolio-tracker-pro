@@ -30,8 +30,8 @@ router.post('/', alertValidation, (req, res) => {
     return res.status(400).json({ error: 'target_price is required' });
   }
   
-  const result = dbRun('INSERT INTO alerts (user_id, symbol, condition, value) VALUES (?, ?, ?, ?)',
-    [req.user.id, symbol.toUpperCase(), condition, alertValue]);
+  const result = dbRun('INSERT INTO alerts (user_id, symbol, condition, target_price, value) VALUES (?, ?, ?, ?, ?)',
+    [req.user.id, symbol.toUpperCase(), condition, alertValue, alertValue]);
   
   res.json({
     id: result.lastInsertRowid,

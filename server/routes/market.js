@@ -436,18 +436,50 @@ function getTimeAgo(date) {
 }
 
 // Ticker search
-router.get('/tickers/search', (req, res) => {
+router.get('/tickers/search', async (req, res) => {
   const { q } = req.query;
   if (!q) {
     return res.json(POPULAR_TICKERS.slice(0, 20));
   }
   
   const query = q.toUpperCase();
-  const matches = POPULAR_TICKERS.filter(t => 
+  const localMatches = POPULAR_TICKERS.filter(t => 
     t.symbol.includes(query) || t.name.toUpperCase().includes(query)
   );
   
-  res.json(matches.slice(0, 20));
+  // If we have enough local matches, return them
+  if (localMatches.length >= 5) {
+    return res.json(localMatches.slice(0, 20));
+  }
+  
+  // Fall back to Yahoo Finance search for broader coverage (all markets)
+  try {
+    const yahooRes = await fetch(
+      `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) }
+    );
+    if (yahooRes.ok) {
+      const data = await yahooRes.json();
+      const yahooResults = (data.quotes || [])
+        .filter(q => q.symbol && q.shortname && !q.symbol.includes('='))
+        .map(q => ({ symbol: q.symbol, name: q.shortname, exchange: q.exchange || '' }));
+      
+      // Merge: local matches first, then Yahoo results (deduplicated)
+      const seen = new Set(localMatches.map(m => m.symbol));
+      const merged = [...localMatches];
+      for (const r of yahooResults) {
+        if (!seen.has(r.symbol)) {
+          merged.push(r);
+          seen.add(r.symbol);
+        }
+      }
+      return res.json(merged.slice(0, 20));
+    }
+  } catch (e) {
+    // Yahoo search failed — return local results only
+  }
+  
+  res.json(localMatches.slice(0, 20));
 });
 
 router.get('/tickers/popular', (req, res) => {

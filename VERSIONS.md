@@ -1,4 +1,11 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.12 (2026-02-09)
+- 🌍 Global ticker search — autocomplete falls back to Yahoo Finance search API when local tickers don't match
+- 🌍 Supports all markets: European (BMW.DE, ASML.AS), Asian (005930.KS Samsung), and thousands more
+- 🌍 Addresses GitHub issue #8 (EU stock markets support)
+- 🐛 Fix alert creation crash (`NOT NULL constraint failed: alerts.target_price`) in manual add
+- 🐛 Fix alert creation crash from Oracle AI action buttons (same constraint issue)
+
 ## v0.21.11 (2026-02-09)
 - 🐛 Trust proxy support for reverse proxy (SWAG/nginx)
 - 🐛 Rate limiting removed — delegated to reverse proxy
