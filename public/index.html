@@ -3047,7 +3047,7 @@
                 <div class="modal-body">
                     <div class="form-group">
                         <label>Blockchain *</label>
-                        <select name="chain" required style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
+                        <select name="chain" required onchange="updateAddressPlaceholder()" style="width:100%; padding: 12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary);">
                             <option value="btc">₿ Bitcoin (BTC)</option>
                             <option value="eth">⟠ Ethereum (ETH)</option>
                             <option value="sol">◎ Solana (SOL)</option>
@@ -3065,7 +3065,10 @@
                     </div>
                     <div class="form-group">
                         <label>Wallet Address *</label>
-                        <input type="text" name="address" required placeholder="e.g. bc1q... or 0x..." style="width:100%; padding:12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-family: monospace; font-size: 0.85rem;">
+                        <input type="text" name="address" required placeholder="e.g. bc1q... or 0x..." 
+                               oninput="validateAddressInput(this)"
+                               style="width:100%; padding:12px; background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-family: monospace; font-size: 0.85rem;">
+                        <div id="addressValidationFeedback" style="font-size: 0.75rem; margin-top: 4px; min-height: 16px;"></div>
                     </div>
                     <div class="form-group">
                         <label>Label</label>
@@ -4553,7 +4556,144 @@
 
         function showAddWalletModal() {
             document.getElementById('walletForm').reset();
+            updateAddressPlaceholder(); // Set initial placeholder for Bitcoin (default selection)
             showModal('addWalletModal');
+        }
+
+        // Frontend address validation functions
+        function validateBtcAddress(address) {
+            const base58Regex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+            const bech32Regex = /^bc1[02-9ac-hj-np-z]{7,87}$/;
+            return base58Regex.test(address) || bech32Regex.test(address);
+        }
+
+        function validateEvmAddress(address) {
+            return /^0x[a-fA-F0-9]{40}$/.test(address);
+        }
+
+        function validateSolAddress(address) {
+            return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+        }
+
+        function validateLtcAddress(address) {
+            const legacyRegex = /^[LM][a-km-zA-HJ-NP-Z1-9]{26,33}$/;
+            const bech32Regex = /^ltc1[02-9ac-hj-np-z]{7,87}$/;
+            return legacyRegex.test(address) || bech32Regex.test(address);
+        }
+
+        function validateDogeAddress(address) {
+            return /^D[5-9A-HJ-NP-U][1-9A-HJ-NP-Za-km-z]{32}$/.test(address);
+        }
+
+        function validateXrpAddress(address) {
+            return /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(address);
+        }
+
+        function validateAdaAddress(address) {
+            return /^addr1[02-9ac-hj-np-z]{7,103}$/.test(address);
+        }
+
+        function validateDotAddress(address) {
+            return /^1[a-km-zA-HJ-NP-Z1-9]{24,47}$/.test(address);
+        }
+
+        function validateWalletAddress(chain, address) {
+            const validators = {
+                btc: validateBtcAddress,
+                eth: validateEvmAddress,
+                bnb: validateEvmAddress,
+                avax: validateEvmAddress,
+                matic: validateEvmAddress,
+                arb: validateEvmAddress,
+                op: validateEvmAddress,
+                sol: validateSolAddress,
+                ltc: validateLtcAddress,
+                doge: validateDogeAddress,
+                xrp: validateXrpAddress,
+                ada: validateAdaAddress,
+                dot: validateDotAddress,
+            };
+            
+            const validator = validators[chain];
+            return validator ? validator(address) : false;
+        }
+
+        function getAddressExample(chain) {
+            const examples = {
+                btc: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa or bc1q...',
+                eth: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                bnb: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                avax: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                matic: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                arb: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                op: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                sol: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+                ltc: 'LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL or ltc1q...',
+                doge: 'DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L',
+                xrp: 'rDfNhYvC2TmFyJ4BFqwbVHDyVGvF7j1M2',
+                ada: 'addr1qxy3rsdp8g7qvs9z8w6z8m3j6x9q5v8n...',
+                dot: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+            };
+            return examples[chain] || 'please check the address format';
+        }
+
+        function updateAddressPlaceholder() {
+            const form = document.getElementById('walletForm');
+            const chain = form.chain.value;
+            const addressInput = form.address;
+            
+            const placeholders = {
+                btc: 'e.g. bc1q... or 1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa',
+                eth: 'e.g. 0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                bnb: 'e.g. 0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                avax: 'e.g. 0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                matic: 'e.g. 0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                arb: 'e.g. 0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                op: 'e.g. 0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7d',
+                sol: 'e.g. 9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+                ltc: 'e.g. LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL',
+                doge: 'e.g. DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L',
+                xrp: 'e.g. rDfNhYvC2TmFyJ4BFqwbVHDyVGvF7j1M2',
+                ada: 'e.g. addr1qxy3rsdp8g7qvs9z8w6z8m3j6x9q5v8n...',
+                dot: 'e.g. 15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+            };
+            
+            addressInput.placeholder = placeholders[chain] || 'Enter wallet address';
+            
+            // Clear validation feedback when chain changes
+            const feedback = document.getElementById('addressValidationFeedback');
+            if (feedback) feedback.innerHTML = '';
+            
+            // Re-validate current address if any
+            if (addressInput.value.trim()) {
+                validateAddressInput(addressInput);
+            }
+        }
+
+        function validateAddressInput(input) {
+            const form = document.getElementById('walletForm');
+            const chain = form.chain.value;
+            const address = input.value.trim();
+            const feedback = document.getElementById('addressValidationFeedback');
+            
+            if (!address) {
+                feedback.innerHTML = '';
+                input.style.borderColor = 'var(--border-color)';
+                return;
+            }
+            
+            if (validateWalletAddress(chain, address)) {
+                feedback.innerHTML = '<span style="color: var(--accent-green);">✓ Valid address format</span>';
+                input.style.borderColor = 'var(--accent-green)';
+            } else {
+                const chainName = {
+                    btc: 'Bitcoin', eth: 'Ethereum', sol: 'Solana', bnb: 'BNB',
+                    avax: 'Avalanche', matic: 'Polygon', arb: 'Arbitrum', op: 'Optimism',
+                    ltc: 'Litecoin', doge: 'Dogecoin', xrp: 'Ripple', ada: 'Cardano', dot: 'Polkadot'
+                }[chain] || chain.toUpperCase();
+                feedback.innerHTML = `<span style="color: var(--accent-red);">⚠ Invalid ${chainName} address format</span>`;
+                input.style.borderColor = 'var(--accent-red)';
+            }
         }
 
         async function saveWallet(e) {
@@ -4565,6 +4705,17 @@
 
             if (!address) {
                 showToast('Wallet address is required', 'error');
+                return;
+            }
+
+            // Frontend address validation
+            if (!validateWalletAddress(chain, address)) {
+                const chainName = {
+                    btc: 'Bitcoin', eth: 'Ethereum', sol: 'Solana', bnb: 'BNB',
+                    avax: 'Avalanche', matic: 'Polygon', arb: 'Arbitrum', op: 'Optimism',
+                    ltc: 'Litecoin', doge: 'Dogecoin', xrp: 'Ripple', ada: 'Cardano', dot: 'Polkadot'
+                }[chain] || chain.toUpperCase();
+                showToast(`Invalid ${chainName} address format. Example: ${getAddressExample(chain)}`, 'error');
                 return;
             }
 
