@@ -1,4 +1,12 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.1 (2026-02-09)
+- 🐛 Fix Docker path issue — `ENOENT: /public/index.html` (GitHub #3)
+- 🗑️ Visible wallet delete button — no more hidden swipe-to-delete (GitHub #4)
+- ✅ Chain-specific wallet address validation for all 13 chains (GitHub #5)
+- 🔄 Service worker cache bump to v21
+
+---
+
 ## v0.21.0 "Oracle" — AI Intelligence Layer (2026-02-08)
 - 🧠 Multi-provider AI chat (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw, Custom)
 - 🔗 OpenClaw auto-detection — zero config when running alongside OpenClaw gateway

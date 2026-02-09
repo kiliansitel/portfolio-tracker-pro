@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.21.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.21.1-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -116,6 +116,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.21.1** | Docker path fix, wallet delete button, chain address validation |
 | **v0.21.0** "Oracle" | AI chat assistant, multi-provider, streaming SSE, conversation persistence |
 | **v0.20.3** | Visual polish: 4-char logos, blue buttons, centered empty states, 20-color donut |
 | **v0.20.2** | Position/watchlist sorting, loading skeletons, session timeout warning |
