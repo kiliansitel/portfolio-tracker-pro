@@ -2658,6 +2658,7 @@
                                         <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">🇧🇪 Keytrade Bank</span>
                                         <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">🇺🇸 Interactive Brokers</span>
                                         <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">🇳🇱 DeGiro</span>
+                                        <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">📊 CoinMarketCap</span>
                                         <span style="background:var(--bg-tertiary);padding:3px 8px;border-radius:4px;font-size:0.75rem;color:var(--text-secondary);">📄 Generic CSV</span>
                                     </div>
                                 </div>
@@ -7273,6 +7274,19 @@
                     notes: -1,
                 };
             }
+            // CoinMarketCap Portfolio
+            if (joined.includes('coin') || (joined.includes('name') && (joined.includes('buy price') || joined.includes('avg buy price') || joined.includes('holdings')))) {
+                return {
+                    broker: 'CoinMarketCap',
+                    symbol: h.findIndex(x => x === 'symbol' || x === 'ticker'),
+                    name: h.findIndex(x => x === 'name' || x === 'coin'),
+                    qty: h.findIndex(x => x.includes('quantity') || x.includes('amount') || x.includes('holdings')),
+                    price: h.findIndex(x => x.includes('buy price') || x.includes('avg buy price') || x.includes('cost basis') || x.includes('avg price')),
+                    type: -1,
+                    location: -1,
+                    notes: h.findIndex(x => x === 'notes'),
+                };
+            }
             // Generic / Portfolio Tracker Pro format
             return {
                 broker: 'Generic',
@@ -7343,7 +7357,7 @@
                         const body = {
                             symbol,
                             name: nameIdx >= 0 ? cols[nameIdx]?.trim() : '',
-                            type: typeIdx >= 0 ? cols[typeIdx]?.toLowerCase() || 'stock' : 'stock',
+                            type: typeIdx >= 0 ? cols[typeIdx]?.toLowerCase() || 'stock' : (format.broker === 'CoinMarketCap' ? 'crypto' : 'stock'),
                             quantity,
                             entry_price,
                             notes: notesIdx >= 0 ? cols[notesIdx]?.trim() : ''

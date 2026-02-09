@@ -1,4 +1,9 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.7 (2026-02-09)
+- ✨ CoinMarketCap portfolio CSV import support
+- Auto-detects CMC export format and maps columns
+- Crypto type auto-set for CMC imports
+
 ## v0.21.6 (2026-02-09)
 - ✨ Configurable context window (num_ctx) for Ollama models in AI provider settings
 - Only sent when explicitly set, otherwise uses model default
