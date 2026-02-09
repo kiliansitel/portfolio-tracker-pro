@@ -208,6 +208,77 @@ async function buildSystemPrompt(userId, context) {
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// Model Discovery
+// ═══════════════════════════════════════════════════════════════════
+
+// GET /models/ollama — fetch available models from Ollama server
+router.get('/models/ollama', async (req, res) => {
+  const { baseUrl } = req.query;
+  
+  if (!baseUrl) {
+    return res.status(400).json({ error: 'baseUrl parameter is required' });
+  }
+
+  // Validate URL format
+  try {
+    new URL(baseUrl);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid baseUrl format' });
+  }
+
+  const tagsUrl = `${baseUrl}/api/tags`;
+  
+  try {
+    const resp = await fetch(tagsUrl, { 
+      timeout: 10000,
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    if (!resp.ok) {
+      throw new Error(`Server responded with ${resp.status}: ${resp.statusText}`);
+    }
+
+    const data = await resp.json();
+    
+    // Transform Ollama response to our model format
+    const models = (data.models || []).map(model => ({
+      id: model.name || model.model,
+      name: formatOllamaModelName(model)
+    }));
+
+    res.json({ models });
+  } catch (err) {
+    console.error('Ollama model discovery error:', err.message);
+    res.status(500).json({ 
+      error: `Failed to fetch models: ${err.message}`,
+      fallback: true // Signal frontend to use hardcoded fallback
+    });
+  }
+});
+
+// Helper to format Ollama model names with size/quantization info
+function formatOllamaModelName(model) {
+  const name = model.name || model.model || 'Unknown';
+  const details = model.details || {};
+  
+  let displayName = name;
+  
+  // Add parameter size if available
+  if (details.parameter_size) {
+    displayName += ` (${details.parameter_size}`;
+    
+    // Add quantization level if available
+    if (details.quantization_level) {
+      displayName += `, ${details.quantization_level}`;
+    }
+    
+    displayName += ')';
+  }
+  
+  return displayName;
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // API Key Management
 // ═══════════════════════════════════════════════════════════════════
 

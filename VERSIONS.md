@@ -1,4 +1,10 @@
 # Portfolio Tracker Pro — Version History
+## v0.21.2 (2026-02-09)
+- 🤖 Ollama/LM Studio model auto-detection — fetches available models from `/api/tags`
+- 🐛 Fix wrong password showing "Session expired" instead of "Invalid credentials"
+
+---
+
 ## v0.21.1 (2026-02-09)
 - 🐛 Fix Docker path issue — `ENOENT: /public/index.html` (GitHub #3)
 - 🗑️ Visible wallet delete button — no more hidden swipe-to-delete (GitHub #4)
