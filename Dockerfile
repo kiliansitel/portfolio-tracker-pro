@@ -27,15 +27,8 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy built dependencies
 COPY --from=builder /app/node_modules ./node_modules
 
-# Copy application files
-COPY server/index.js ./
-COPY server/db.js ./
-COPY server/package.json ./
-COPY server/middleware ./middleware
-COPY server/validators ./validators
-COPY server/utils ./utils
-COPY server/routes ./routes
-COPY server/scripts ./scripts
+# Copy application files (preserve server/ structure so relative paths work)
+COPY server ./server
 COPY public ./public
 
 # Create data directory for database
@@ -56,4 +49,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:8080/api/tickers/popular || exit 1
 
 # Start application
-CMD ["node", "index.js"]
+CMD ["node", "server/index.js"]
