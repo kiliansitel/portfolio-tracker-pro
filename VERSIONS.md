@@ -1,4 +1,12 @@
 # Portfolio Tracker Pro — Version History
+## v0.23.0 (2026-02-10)
+- 🌍 **Native currency support** — positions store original purchase currency (EUR, GBP, etc.) instead of converting to USD
+- 🌍 Dashboard aggregates in user's app currency using live exchange rates
+- 🌍 Entry prices display in original currency on position cards
+- 🔧 API responses now return full position records (fixes #10)
+- 🔧 Fixed alerts API auth — `/api/alerts/check` endpoint now works with API key authentication
+- 🐛 Validators use `optional({ values: 'falsy' })` to properly handle empty form fields (fixes #9)
+
 ## v0.22.0 (2026-02-09)
 - 🏗️ **Frontend modularization** — split 9,489-line index.html into 14 files
   - `public/css/styles.css` — all CSS (2,107 lines)

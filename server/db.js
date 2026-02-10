@@ -214,6 +214,7 @@ async function initDatabase() {
   try { db.run(`ALTER TABLE positions ADD COLUMN current_price REAL`); } catch (e) { /* exists */ }
   try { db.run("ALTER TABLE positions ADD COLUMN source TEXT DEFAULT 'manual'"); } catch (e) { /* exists */ }
   try { db.run("ALTER TABLE positions ADD COLUMN location TEXT DEFAULT NULL"); } catch (e) { /* exists */ }
+  try { db.run("ALTER TABLE positions ADD COLUMN currency TEXT DEFAULT 'USD'"); } catch (e) { /* exists */ }
 
   // Backfill source for existing wallet-synced positions — only those that still say 'wallet-synced |' at the start
   // Don't re-override positions that were intentionally converted back to manual

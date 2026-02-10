@@ -277,15 +277,8 @@ async function savePosition(e) {
         return;
     }
     const form = e.target;
-    // Convert entry price to USD if entered in another currency
-    let entryPrice = parseFloat(form.entry_price.value);
+    const entryPrice = parseFloat(form.entry_price.value);
     const entryCurrency = form.entry_currency?.value || 'USD';
-    if (entryCurrency !== 'USD' && exchangeRates) {
-        const rate = exchangeRates[entryCurrency]?.['USD'];
-        if (rate) {
-            entryPrice = entryPrice * rate;
-        }
-    }
     
     const data = {
         symbol: form.symbol.value.toUpperCase(),
@@ -293,8 +286,9 @@ async function savePosition(e) {
         type: form.type.value,
         quantity: parseFloat(form.quantity.value),
         entry_price: entryPrice,
+        currency: entryCurrency,
         entry_date: form.entry_date.value || null,
-        notes: form.notes.value + (entryCurrency !== 'USD' ? ` [bought in ${entryCurrency}]` : ''),
+        notes: form.notes.value,
         strike_price: form.strike_price.value ? parseFloat(form.strike_price.value) : null,
         expiry_date: form.expiry_date.value || null,
         current_price: form.current_price?.value ? parseFloat(form.current_price.value) : null,

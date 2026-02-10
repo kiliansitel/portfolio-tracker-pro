@@ -22,7 +22,7 @@ const { logger, requestLogger } = require('./utils/logger');
 const { router: authRouter, authenticateToken } = require('./routes/auth');
 const portfolioRouter = require('./routes/portfolio');
 const watchlistRouter = require('./routes/watchlist');
-const alertsRouter = require('./routes/alerts');
+const { router: alertsRouter, checkRouter: alertsCheckRouter } = require('./routes/alerts');
 const marketRouter = require('./routes/market');
 const transactionsRouter = require('./routes/transactions');
 const dataRouter = require('./routes/data');
@@ -82,6 +82,7 @@ app.use('/api/auth', authRouter);
 // All other API routes require authentication
 app.use('/api/portfolios', authenticateToken, portfolioRouter);
 app.use('/api/watchlists', authenticateToken, watchlistRouter);
+app.use('/api/alerts/check', alertsCheckRouter); // API key auth only, no JWT
 app.use('/api/alerts', authenticateToken, alertsRouter);
 app.use('/api', marketRouter); // Market data is public
 

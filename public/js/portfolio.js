@@ -74,7 +74,7 @@ function renderPositions() {
     
     // Pre-compute values for all positions
     const enriched = positions.map(pos => {
-        let currentPrice;
+        let currentPrice; // in USD (market price)
         if (pos.type === 'option') {
             const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
             const optQuote = optSym ? priceCache[optSym] : null;
@@ -85,13 +85,16 @@ function renderPositions() {
         }
         const q = priceCache[pos.symbol] || {};
         const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+        const posCurrency = pos.currency || 'USD';
         const hasValidCost = pos.entry_price > 0;
-        const cost = hasValidCost ? pos.entry_price * pos.quantity * mult : 0;
-        const value = currentPrice * pos.quantity * mult;
+        // Convert entry_price from position's currency to USD for P&L calc
+        const entryPriceUsd = hasValidCost ? convertToUsd(pos.entry_price, posCurrency) : 0;
+        const cost = hasValidCost ? entryPriceUsd * pos.quantity * mult : 0;
+        const value = currentPrice * pos.quantity * mult; // market value in USD
         const pnl = hasValidCost ? value - cost : 0;
         const pnlPct = hasValidCost && cost > 0 ? (pnl / cost) * 100 : 0;
         const changePct = q.changePercent || 0;
-        return { ...pos, currentPrice, value, cost, pnl, pnlPct, changePct, mult, hasValidCost };
+        return { ...pos, currentPrice, value, cost, pnl, pnlPct, changePct, mult, hasValidCost, posCurrency, entryPriceUsd };
     });
     
     // Apply position sort
@@ -142,7 +145,9 @@ function renderPositions() {
             const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
             const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-orange);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
             
-            const qtyInfo = pos.quantity > 0 && pos.entry_price > 0 ? `<span style="margin-left:4px">· ${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${fp(pos.entry_price)}</span>` : '';
+            const entrySym = CURRENCY_SYMBOLS[pos.posCurrency] || pos.posCurrency + ' ';
+            const entryPriceStr = pos.posCurrency !== 'USD' ? `${entrySym}${pos.entry_price.toFixed(2)}` : fp(pos.entry_price);
+            const qtyInfo = pos.quantity > 0 && pos.entry_price > 0 ? `<span style="margin-left:4px">· ${pos.quantity}${pos.type === 'option' ? 'x' : ''} @ ${entryPriceStr}</span>` : '';
             const locBadge = pos.location ? `<span class="location-badge">${pos.location}</span>` : '';
             const costBasisHint = !pos.hasValidCost ? '<span style="font-size:0.6rem;color:var(--accent-orange);margin-left:4px;" title="Entry price unknown — set cost basis for P&L">⚠️ Set cost basis</span>' : '';
             const pnlDisplay = pos.hasValidCost ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '—';
@@ -286,9 +291,12 @@ function showPositionDetail(posId) {
         <span class="detail-label">Position Value</span>
         <span class="detail-value">${fc(value)}</span>
     </div>`;
+    const detailCur = pos.currency || 'USD';
+    const detailCurSym = CURRENCY_SYMBOLS[detailCur] || detailCur + ' ';
+    const entryPriceDisplay = detailCur !== 'USD' ? `${detailCurSym}${pos.entry_price.toFixed(2)}` : fp(pos.entry_price);
     bodyHtml += `<div class="detail-row">
         <span class="detail-label">Entry Price</span>
-        <span class="detail-value">${fp(pos.entry_price)}</span>
+        <span class="detail-value">${entryPriceDisplay}${detailCur !== 'USD' ? ` <span style="color:var(--text-secondary);font-size:0.8rem;">(${detailCur})</span>` : ''}</span>
     </div>`;
     bodyHtml += `<div class="detail-row">
         <span class="detail-label">Quantity</span>
@@ -394,6 +402,8 @@ function editPosition(id) {
     form.querySelector('[name="current_price"]').value = pos.current_price || '';
     form.querySelector('[name="multiplier"]').value = pos.multiplier || (pos.type === 'option' ? 100 : 1);
     form.querySelector('[name="location"]').value = pos.location || '';
+    const curSel = form.querySelector('[name="entry_currency"]');
+    if (curSel) curSel.value = pos.currency || 'USD';
     
     // Show option fields if editing an option
     document.getElementById('optionFields').style.display = pos.type === 'option' ? 'block' : 'none';
@@ -695,8 +705,11 @@ function updateSummary() {
         const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
         totalValue += currentPrice * pos.quantity * mult;
         // Only include positions with valid entry price in P&L calculation
+        // Convert entry_price from position's stored currency to USD
         if (pos.entry_price > 0) {
-            totalCost += pos.entry_price * pos.quantity * mult;
+            const posCurrency = pos.currency || 'USD';
+            const entryPriceUsd = convertToUsd(pos.entry_price, posCurrency);
+            totalCost += entryPriceUsd * pos.quantity * mult;
         }
     }
     

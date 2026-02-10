@@ -82,6 +82,11 @@ const positionValidation = [
     .isISO8601()
     .withMessage('Invalid expiry date format'),
   
+  body('currency')
+    .optional({ values: 'falsy' })
+    .isIn(['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'NZD', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'CNY', 'HKD', 'SGD', 'KRW', 'INR', 'BRL', 'MXN', 'ZAR', 'TRY', 'RUB', 'THB', 'TWD', 'ILS'])
+    .withMessage('Invalid currency code'),
+
   body('current_price')
     .optional({ values: 'falsy' })
     .isFloat({ min: 0, max: 999999999 })

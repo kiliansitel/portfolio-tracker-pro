@@ -140,4 +140,81 @@ router.get('/check', async (req, res) => {
   res.json({ triggered, checked: symbols.length });
 });
 
-module.exports = router;
+// Separate router for the /check endpoint (no JWT auth needed, uses API key)
+const checkRouter = express.Router();
+checkRouter.get('/', async (req, res) => {
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey || apiKey !== ALERT_API_KEY) {
+    logSecurityEvent(req, 'INVALID_ALERT_API_KEY', { provided: apiKey ? 'yes' : 'no' });
+    return res.status(401).json({ error: 'Invalid API key' });
+  }
+  
+  const alerts = dbAll('SELECT a.*, u.username FROM alerts a JOIN users u ON a.user_id = u.id WHERE a.is_active = 1');
+  
+  if (alerts.length === 0) {
+    return res.json({ triggered: [], checked: 0 });
+  }
+  
+  const symbols = [...new Set(alerts.map(a => a.symbol))];
+  const triggered = [];
+  const { fetchYahooPrice } = require('../utils/yahoo');
+  
+  for (const symbol of symbols) {
+    try {
+      const priceData = await fetchYahooPrice(symbol);
+      const price = priceData?.price;
+      
+      if (price) {
+        for (const alert of alerts.filter(a => a.symbol === symbol)) {
+          let shouldTrigger = false;
+          
+          if (alert.condition === 'above' && price >= alert.value) {
+            shouldTrigger = true;
+          } else if (alert.condition === 'below' && price <= alert.value) {
+            shouldTrigger = true;
+          }
+          
+          if (shouldTrigger) {
+            dbRun('UPDATE alerts SET is_active = 0 WHERE id = ?', [alert.id]);
+            
+            try {
+              const pushPayload = {
+                title: 'Price Alert Triggered!',
+                body: `${alert.symbol} is ${alert.condition} ${alert.value} (current: $${price.toFixed(2)})`,
+                icon: '/logo.svg',
+                badge: '/logo.svg',
+                tag: `alert-${alert.id}`,
+                data: {
+                  symbol: alert.symbol,
+                  alertId: alert.id,
+                  currentPrice: price
+                }
+              };
+              
+              sendPushNotification(alert.user_id, pushPayload).catch(error => {
+                console.error('Failed to send push notification for alert:', error);
+              });
+            } catch (error) {
+              console.error('Error preparing push notification:', error);
+            }
+            
+            triggered.push({
+              id: alert.id,
+              symbol: alert.symbol,
+              condition: alert.condition,
+              value: alert.value,
+              current_price: price,
+              username: alert.username
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.error(`Failed to fetch price for ${symbol}:`, e.message);
+    }
+  }
+  
+  res.json({ triggered, checked: symbols.length });
+});
+
+module.exports = { router, checkRouter };
