@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.24.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.25.0-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -36,6 +36,8 @@ Open **http://localhost:8080** → create an account → start tracking.
 ## Features
 
 - 🧠 **Oracle AI Assistant** — Chat with your portfolio. Build a portfolio from scratch with guided onboarding. Multi-provider support with streaming responses, context injection, and conversation history
+- 🎤 **Voice Input for Oracle AI** — Speak your questions using Web Speech API. Mic button with pulsing animation while listening
+- 📄 **Export AI Conversations as PDF** — Per-message and full conversation export with clean print-friendly layout and branding
 - 🤖 **6 AI Providers** — OpenAI, Anthropic, Google, Ollama (with model auto-detection), OpenRouter, and any OpenAI-compatible endpoint
 - 🦙 **Ollama Integration** — Auto-detects available models from any Ollama server (custom ports supported). Configurable context window (`num_ctx`) per model
 - 📊 **Interactive Charts** — TradingView-powered area/candlestick charts with MA overlays, allocation donut, performance tracking
@@ -127,6 +129,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.25.0** | Voice input for Oracle AI, PDF export for AI insights, modal fixes, AH badge improvements |
 | **v0.24.0** | After-hours/pre-market pricing, dividend tracking & income calendar, sector/geo exposure |
 | **v0.23.0** | Native multi-currency support, alerts API auth fix, full position API responses |
 | **v0.22.0** | Frontend modularization (14 files) + validation fix (#9) |
@@ -169,6 +172,8 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 - [x] ~~Global market search (EU, Asia, all exchanges via Yahoo Finance)~~
 - [x] ~~Multi-currency support (native currency storage + live FX rates)~~
 - [x] ~~After-hours / pre-market pricing~~
+- [x] ~~Voice input for Oracle AI (Web Speech API)~~
+- [x] ~~Export/share AI insights as PDF~~
 - [ ] Live broker API sync (Keytrade, IBKR)
 - [x] ~~Dividend tracking & income calendar~~
 - [ ] AI news digest & scheduled reports

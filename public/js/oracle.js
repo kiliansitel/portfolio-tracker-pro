@@ -8,6 +8,63 @@ let aiActiveContexts = ['general'];
 let aiConversations = [];
 let aiOnboardingChecked = false;
 
+// ============ VOICE INPUT ============
+let voiceRecognition = null;
+let voiceIsListening = false;
+
+function initVoiceInput() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const btn = document.getElementById('aiVoiceBtn');
+    if (!SpeechRecognition || !btn) {
+        if (btn) btn.style.display = 'none';
+        return;
+    }
+    btn.style.display = 'flex';
+    voiceRecognition = new SpeechRecognition();
+    voiceRecognition.continuous = false;
+    voiceRecognition.interimResults = true;
+    voiceRecognition.lang = 'en-US';
+
+    voiceRecognition.onresult = (event) => {
+        const input = document.getElementById('aiInput');
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+            transcript += event.results[i][0].transcript;
+        }
+        if (input) {
+            input.value = transcript;
+            aiInputAutoResize(input);
+        }
+    };
+    voiceRecognition.onend = () => stopVoiceVisual();
+    voiceRecognition.onerror = (e) => {
+        console.warn('Voice input error:', e.error);
+        stopVoiceVisual();
+        if (e.error === 'not-allowed') {
+            if (typeof showToast === 'function') showToast('Microphone access denied', 'error');
+        }
+    };
+}
+
+function toggleVoiceInput() {
+    if (!voiceRecognition) return;
+    if (voiceIsListening) {
+        voiceRecognition.stop();
+        stopVoiceVisual();
+    } else {
+        voiceRecognition.start();
+        voiceIsListening = true;
+        const btn = document.getElementById('aiVoiceBtn');
+        if (btn) btn.classList.add('voice-listening');
+    }
+}
+
+function stopVoiceVisual() {
+    voiceIsListening = false;
+    const btn = document.getElementById('aiVoiceBtn');
+    if (btn) btn.classList.remove('voice-listening');
+}
+
 // Check if user needs onboarding (no positions in any portfolio)
 async function checkOnboardingNeeded() {
     try {
@@ -62,6 +119,7 @@ function updateWelcomeForOnboarding(needsOnboarding) {
 
 // Initialize AI when page is shown
 async function initAi() {
+    initVoiceInput();
     try {
         aiProviders = await api('/ai/providers');
         updateAiProviderBadge();
@@ -433,6 +491,14 @@ function createMessageActions(rawMarkdown) {
         } catch { showToast('Failed to copy', 'error'); }
     };
     actions.appendChild(copyBtn);
+
+    {
+        const pdfBtn = document.createElement('button');
+        pdfBtn.className = 'ai-message-action-btn';
+        pdfBtn.innerHTML = '📄 PDF';
+        pdfBtn.onclick = () => exportAiResponseAsPdf(rawMarkdown);
+        actions.appendChild(pdfBtn);
+    }
 
     {
         const shareBtn = document.createElement('button');
@@ -1523,6 +1589,106 @@ async function loadAiConversation(convId) {
     } catch (e) {
         showToast('Failed to load conversation: ' + e.message, 'error');
     }
+}
+
+// ─── Export AI Response as PDF ─────────────────────────
+function exportAiResponseAsPdf(markdown) {
+    const html = renderAiMarkdown(markdown);
+    const now = new Date();
+    const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showToast('Pop-up blocked — please allow pop-ups for this site', 'error');
+        return;
+    }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Portfolio Pro — AI Analysis</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+  .pdf-header { border-bottom: 2px solid #2962ff; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: baseline; }
+  .pdf-header h1 { font-size: 20px; color: #2962ff; }
+  .pdf-header .date { font-size: 12px; color: #666; }
+  .pdf-content h1 { font-size: 18px; margin: 16px 0 8px; color: #131722; }
+  .pdf-content h2 { font-size: 16px; margin: 14px 0 6px; color: #131722; }
+  .pdf-content h3 { font-size: 14px; margin: 12px 0 4px; color: #131722; }
+  .pdf-content p, .pdf-content li { font-size: 13px; margin-bottom: 4px; }
+  .pdf-content ul, .pdf-content ol { padding-left: 20px; margin-bottom: 8px; }
+  .pdf-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  .pdf-content th, .pdf-content td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+  .pdf-content th { background: #f0f0f0; font-weight: 600; }
+  .pdf-content pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
+  .pdf-content code { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; background: #f0f0f0; padding: 1px 4px; border-radius: 3px; }
+  .pdf-content pre code { background: none; padding: 0; }
+  .pdf-content strong { font-weight: 600; }
+  .pdf-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #999; text-align: center; }
+  @media print {
+    body { padding: 20px; }
+    @page { margin: 1.5cm; }
+  }
+</style></head><body>
+  <div class="pdf-header">
+    <h1>🧠 Portfolio Pro — AI Analysis</h1>
+    <span class="date">${dateStr}</span>
+  </div>
+  <div class="pdf-content">${html}</div>
+  <div class="pdf-footer">Generated by Portfolio Pro Oracle · ${dateStr}</div>
+  <script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+    printWindow.document.close();
+}
+
+function exportFullConversationAsPdf() {
+    const container = document.getElementById('aiMessages');
+    if (!container) return;
+    const messages = container.querySelectorAll('.ai-message');
+    if (!messages.length) { showToast('No conversation to export', 'info'); return; }
+
+    let contentHtml = '';
+    messages.forEach(msg => {
+        const role = msg.dataset.role;
+        const bubble = msg.querySelector('.ai-message-bubble');
+        if (!bubble) return;
+        // Clone and strip action buttons
+        const clone = bubble.cloneNode(true);
+        clone.querySelectorAll('.ai-message-actions, .ai-action-container').forEach(el => el.remove());
+        const label = role === 'user' ? '👤 You' : '🧠 Oracle';
+        contentHtml += `<div style="margin-bottom:16px;"><strong style="color:${role === 'user' ? '#2962ff' : '#26a69a'}">${label}</strong><div style="margin-top:4px;">${clone.innerHTML}</div></div>`;
+    });
+
+    const now = new Date();
+    const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) { showToast('Pop-up blocked — please allow pop-ups', 'error'); return; }
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Portfolio Pro — Conversation Export</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
+  .pdf-header { border-bottom: 2px solid #2962ff; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: baseline; }
+  .pdf-header h1 { font-size: 20px; color: #2962ff; }
+  .pdf-header .date { font-size: 12px; color: #666; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
+  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+  th { background: #f0f0f0; font-weight: 600; }
+  pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
+  code { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; }
+  .pdf-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #999; text-align: center; }
+  @media print { body { padding: 20px; } @page { margin: 1.5cm; } }
+</style></head><body>
+  <div class="pdf-header">
+    <h1>🧠 Portfolio Pro — Conversation</h1>
+    <span class="date">${dateStr}</span>
+  </div>
+  ${contentHtml}
+  <div class="pdf-footer">Generated by Portfolio Pro Oracle · ${dateStr}</div>
+  <script>window.onload=function(){window.print();}<\/script>
+</body></html>`);
+    printWindow.document.close();
 }
 
 async function deleteAiConversation(convId) {

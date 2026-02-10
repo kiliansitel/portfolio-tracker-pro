@@ -1,4 +1,16 @@
 # Portfolio Tracker Pro — Version History
+## v0.25.0 (2026-02-10)
+### New Features
+- **Voice input for Oracle AI**: Microphone button (🎤) next to chat input — speak your questions using Web Speech API. Pulsing red animation while listening, auto-hides on unsupported browsers.
+- **Export AI insights as PDF**: Per-message 📄 button and header export button. Clean print-friendly layout with Portfolio Pro branding and date.
+
+### Improvements
+- AH/PM extended hours badges: improved visibility with larger font, higher contrast, and bolder colors
+- Modal management: opening a new modal now properly closes any existing open modal (fixes dividend calendar overlapping add position)
+
+### Bug Fixes
+- Fixed modal z-index overlap between dividend calendar and add position form
+
 ## v0.24.0 (2026-02-10)
 ### New Features
 - **After-hours / Pre-market pricing**: PM (blue) and AH (purple) badges show extended hours prices on position cards, watchlist items, and dashboard markets grid

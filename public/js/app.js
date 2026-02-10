@@ -56,6 +56,10 @@ function closeModal(id) {
 }
 
 function showModal(id) {
+    // Close other modals to prevent overlap
+    document.querySelectorAll('.modal-overlay.show').forEach(m => {
+        if (m.id !== id) m.classList.remove('show');
+    });
     document.getElementById(id).classList.add('show');
 }
 

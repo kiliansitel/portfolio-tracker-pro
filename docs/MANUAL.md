@@ -4,7 +4,7 @@
   <img src="../logo.svg" alt="Portfolio Tracker Pro" width="96" height="96">
 </p>
 
-> **Version:** 0.24.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
+> **Version:** 0.25.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
 
 ---
 
@@ -898,8 +898,9 @@ The AI chat is a full conversational interface:
 
 1. Navigate to the **AI** page (🧠 tab)
 2. Type your question in the input box
-3. Press **Send** or hit Enter
+3. Press **Send** or hit Enter — or click the 🎤 **microphone button** next to the input field to speak your question. The button pulses red while listening. Speech is transcribed to text for you to review before sending.
 4. Responses stream in real-time via SSE with full markdown rendering
+5. Click the 📄 button on any AI response to export it as a PDF, or use the 📄 button in the header to export the full conversation.
 
 **Tips:**
 - Ask about your portfolio: *"How diversified am I?"*
@@ -1323,7 +1324,7 @@ The response is a Server-Sent Events (SSE) stream. Each event contains a `data` 
 **Info response:**
 ```json
 {
-  "version": "0.24.0",
+  "version": "0.25.0",
   "env": "production",
   "name": "Portfolio Pro"
 }

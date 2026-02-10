@@ -330,6 +330,7 @@
                             </div>
                         </div>
                         <div class="ai-header-right">
+                            <button class="ai-header-btn" onclick="exportFullConversationAsPdf()" title="Export as PDF">📄</button>
                             <button class="ai-header-btn" onclick="openAiSettings()" title="AI Settings">⚙️</button>
                             <button class="ai-header-btn" onclick="openAiConversations()" title="Conversations">📋</button>
                             <button class="ai-header-btn" onclick="newAiChat()" title="New Chat">+</button>
@@ -372,6 +373,9 @@
                                 oninput="aiInputAutoResize(this); aiTickerAutocomplete(this)"></textarea>
                             <div class="autocomplete-dropdown hidden" id="aiTickerDropdown" style="bottom:100%;top:auto;margin-bottom:4px;max-height:200px;"></div>
                         </div>
+                        <button class="ai-voice-btn" id="aiVoiceBtn" onclick="toggleVoiceInput()" title="Voice input" style="display:none;">
+                            <span>🎤</span>
+                        </button>
                         <button class="ai-send-btn" id="aiSendBtn" onclick="sendAiChatMessage()" title="Send">
                             <span>📤</span>
                         </button>
