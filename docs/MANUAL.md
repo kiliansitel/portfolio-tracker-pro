@@ -4,7 +4,7 @@
   <img src="../logo.svg" alt="Portfolio Tracker Pro" width="96" height="96">
 </p>
 
-> **Version:** 0.21.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
+> **Version:** 0.24.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
 
 ---
 
@@ -157,7 +157,8 @@ After logging in, you land on the **Dashboard** page. It shows:
 
 - **Portfolio Summary** — total value, P&L (profit & loss), today's change, and cash balance.
 - **Performance Chart** — a line chart tracking your portfolio value over time (1W / 1M / 3M / 1Y / All views).
-- **Allocation Chart** — a donut chart showing how your portfolio is split across positions.
+- **Allocation Chart** — a donut chart showing how your portfolio is split across positions. Use the **Allocation | Sectors | Regions** tabs to view sector/industry and geographic exposure breakdowns.
+- **Extended Hours** — position cards and market tiles show **PM** (pre-market, blue) and **AH** (after-hours, purple) badges with extended hours pricing when markets are closed.
 - **Interactive Chart** — a full TradingView-style chart for any ticker, with area/candlestick views and moving average overlays.
 - **Markets Overview** — pinned tickers showing live prices and daily changes.
 
@@ -201,9 +202,11 @@ A "Main Portfolio" is created automatically on registration. To create additiona
    - **Ticker:** Start typing and the autocomplete dropdown suggests matching symbols (e.g., type "BTC" → select "BTC-USD Bitcoin USD").
    - **Quantity:** Number of shares/contracts/coins.
    - **Entry Price:** Your average cost per unit.
-   - **Currency:** The currency of the entry price (USD, EUR, GBP, CHF).
+   - **Currency:** The currency you purchased in (USD, EUR, GBP, CHF, JPY, CAD, AUD, and 20+ more). The entry price is stored in the original currency — no automatic conversion.
    - For **Options**: additional fields appear for Strike Price, Expiry Date, and Multiplier (defaults to 100).
 4. Click **Add Position**.
+
+**Multi-currency handling:** Positions are stored in their original purchase currency. For example, if you buy ASML on Euronext at €650, it stays as €650 in your records. The dashboard and summary calculations convert all positions to your chosen app currency (see [§12.4](#124-currency)) using live exchange rates — so your total portfolio value is always shown in one consistent currency.
 
 **Tip:** If you add a position for a ticker that already exists, the app automatically calculates a new weighted average entry price and updates the quantity.
 
@@ -291,11 +294,14 @@ Each position card shows:
 |---------|-------------|
 | **Symbol + Icon** | Ticker symbol with SVG icon (crypto, commodities, indices get custom icons) |
 | **Type Badge** | Colored badge (Stock / Option / Crypto / ETF) |
-| **Current Price** | Live price in your selected currency |
+| **Current Price** | Live price from market data |
 | **Daily Change** | Today's price change in absolute and percentage |
 | **Quantity** | Number of shares/contracts/coins |
 | **Total Value** | Current price × quantity (× multiplier for options) |
-| **P&L** | Unrealized profit/loss with percentage |
+| **Entry Price** | Original purchase price shown in the position's currency (e.g., €650) |
+| **P&L** | Unrealized profit/loss with percentage (converted to display currency) |
+| **Dividend Yield** | Annual yield badge (if the stock pays dividends) |
+| **PM / AH Badge** | Pre-market (blue) or after-hours (purple) extended hours price when available |
 
 ### 3.4 Wallet-Synced Positions
 
@@ -738,7 +744,7 @@ The app validates the email format and checks for duplicates before saving.
 
 ### 12.4 Currency
 
-Choose your display currency from the dropdown:
+Choose your **display currency** (the currency used for dashboard totals, P&L, and aggregated values) from the dropdown:
 
 | Currency | Symbol | Flag |
 |----------|--------|------|
@@ -747,7 +753,14 @@ Choose your display currency from the dropdown:
 | **GBP** | £ | 🇬🇧 |
 | **CHF** | CHF | 🇨🇭 |
 
-All prices, values, and P&L figures are converted using **live exchange rates** fetched from Yahoo Finance. The currency preference is saved both locally and on the server so it persists across devices.
+This is separate from **position currencies** — each position stores the currency it was purchased in (set when adding the position). The display currency controls how the dashboard aggregates everything.
+
+**How it works:**
+- Entry prices are shown in their **original currency** on position cards (e.g., €650 for a EUR purchase).
+- Dashboard totals, P&L, and allocation charts convert all positions to your **display currency** using live exchange rates.
+- Exchange rates are fetched from Yahoo Finance and cached.
+
+The currency preference is saved both locally and on the server so it persists across devices.
 
 ### 12.5 Telegram Integration
 
@@ -1016,10 +1029,15 @@ POST /api/portfolios/1/positions
 {
   "symbol": "NVDA",
   "quantity": 10,
-  "entry_price": 450.00
+  "entry_price": 450.00,
+  "currency": "USD",
+  "type": "stock",
+  "entry_date": "2026-01-15"
 }
-→ { "id": 5, "portfolio_id": 1, "symbol": "NVDA", "quantity": 10, "entry_price": 450.00 }
+→ { "id": 5, "portfolio_id": 1, "symbol": "NVDA", "quantity": 10, "entry_price": 450.00, "currency": "USD", "type": "stock", "entry_date": "2026-01-15", ... }
 ```
+
+The `currency` field stores the original purchase currency (defaults to `USD` if omitted). Supported currencies: USD, EUR, GBP, CHF, JPY, CAD, AUD, NZD, SEK, NOK, DKK, PLN, CZK, HUF, RON, BGN, HRK, ISK, TRY, ZAR, BRL, MXN, INR, CNY, HKD, SGD, KRW.
 
 **Duplicate handling:** If a position for `NVDA` already exists, the quantity is summed and entry price is recalculated as a weighted average.
 

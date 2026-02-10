@@ -1,4 +1,15 @@
 # Portfolio Tracker Pro — Version History
+## v0.24.0 (2026-02-10)
+### New Features
+- **After-hours / Pre-market pricing**: PM (blue) and AH (purple) badges show extended hours prices on position cards, watchlist items, and dashboard markets grid
+- **Dividend tracking & income calendar**: Yield badges on positions, annual income estimate, monthly bar chart, upcoming ex-dates with status
+- **Sector & geographic exposure**: Tabbed donut charts (Allocation | Sectors | Regions) on dashboard, with sector/industry/country data from Yahoo Finance
+
+### Improvements
+- Yahoo Finance quote API integration for richer company data (sector, industry, country, dividends)
+- 24-hour cache for company metadata to minimize API calls
+- Crumb-based Yahoo Finance authentication for reliable data access
+
 ## v0.23.0 (2026-02-10)
 - 🌍 **Native currency support** — positions store original purchase currency (EUR, GBP, etc.) instead of converting to USD
 - 🌍 Dashboard aggregates in user's app currency using live exchange rates

@@ -153,15 +153,33 @@
 
                 <div class="card" id="allocationCard" style="display:none;flex:1;min-width:280px;max-width:400px;">
                     <div class="card-header">
-                        <span>🥧 Allocation</span>
+                        <div id="exposureTabs" style="display:flex;gap:2px;background:var(--bg-secondary);border-radius:8px;padding:2px;">
+                            <button class="exposure-tab active" data-tab="allocation" onclick="switchExposureTab('allocation')">📊 Allocation</button>
+                            <button class="exposure-tab" data-tab="sectors" onclick="switchExposureTab('sectors')">🏭 Sectors</button>
+                            <button class="exposure-tab" data-tab="regions" onclick="switchExposureTab('regions')">🌍 Regions</button>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;position:relative;">
+                        <div id="exposureAllocation" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;position:relative;">
                             <div style="position:relative;">
                                 <canvas id="allocationChart" width="160" height="160" style="max-width:160px;cursor:pointer;"></canvas>
                                 <div id="allocationTooltip" style="display:none;position:absolute;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;font-size:0.85rem;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;"></div>
                             </div>
                             <div id="allocationLegend" style="flex:1;min-width:120px;font-size:0.85rem;"></div>
+                        </div>
+                        <div id="exposureSectors" style="display:none;align-items:center;gap:20px;flex-wrap:wrap;position:relative;">
+                            <div style="position:relative;">
+                                <canvas id="sectorChart" width="160" height="160" style="max-width:160px;cursor:pointer;"></canvas>
+                                <div id="sectorTooltip" style="display:none;position:absolute;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;font-size:0.85rem;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;"></div>
+                            </div>
+                            <div id="sectorLegend" style="flex:1;min-width:120px;font-size:0.85rem;"></div>
+                        </div>
+                        <div id="exposureRegions" style="display:none;align-items:center;gap:20px;flex-wrap:wrap;position:relative;">
+                            <div style="position:relative;">
+                                <canvas id="regionChart" width="160" height="160" style="max-width:160px;cursor:pointer;"></canvas>
+                                <div id="regionTooltip" style="display:none;position:absolute;background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;padding:8px 12px;font-size:0.85rem;pointer-events:none;white-space:nowrap;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:100;"></div>
+                            </div>
+                            <div id="regionLegend" style="flex:1;min-width:120px;font-size:0.85rem;"></div>
                         </div>
                     </div>
                 </div>

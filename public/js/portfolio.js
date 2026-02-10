@@ -138,12 +138,70 @@ function renderPositions() {
         </div>
     </div>`;
     
+    // Dividend summary (computed from priceCache data)
+    const divPositions = enriched.filter(p => p.type !== 'option' && priceCache[p.symbol]?.dividendRate);
+    if (divPositions.length > 0) {
+        let divTotalIncome = 0;
+        let divYieldWeighted = 0;
+        let divTotalVal = 0;
+        let nextEx = null;
+        
+        for (const p of divPositions) {
+            const d = priceCache[p.symbol];
+            const rate = d.dividendRate || d.trailingAnnualDividendRate || 0;
+            const yld = d.dividendYield || 0;
+            const income = rate * p.quantity;
+            divTotalIncome += income;
+            divYieldWeighted += yld * p.value;
+            divTotalVal += p.value;
+            const exTs = d.exDividendDate || d.dividendDate;
+            if (exTs) {
+                const exStr = new Date(exTs * 1000).toISOString().split('T')[0];
+                if (!nextEx || exStr < nextEx) nextEx = exStr;
+            }
+        }
+        const avgYld = divTotalVal > 0 ? (divYieldWeighted / divTotalVal).toFixed(1) : '0.0';
+        const nextExLabel = nextEx ? new Date(nextEx).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—';
+        
+        html += `<div style="background:var(--card-bg);border-radius:12px;padding:12px 16px;margin-bottom:12px;border:1px solid rgba(22,163,74,0.3);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                <span style="font-weight:600;font-size:0.9rem;">💰 Dividends</span>
+                <button onclick="showDividendCalendar()" style="background:#16a34a;color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:0.7rem;cursor:pointer;font-weight:600;">📅 Calendar</button>
+            </div>
+            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                <div><div style="font-size:0.7rem;color:var(--text-secondary);">Annual Income</div><div style="font-weight:600;color:#16a34a;">${fc(divTotalIncome)}</div></div>
+                <div><div style="font-size:0.7rem;color:var(--text-secondary);">Avg Yield</div><div style="font-weight:600;">${avgYld}%</div></div>
+                <div><div style="font-size:0.7rem;color:var(--text-secondary);">Next Ex-Date</div><div style="font-weight:600;">${nextExLabel}</div></div>
+                <div><div style="font-size:0.7rem;color:var(--text-secondary);">Paying</div><div style="font-weight:600;">${divPositions.length}/${enriched.filter(p=>p.type!=='option').length}</div></div>
+            </div>
+        </div>`;
+    }
+    
     // Helper to render a single position card
     function renderPosCard(pos) {
             const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
             const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
             const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
             const walletBadge = isWalletSynced ? '<span class="type-badge" style="background:var(--accent-orange);color:#fff;font-size:0.65rem;margin-left:4px;" title="Synced from on-chain wallet">🔗</span>' : '';
+            
+            // Dividend badge
+            const divData = priceCache[pos.symbol];
+            const divYield = divData?.dividendYield ? divData.dividendYield.toFixed(1) : null;
+            const exDateTs = divData?.exDividendDate || divData?.dividendDate;
+            let divBadgeHtml = '';
+            if (divYield && parseFloat(divYield) > 0) {
+                divBadgeHtml += `<span style="background:#16a34a;color:#fff;font-size:0.6rem;padding:1px 5px;border-radius:4px;margin-left:4px;" title="Dividend Yield">💰 ${divYield}%</span>`;
+            }
+            if (exDateTs) {
+                const exDate = new Date(exDateTs * 1000);
+                const now = new Date();
+                const daysUntil = Math.ceil((exDate - now) / 86400000);
+                if (daysUntil >= 0 && daysUntil <= 30) {
+                    const exStyle = daysUntil <= 7 ? 'background:#f59e0b;color:#000;' : 'background:#374151;color:#d1d5db;';
+                    const exLabel = exDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    divBadgeHtml += `<span style="${exStyle}font-size:0.6rem;padding:1px 5px;border-radius:4px;margin-left:4px;" title="Ex-Dividend in ${daysUntil} days">Ex: ${exLabel}</span>`;
+                }
+            }
             
             const entrySym = CURRENCY_SYMBOLS[pos.posCurrency] || pos.posCurrency + ' ';
             const entryPriceStr = pos.posCurrency !== 'USD' ? `${entrySym}${pos.entry_price.toFixed(2)}` : fp(pos.entry_price);
@@ -166,7 +224,7 @@ function renderPositions() {
                             ${logoHtml(pos.symbol, 32)}
                             <div class="pos-left-info">
                                 <span class="pos-symbol">${pos.symbol}${optionInfo}</span>
-                                <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}${costBasisHint}
+                                <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}${divBadgeHtml}${costBasisHint}
                             </div>
                         </div>
                         <div class="pos-value">${fc(pos.value)}</div>
@@ -175,6 +233,7 @@ function renderPositions() {
                         <div class="pos-sub-left">
                             <span>${fp(pos.currentPrice)}</span>
                             <span class="${pos.changePct >= 0 ? 'positive' : 'negative'}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</span>
+                            ${extendedHoursHtml(priceCache[pos.symbol])}
                             ${qtyInfo}
                             ${locBadge}
                         </div>
@@ -282,7 +341,7 @@ function showPositionDetail(posId) {
     // Section 1: Price info
     bodyHtml += `<div class="detail-row">
         <span class="detail-label">Current Price</span>
-        <span class="detail-value">${fp(currentPrice)} <span class="${changeClass}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span></span>
+        <span class="detail-value">${fp(currentPrice)} <span class="${changeClass}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>${extendedHoursHtml(q)}</span>
     </div>`;
     
     // Section 2: Position info
@@ -485,6 +544,7 @@ function renderWatchlist() {
                     <div class="watch-price" style="text-align:right;min-width:70px;">
                         <div>${price > 0 ? fp(price) : '--'}</div>
                         <div class="${change >= 0 ? 'positive' : 'negative'}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
+                        <div class="ext-hours-block">${extendedHoursHtml(priceCache[item.symbol])}</div>
                     </div>
                     <button onclick="event.stopPropagation();quickAddFromWatchlist('${item.symbol}')" title="Add to portfolio" style="margin-left:12px;flex-shrink:0;background:#3b82f6;border:none;color:#fff;font-size:0.7rem;cursor:pointer;padding:5px 10px;border-radius:6px;font-weight:700;letter-spacing:0.3px;">+ ADD</button>
                 </div>
@@ -672,6 +732,7 @@ async function renderMarkets() {
             <div class="market-symbol" style="display:flex;align-items:center;gap:4px;">${logoHtml(q.symbol, 16)}${names[q.symbol] || q.symbol} ${pinBadge}</div>
             <div class="market-price">${price}</div>
             <div class="market-change ${q.changePercent >= 0 ? 'positive' : 'negative'}">${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%</div>
+            ${extendedHoursHtml(q) ? `<div style="margin-top:2px;">${extendedHoursHtml(q)}</div>` : ''}
         </div>`;
     }).join('');
     
@@ -732,6 +793,14 @@ function updateSummary() {
     
     // Render allocation chart
     renderAllocation(totalValue, cashUsd);
+    
+    // Reset exposure data so it reloads on next tab switch
+    exposureData = null;
+    // If sector or region tab is currently active, reload immediately
+    const activeTab = document.querySelector('.exposure-tab.active')?.dataset?.tab;
+    if (activeTab === 'sectors' || activeTab === 'regions') {
+        loadExposureData();
+    }
 }
 
 // ============ ALLOCATION CHART ============
@@ -897,6 +966,137 @@ function handleAllocationHover(e, canvas, tooltip, centerX, centerY, radius, inn
     tooltip.style.display = 'none';
 }
 
+// ============ EXPOSURE TABS (Sectors & Regions) ============
+let exposureData = null;
+let sectorSlices = [];
+let regionSlices = [];
+
+function switchExposureTab(tab) {
+    document.querySelectorAll('.exposure-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    document.getElementById('exposureAllocation').style.display = tab === 'allocation' ? 'flex' : 'none';
+    document.getElementById('exposureSectors').style.display = tab === 'sectors' ? 'flex' : 'none';
+    document.getElementById('exposureRegions').style.display = tab === 'regions' ? 'flex' : 'none';
+    
+    if ((tab === 'sectors' || tab === 'regions') && !exposureData) {
+        loadExposureData();
+    }
+}
+
+async function loadExposureData() {
+    if (!token || !currentPortfolio) return;
+    try {
+        exposureData = await api(`/portfolios/${currentPortfolio.id}/exposure`);
+        renderExposureDonut('sector', exposureData.bySector, 'sector');
+        renderExposureDonut('region', exposureData.byRegion, 'region');
+    } catch (e) {
+        console.warn('Failed to load exposure data:', e);
+    }
+}
+
+const SECTOR_COLORS = {
+    'Technology': '#3498db', 'Healthcare': '#2ecc71', 'Financial Services': '#f1c40f',
+    'Energy': '#e67e22', 'Consumer Cyclical': '#9b59b6', 'Consumer Defensive': '#8e44ad',
+    'Industrials': '#7f8c8d', 'Real Estate': '#795548', 'Communication Services': '#e91e63',
+    'Utilities': '#00bcd4', 'Basic Materials': '#ff5722', 'Crypto': '#f39c12', 'Unknown': '#607d8b'
+};
+const REGION_COLORS = {
+    'North America': '#3498db', 'Europe': '#2ecc71', 'Asia': '#e74c3c',
+    'Crypto/Digital': '#f39c12', 'Oceania': '#1abc9c', 'Latin America': '#9b59b6',
+    'Middle East & Africa': '#e67e22', 'Other': '#7f8c8d', 'Unknown': '#607d8b'
+};
+
+function renderExposureDonut(type, data, labelKey) {
+    const canvas = document.getElementById(type + 'Chart');
+    const legend = document.getElementById(type + 'Legend');
+    const tooltip = document.getElementById(type + 'Tooltip');
+    if (!canvas || !data || data.length === 0) return;
+    
+    const slices = [];
+    const colorMap = type === 'sector' ? SECTOR_COLORS : REGION_COLORS;
+    const fallbackColors = ['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6','#1abc9c','#e91e63','#00bcd4','#ff5722','#8bc34a'];
+    
+    const total = data.reduce((s, d) => s + d.totalValue, 0);
+    if (total <= 0) return;
+    
+    const ctx = canvas.getContext('2d');
+    const size = Math.min(160, canvas.parentElement?.offsetWidth || 160);
+    canvas.width = size;
+    canvas.height = size;
+    const centerX = size / 2, centerY = size / 2;
+    const radius = Math.min(centerX, centerY) - 5;
+    const innerRadius = radius * 0.6;
+    ctx.clearRect(0, 0, size, size);
+    
+    let startAngle = -Math.PI / 2;
+    data.forEach((item, i) => {
+        const label = item[labelKey];
+        const color = colorMap[label] || fallbackColors[i % fallbackColors.length];
+        const sliceAngle = (item.totalValue / total) * 2 * Math.PI;
+        item.color = color;
+        
+        slices.push({ label, value: item.totalValue, color, startAngle, endAngle: startAngle + sliceAngle, pct: item.percentage, positions: item.positions });
+        
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+        ctx.arc(centerX, centerY, innerRadius, startAngle + sliceAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        startAngle += sliceAngle;
+    });
+    
+    if (type === 'sector') sectorSlices = slices;
+    else regionSlices = slices;
+    
+    // Center text
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() || '#fff';
+    ctx.font = 'bold 14px system-ui';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(data.length + (type === 'sector' ? ' Sectors' : ' Regions'), centerX, centerY - 8);
+    ctx.font = '11px system-ui';
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-secondary').trim() || '#888';
+    ctx.fillText(cs() + (convertPrice(total, userCurrency)/1000).toFixed(1) + 'k', centerX, centerY + 10);
+    
+    // Hover
+    canvas.onmousemove = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left, y = e.clientY - rect.top;
+        const dx = x - centerX, dy = y - centerY;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < innerRadius || dist > radius) { tooltip.style.display = 'none'; return; }
+        let angle = Math.atan2(dy, dx);
+        if (angle < -Math.PI/2) angle += 2*Math.PI;
+        angle += Math.PI/2;
+        if (angle > 2*Math.PI) angle -= 2*Math.PI;
+        for (const s of slices) {
+            let st = s.startAngle + Math.PI/2, en = s.endAngle + Math.PI/2;
+            if (st < 0) st += 2*Math.PI;
+            if (en < 0) en += 2*Math.PI;
+            if (angle >= st && angle < en) {
+                const posNames = s.positions.map(p => p.symbol).slice(0, 5).join(', ');
+                tooltip.innerHTML = `<div style="font-weight:600;color:${s.color};">${s.label}</div><div>${fc(s.value)}</div><div style="color:var(--text-secondary);">${s.pct.toFixed(1)}%</div><div style="color:var(--text-secondary);font-size:0.75rem;margin-top:2px;">${posNames}${s.positions.length > 5 ? '...' : ''}</div>`;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (x+15)+'px';
+                tooltip.style.top = (y-10)+'px';
+                return;
+            }
+        }
+        tooltip.style.display = 'none';
+    };
+    canvas.onmouseleave = () => { tooltip.style.display = 'none'; };
+    
+    // Legend
+    legend.innerHTML = data.slice(0, 8).map(item => {
+        const pct = item.percentage.toFixed(1);
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <div style="width:12px;height:12px;border-radius:3px;background:${item.color};flex-shrink:0;"></div>
+            <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item[labelKey]}</div>
+            <div style="color:var(--text-secondary);font-size:0.8rem;">${pct}%</div>
+        </div>`;
+    }).join('') + (data.length > 8 ? `<div style="color:var(--text-secondary);font-size:0.8rem;">+${data.length - 8} more</div>` : '');
+}
+
 // ============ PORTFOLIO PERFORMANCE ============
 let performanceChart = null;
 let performanceSeries = null;
@@ -1029,5 +1229,125 @@ function setPerformanceRange(days) {
     document.querySelectorAll('#performanceCard .chart-btn').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
     loadPerformance();
+}
+
+// ============ DIVIDEND CALENDAR ============
+
+async function showDividendCalendar() {
+    if (!currentPortfolio) return;
+    
+    // Show a modal with loading state
+    const modalId = 'dividendCalendarModal';
+    let modal = document.getElementById(modalId);
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `<div class="modal" style="max-width:500px;max-height:85vh;overflow-y:auto;">
+            <div class="modal-header">
+                <h3>💰 Dividend Income Calendar</h3>
+                <button class="modal-close" onclick="closeModal('${modalId}')">&times;</button>
+            </div>
+            <div class="modal-body" id="dividendCalendarBody" style="padding:16px;">Loading...</div>
+        </div>`;
+        document.body.appendChild(modal);
+    }
+    showModal(modalId);
+    
+    try {
+        const data = await api(`/portfolios/${currentPortfolio.id}/dividends`);
+        const body = document.getElementById('dividendCalendarBody');
+        
+        if (!data.positions || data.positions.length === 0) {
+            body.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-secondary);"><div style="font-size:2rem;margin-bottom:8px;">📭</div>No dividend-paying positions found.</div>';
+            return;
+        }
+        
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        const maxMonthly = Math.max(...data.monthlyIncome);
+        
+        let html = '';
+        
+        // Summary
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div style="background:var(--bg-primary);padding:12px;border-radius:8px;text-align:center;">
+                <div style="font-size:0.7rem;color:var(--text-secondary);">Annual Income</div>
+                <div style="font-size:1.2rem;font-weight:700;color:#16a34a;">${fc(data.summary.totalAnnualIncome)}</div>
+            </div>
+            <div style="background:var(--bg-primary);padding:12px;border-radius:8px;text-align:center;">
+                <div style="font-size:0.7rem;color:var(--text-secondary);">Monthly Avg</div>
+                <div style="font-size:1.2rem;font-weight:700;">${fc(data.summary.totalAnnualIncome / 12)}</div>
+            </div>
+        </div>`;
+        
+        // Monthly bar chart
+        html += `<div style="margin-bottom:16px;"><div style="font-weight:600;margin-bottom:8px;font-size:0.85rem;">Monthly Breakdown</div>`;
+        for (let i = 0; i < 12; i++) {
+            const val = data.monthlyIncome[i];
+            const pct = maxMonthly > 0 ? (val / maxMonthly * 100) : 0;
+            const now = new Date();
+            const isCurrentMonth = i === now.getMonth();
+            html += `<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span style="width:28px;font-size:0.75rem;color:${isCurrentMonth ? '#16a34a' : 'var(--text-secondary)'};font-weight:${isCurrentMonth ? '700' : '400'};">${months[i]}</span>
+                <div style="flex:1;height:18px;background:var(--bg-primary);border-radius:4px;overflow:hidden;">
+                    <div style="height:100%;width:${pct}%;background:${isCurrentMonth ? '#16a34a' : '#22c55e80'};border-radius:4px;transition:width 0.3s;"></div>
+                </div>
+                <span style="width:60px;text-align:right;font-size:0.75rem;font-weight:600;">${val > 0 ? fc(val) : '—'}</span>
+            </div>`;
+        }
+        html += `</div>`;
+        
+        // Upcoming ex-dates
+        html += `<div style="font-weight:600;margin-bottom:8px;font-size:0.85rem;">Upcoming Ex-Dates</div>`;
+        const upcoming = data.positions.filter(p => p.exDividendDate);
+        if (upcoming.length > 0) {
+            for (const p of upcoming) {
+                const exDate = new Date(p.exDividendDate);
+                const now = new Date();
+                const daysUntil = Math.ceil((exDate - now) / 86400000);
+                const isPast = daysUntil < 0;
+                const isUrgent = daysUntil >= 0 && daysUntil <= 7;
+                const dateLabel = exDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const statusColor = isPast ? 'var(--text-secondary)' : isUrgent ? '#f59e0b' : '#16a34a';
+                const statusText = isPast ? 'passed' : daysUntil === 0 ? 'today!' : `in ${daysUntil}d`;
+                
+                html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--bg-primary);border-radius:8px;margin-bottom:4px;">
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        ${typeof logoHtml === 'function' ? logoHtml(p.symbol, 24) : ''}
+                        <div>
+                            <div style="font-weight:600;font-size:0.85rem;">${p.symbol}</div>
+                            <div style="font-size:0.7rem;color:var(--text-secondary);">${p.quantity} shares · ${p.dividendYield.toFixed(1)}% yield</div>
+                        </div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.8rem;font-weight:600;">${dateLabel}</div>
+                        <div style="font-size:0.7rem;color:${statusColor};font-weight:600;">${statusText}</div>
+                    </div>
+                </div>`;
+            }
+        } else {
+            html += `<div style="color:var(--text-secondary);font-size:0.85rem;">No upcoming ex-dates available.</div>`;
+        }
+        
+        // All dividend positions
+        html += `<div style="font-weight:600;margin:16px 0 8px;font-size:0.85rem;">All Dividend Positions</div>`;
+        for (const p of data.positions) {
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-bottom:1px solid var(--border-color);">
+                <div>
+                    <span style="font-weight:600;font-size:0.85rem;">${p.symbol}</span>
+                    <span style="font-size:0.7rem;color:var(--text-secondary);margin-left:4px;">${p.frequency}</span>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:0.8rem;font-weight:600;color:#16a34a;">${fc(p.annualIncome)}/yr</div>
+                    <div style="font-size:0.7rem;color:var(--text-secondary);">$${p.dividendRate.toFixed(2)}/share · ${p.dividendYield.toFixed(1)}%</div>
+                </div>
+            </div>`;
+        }
+        
+        body.innerHTML = html;
+    } catch (e) {
+        console.error('Failed to load dividends:', e);
+        document.getElementById('dividendCalendarBody').innerHTML = '<div style="color:var(--accent-red);padding:16px;">Failed to load dividend data.</div>';
+    }
 }
 

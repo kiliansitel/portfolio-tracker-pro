@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.23.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.24.0-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -43,6 +43,9 @@ Open **http://localhost:8080** → create an account → start tracking.
 - 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB + 9 more. Chain-specific address validation, auto-sync on add, wallet delete, ERC-20/SPL token and DeFi position detection
 - 📥 **CSV Import** — Auto-detect format for Interactive Brokers, Keytrade Bank, CoinMarketCap portfolio export, and generic CSV
 - 💱 **Multi-Currency Support** — Positions store original purchase currency (EUR, GBP, etc.). Dashboard aggregates using live exchange rates. Entry prices display in original currency
+- 🕐 **After-Hours / Pre-Market Pricing** — PM (blue) and AH (purple) badges show extended hours prices on position cards, watchlist, and dashboard
+- 💰 **Dividend Tracking & Income Calendar** — Yield badges on positions, annual income estimate, monthly bar chart, upcoming ex-dates
+- 🗺️ **Sector & Geographic Exposure** — Tabbed donut charts (Allocation | Sectors | Regions) on dashboard with Yahoo Finance data
 - 🌍 **Global Market Search** — Autocomplete searches all markets via Yahoo Finance (EU, Asia, all exchanges). Local popular tickers prioritized for speed
 - 👀 **Smart Watchlists** — Multiple lists, category grouping, price targets, Telegram & push alerts
 - 📱 **Mobile-First PWA** — Installable on any device. Service worker with network-first HTML caching for offline support. Responsive design, swipe actions, compact numbers
@@ -124,6 +127,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.24.0** | After-hours/pre-market pricing, dividend tracking & income calendar, sector/geo exposure |
 | **v0.23.0** | Native multi-currency support, alerts API auth fix, full position API responses |
 | **v0.22.0** | Frontend modularization (14 files) + validation fix (#9) |
 | **v0.21.12** | Global ticker search (Yahoo Finance — all markets) + alert fix |
@@ -164,12 +168,12 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 - [x] ~~Smart P&L for wallet-synced positions~~
 - [x] ~~Global market search (EU, Asia, all exchanges via Yahoo Finance)~~
 - [x] ~~Multi-currency support (native currency storage + live FX rates)~~
-- [ ] After-hours / pre-market pricing
+- [x] ~~After-hours / pre-market pricing~~
 - [ ] Live broker API sync (Keytrade, IBKR)
-- [ ] Dividend tracking & income calendar
+- [x] ~~Dividend tracking & income calendar~~
 - [ ] AI news digest & scheduled reports
 - [ ] Portfolio rebalance suggestions
-- [ ] Sector & geographic exposure views
+- [x] ~~Sector & geographic exposure views~~
 - [ ] Google Cloud Run public demo
 - [ ] Mobile app (React Native / Capacitor)
 

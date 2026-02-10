@@ -153,6 +153,33 @@ function logoHtml(symbol, size = 24) {
     return `<img src="${logo}" alt="" class="ticker-logo" style="width:${size}px;height:${size}px;" ${errorHandler}>`;
 }
 
+// ============ EXTENDED HOURS HELPERS ============
+function extendedHoursHtml(quote) {
+    if (!quote || !quote.marketState) return '';
+    const state = quote.marketState;
+    // Only show extended hours when NOT in regular session
+    if (state === 'REGULAR') return '';
+    
+    let label, price, changePct, badgeClass;
+    if ((state === 'PRE' || state === 'PREPRE') && quote.preMarketPrice) {
+        label = 'PM';
+        price = quote.preMarketPrice;
+        changePct = quote.preMarketChangePercent;
+        badgeClass = 'ext-badge-pm';
+    } else if ((state === 'POST' || state === 'POSTPOST' || state === 'CLOSED') && quote.postMarketPrice) {
+        label = 'AH';
+        price = quote.postMarketPrice;
+        changePct = quote.postMarketChangePercent;
+        badgeClass = 'ext-badge-ah';
+    } else {
+        return '';
+    }
+    
+    const sign = changePct >= 0 ? '+' : '';
+    const colorClass = changePct >= 0 ? 'positive' : 'negative';
+    return `<span class="ext-hours"><span class="${badgeClass}">${label}</span> ${fp(price)} <span class="${colorClass}">${sign}${changePct.toFixed(2)}%</span></span>`;
+}
+
 // ============ PRICE SOURCES ============
 const CACHE_KEY = 'portfolio_price_cache';
 const CACHE_MAX_AGE = 5 * 60 * 1000; // 5 min for stale data display
@@ -185,7 +212,27 @@ const dataSources = [
             if (!res.ok) throw new Error('API error');
             const data = await res.json();
             if (!data.price) throw new Error('No data');
-            return { price: data.price, prev: data.previousClose || data.price };
+            const result = { price: data.price, prev: data.previousClose || data.price };
+            // Pass through extended hours data
+            if (data.marketState) result.marketState = data.marketState;
+            if (data.preMarketPrice) {
+                result.preMarketPrice = data.preMarketPrice;
+                result.preMarketChange = data.preMarketChange;
+                result.preMarketChangePercent = data.preMarketChangePercent;
+            }
+            if (data.postMarketPrice) {
+                result.postMarketPrice = data.postMarketPrice;
+                result.postMarketChange = data.postMarketChange;
+                result.postMarketChangePercent = data.postMarketChangePercent;
+            }
+            // Dividend data
+            if (data.dividendRate) result.dividendRate = data.dividendRate;
+            if (data.dividendYield) result.dividendYield = data.dividendYield;
+            if (data.exDividendDate) result.exDividendDate = data.exDividendDate;
+            if (data.dividendDate) result.dividendDate = data.dividendDate;
+            if (data.trailingAnnualDividendRate) result.trailingAnnualDividendRate = data.trailingAnnualDividendRate;
+            if (data.trailingAnnualDividendYield) result.trailingAnnualDividendYield = data.trailingAnnualDividendYield;
+            return result;
         }
     },
     {
@@ -245,6 +292,25 @@ async function fetchQuote(symbol) {
                 _fetchedAt: Date.now(),
                 _source: source.name
             };
+            // Extended hours data
+            if (result.marketState) quote.marketState = result.marketState;
+            if (result.preMarketPrice) {
+                quote.preMarketPrice = result.preMarketPrice;
+                quote.preMarketChange = result.preMarketChange;
+                quote.preMarketChangePercent = result.preMarketChangePercent;
+            }
+            if (result.postMarketPrice) {
+                quote.postMarketPrice = result.postMarketPrice;
+                quote.postMarketChange = result.postMarketChange;
+                quote.postMarketChangePercent = result.postMarketChangePercent;
+            }
+            // Dividend data
+            if (result.dividendRate) quote.dividendRate = result.dividendRate;
+            if (result.dividendYield) quote.dividendYield = result.dividendYield;
+            if (result.exDividendDate) quote.exDividendDate = result.exDividendDate;
+            if (result.dividendDate) quote.dividendDate = result.dividendDate;
+            if (result.trailingAnnualDividendRate) quote.trailingAnnualDividendRate = result.trailingAnnualDividendRate;
+            if (result.trailingAnnualDividendYield) quote.trailingAnnualDividendYield = result.trailingAnnualDividendYield;
             priceCache[symbol] = quote;
             activeSource = srcIdx; // Stick with working source
             sourceStats.success++;
