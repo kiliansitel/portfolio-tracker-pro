@@ -16,11 +16,36 @@ const {
 } = require('../utils/ai-providers');
 const { logger } = require('../utils/logger');
 
+const rateLimit = require('express-rate-limit');
 const router = express.Router();
+
+// Rate limiters for AI endpoints
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  validate: { ip: false },
+  message: { error: 'Too many chat requests. Please wait a minute before trying again.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const analysisLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  validate: { ip: false },
+  message: { error: 'Too many analysis requests. Please wait a minute before trying again.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // JWT_SECRET used for encrypting API keys
 const crypto = require('crypto');
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 // Find the first configured/available provider for a user
 function findDefaultProvider(userId) {
@@ -414,11 +439,15 @@ router.get('/providers/:provider/test', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 
 // POST /chat — send message, stream response via SSE
-router.post('/chat', async (req, res) => {
+router.post('/chat', chatLimiter, async (req, res) => {
   const { message, provider: providerName, model, context, conversationId } = req.body;
 
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'Message is required' });
+  }
+
+  if (message.length > 5000) {
+    return res.status(400).json({ error: 'Message too long. Please keep messages under 5,000 characters.' });
   }
 
   // Determine provider: explicit > first configured > error
@@ -724,7 +753,7 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
 }
 
 // POST /analyze/portfolio — full portfolio review
-router.post('/analyze/portfolio', async (req, res) => {
+router.post('/analyze/portfolio', analysisLimiter, async (req, res) => {
   const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
   const marketData = buildMarketContext();
 
@@ -740,7 +769,7 @@ Be specific with numbers from my portfolio data.`;
 });
 
 // POST /analyze/watchlist — watchlist entry/exit signals
-router.post('/analyze/watchlist', async (req, res) => {
+router.post('/analyze/watchlist', analysisLimiter, async (req, res) => {
   const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
   const marketData = buildMarketContext();
 
@@ -768,7 +797,7 @@ Be specific with price levels and percentages. No vague "might go up" — give c
 });
 
 // POST /analyze/position/:symbol — deep dive on specific position
-router.post('/analyze/position/:symbol', async (req, res) => {
+router.post('/analyze/position/:symbol', analysisLimiter, async (req, res) => {
   const { symbol } = req.params;
   const upperSymbol = symbol.toUpperCase();
 
@@ -822,7 +851,7 @@ Be specific and reference the position data provided.`;
 });
 
 // POST /analyze/news — AI-powered news digest for holdings
-router.post('/analyze/news', async (req, res) => {
+router.post('/analyze/news', analysisLimiter, async (req, res) => {
   // Get user's position symbols
   const positions = dbAll(`
     SELECT DISTINCT p.symbol FROM positions p
@@ -876,7 +905,7 @@ Be concise and focus on what's actionable.`;
 });
 
 // POST /analyze/rebalance — rebalancing suggestions with concrete targets
-router.post('/analyze/rebalance', async (req, res) => {
+router.post('/analyze/rebalance', analysisLimiter, async (req, res) => {
   const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
   const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
   const marketData = buildMarketContext();
@@ -898,7 +927,7 @@ Consider my watchlist items as potential buy candidates. Be specific with number
 });
 
 // POST /analyze/strategy — personalized trading strategy advisor
-router.post('/analyze/strategy', async (req, res) => {
+router.post('/analyze/strategy', analysisLimiter, async (req, res) => {
   const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
   const marketData = buildMarketContext();
 
@@ -931,7 +960,7 @@ Be specific with dollar amounts, strike prices, expiry dates, and percentages. R
 });
 
 // POST /analyze/risk — portfolio risk & correlation analysis
-router.post('/analyze/risk', async (req, res) => {
+router.post('/analyze/risk', analysisLimiter, async (req, res) => {
   const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
   const marketData = buildMarketContext();
 
@@ -998,7 +1027,7 @@ Use my actual position sizes, weights, and percentages. Be specific with numbers
 // Action Execution (AI-suggested inline actions)
 // ═══════════════════════════════════════════════════════════════════
 
-router.post('/action', async (req, res) => {
+router.post('/action', analysisLimiter, async (req, res) => {
   const { type, params } = req.body;
   logger.info('AI action request', { type, params, userId: req.user?.id, username: req.user?.username });
 
@@ -1013,9 +1042,16 @@ router.post('/action', async (req, res) => {
         if (!symbol || !price) {
           return res.status(400).json({ error: 'Missing symbol or price for alert' });
         }
-        // Schema: alerts(user_id, symbol, condition, value, is_active)
-        // condition maps to direction (above/below)
+        if (!/^[A-Za-z0-9.-]{1,20}$/.test(symbol)) {
+          return res.status(400).json({ error: 'Invalid symbol format' });
+        }
         const priceVal = parseFloat(price);
+        if (!Number.isFinite(priceVal) || priceVal <= 0) {
+          return res.status(400).json({ error: 'Price must be a positive number' });
+        }
+        if (direction && !['above', 'below'].includes(direction)) {
+          return res.status(400).json({ error: 'Direction must be "above" or "below"' });
+        }
         dbRun(
           'INSERT INTO alerts (user_id, symbol, condition, target_price, value, is_active) VALUES (?, ?, ?, ?, ?, 1)',
           [req.user.id, symbol.toUpperCase(), direction || 'above', priceVal, priceVal]
@@ -1026,6 +1062,9 @@ router.post('/action', async (req, res) => {
         const [symbol] = params;
         if (!symbol) {
           return res.status(400).json({ error: 'Missing symbol for watchlist' });
+        }
+        if (!/^[A-Za-z0-9.-]{1,20}$/.test(symbol)) {
+          return res.status(400).json({ error: 'Invalid symbol format' });
         }
         // Get or create default watchlist
         let watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
@@ -1045,6 +1084,15 @@ router.post('/action', async (req, res) => {
         const [symbol, quantity, price] = params;
         if (!symbol || !quantity || !price) {
           return res.status(400).json({ error: 'Missing symbol, quantity, or price for position' });
+        }
+        if (!/^[A-Za-z0-9.-]{1,20}$/.test(symbol)) {
+          return res.status(400).json({ error: 'Invalid symbol format' });
+        }
+        if (!Number.isFinite(parseFloat(quantity)) || parseFloat(quantity) <= 0) {
+          return res.status(400).json({ error: 'Quantity must be a positive number' });
+        }
+        if (!Number.isFinite(parseFloat(price)) || parseFloat(price) <= 0) {
+          return res.status(400).json({ error: 'Price must be a positive number' });
         }
         // Get first portfolio
         const portfolio = dbGet('SELECT id FROM portfolios WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
@@ -1121,8 +1169,8 @@ router.post('/action', async (req, res) => {
         return res.status(400).json({ error: `Unknown action type: ${type}` });
     }
   } catch (err) {
-    logger.error('AI action error:', err.message);
-    return res.status(500).json({ error: err.message });
+    logger.error('AI action error:', err.message, err.stack);
+    return res.status(500).json({ error: 'Failed to execute action. Please try again.' });
   }
 });
 

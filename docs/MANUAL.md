@@ -123,6 +123,12 @@
   - [17.2 Password Reset](#172-password-reset)
   - [17.3 Database Recovery](#173-database-recovery)
   - [17.4 Service Won't Start](#174-service-wont-start)
+- [18. Security](#18-security)
+  - [18.1 Authentication & Sessions](#181-authentication--sessions)
+  - [18.2 XSS Protection](#182-xss-protection)
+  - [18.3 Rate Limiting](#183-rate-limiting)
+  - [18.4 Input Validation](#184-input-validation)
+  - [18.5 Error Handling](#185-error-handling)
 
 ---
 
@@ -908,7 +914,7 @@ The AI chat is a full conversational interface:
 - Request strategies: *"Suggest a hedging strategy for my NVDA position"*
 - Follow-up questions maintain conversation context
 
-Responses are capped at **2048 tokens** to keep them focused. Conversation history is limited to the **last 20 messages** sent to the AI for context.
+Messages are limited to **5,000 characters**. Responses are capped at **2048 tokens** to keep them focused. Conversation history is limited to the **last 20 messages** sent to the AI for context.
 
 ### 13.3 Context Chips
 
@@ -1314,6 +1320,8 @@ Body: raw binary database file
 | `POST` | `/api/ai/analyze/portfolio` | ✅ | Quick portfolio review |
 | `POST` | `/api/ai/analyze/watchlist` | ✅ | Quick watchlist signals |
 | `POST` | `/api/ai/analyze/position` | ✅ | Quick position deep dive |
+| `POST` | `/api/ai/analyze/strategy` | ✅ | Strategy advisor (options, DCA, hedging) |
+| `POST` | `/api/ai/analyze/risk` | ✅ | Risk & correlation analysis |
 | `GET` | `/api/ai/conversations` | ✅ | List saved conversations |
 | `POST` | `/api/ai/conversations` | ✅ | Save conversation |
 | `GET` | `/api/ai/conversations/:id` | ✅ | Load conversation |
@@ -1355,6 +1363,8 @@ The API enforces rate limits to prevent abuse:
 |-------|-------|--------|
 | **Auth endpoints** | 10 requests | 15 minutes |
 | **General API** | 100 requests | 1 minute |
+| **AI chat** | 10 requests | 1 minute |
+| **AI analysis** | 5 requests | 1 minute |
 | **Write operations** | 30 requests | 1 minute |
 | **OHLCV collection** | Stricter limit | Shared with write ops |
 
@@ -1611,6 +1621,55 @@ Common causes:
 - **Permission denied:** Ensure the service user has read/write access to the data directory.
 - **Node.js version:** Requires Node.js 18+. Check with `node --version`.
 - **Corrupt database:** See [§17.3](#173-database-recovery).
+
+---
+
+## 18. Security
+
+Portfolio Tracker Pro includes multiple layers of security hardening to protect your data and prevent abuse.
+
+### 18.1 Authentication & Sessions
+
+- Passwords are hashed with **Argon2id** (OWASP-recommended) with tuned memory/time/parallelism parameters.
+- Sessions use **httpOnly JWT cookies** (not accessible to JavaScript) with 30-day expiry.
+- Password requirements enforce minimum 8 characters with uppercase, lowercase, and numeric characters.
+
+### 18.2 XSS Protection
+
+All AI-generated responses are sanitized with **DOMPurify** before rendering in the browser. This prevents cross-site scripting (XSS) attacks through malicious content in AI responses or any user-facing rendered HTML. Markdown rendering (via marked.js) passes through DOMPurify before insertion into the DOM.
+
+### 18.3 Rate Limiting
+
+Rate limits are enforced at multiple tiers to prevent abuse (see also [§14.16](#1416-rate-limiting)):
+
+| Scope | Limit | Window |
+|-------|-------|--------|
+| **Auth endpoints** (login/register) | 10 requests | 15 minutes |
+| **AI chat messages** | 10 requests | 1 minute |
+| **AI analysis actions** | 5 requests | 1 minute |
+| **General API** | 100 requests | 1 minute |
+| **Write operations** | 30 requests | 1 minute |
+
+Exceeding any limit returns HTTP `429 Too Many Requests` with a `Retry-After` header.
+
+### 18.4 Input Validation
+
+All AI-related inputs are validated server-side:
+
+- **Ticker symbols** must match a valid format (1–10 uppercase alphanumeric characters, with optional `-`, `.`, `^`, `=` for special tickers like `BTC-USD` or `GC=F`).
+- **Quantities and prices** must be positive numbers.
+- **Chat messages** are capped at **5,000 characters**.
+- **Provider names** are validated against the list of supported providers.
+
+General input validation is applied across all endpoints — field types, lengths, and formats are checked before processing.
+
+### 18.5 Error Handling
+
+Error responses are **sanitized** to prevent information leakage:
+
+- No database schema details, SQL queries, or stack traces are exposed in error responses.
+- All errors return a generic, human-readable message (see [§14.17](#1417-error-format)).
+- Server-side errors are logged internally for debugging but the client only sees `"Internal server error"`.
 
 ---
 

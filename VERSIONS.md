@@ -1,4 +1,13 @@
 # Portfolio Tracker Pro — Version History
+## v0.27.0 — Security Hardening (2026-02-10)
+- DOMPurify XSS protection on AI response rendering
+- Rate limiting on AI endpoints (10 req/min chat, 5 req/min analysis)
+- Input validation on AI actions (symbol format, positive quantities/prices)
+- Message length limit (5,000 characters)
+- Removed fallback JWT secret
+- Sanitized SQL error messages
+- Updated manual with §18 Security section
+
 ## v0.26.0 (2026-02-10)
 ### New Features
 - **Strategy Advisor**: New Oracle quick action (🎯) — personalized trading strategies including options plays, DCA plans, hedging suggestions, and position sizing recommendations

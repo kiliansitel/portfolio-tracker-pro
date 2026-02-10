@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.26.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.27.0-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -132,6 +132,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.27.0** | Security hardening — DOMPurify XSS protection, rate limiting, input validation, error sanitization |
 | **v0.26.0** | Strategy Advisor, Risk & Correlation Analysis, Scheduled Auto-Reports (daily/weekly) |
 | **v0.25.0** | Voice input for Oracle AI, PDF export for AI insights, modal fixes, AH badge improvements |
 | **v0.24.0** | After-hours/pre-market pricing, dividend tracking & income calendar, sector/geo exposure |
