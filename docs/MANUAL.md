@@ -130,7 +130,7 @@
 
 When you first open Portfolio Tracker Pro, you'll see the login screen.
 
-![Login & Registration](../screenshots/login.jpg)
+![Login & Registration](../screenshots/login.png)
 
 1. Click the **Register** tab at the top of the auth box.
 2. Enter a **username**, **email**, and **password** (minimum 8 characters, must include uppercase, lowercase, and a number).
@@ -141,7 +141,7 @@ On successful registration, the app automatically:
 - Creates a **Main Watchlist** for you to start tracking tickers.
 - Logs you in with a 30-day session.
 
-![Dashboard](../screenshots/dashboard.jpg)
+![Dashboard](../screenshots/dashboard.png)
 
 ### 1.2 Login
 
@@ -259,7 +259,7 @@ Cash is included in total portfolio value and the allocation chart (displayed in
 
 ## 3. Positions Page
 
-![Positions](../screenshots/positions.jpg)
+![Positions](../screenshots/positions.png)
 
 ### 3.1 Summary Bar
 
@@ -310,6 +310,28 @@ Positions created or updated from on-chain wallets display a **🔗** badge next
 - Are automatically updated when wallets sync (every 5 minutes).
 - Reflect the aggregated balance across all wallets for that chain.
 - Are removed if all wallets for that chain are deleted.
+
+---
+
+### 3.5 Dividends
+
+Positions that pay dividends show a **💰 yield badge** on their card with the annual dividend yield percentage.
+
+A **Dividends summary** appears on the Portfolio page showing:
+- **Annual Income** — estimated total annual dividend income across all positions.
+- **Average Yield** — weighted average dividend yield.
+- **Next Ex-Date** — the soonest upcoming ex-dividend date.
+
+Click the **📅 Calendar** button to open the **Dividend Income Calendar**:
+
+![Dividend Income Calendar](../screenshots/dividend-calendar.png)
+
+The calendar shows:
+- **Monthly breakdown** — horizontal bar chart of expected income by month.
+- **Upcoming ex-dates** — list of positions with their next ex-dividend date and countdown.
+- **Status badges** — "passed" for past dates, countdown (e.g., "in 2d") for upcoming ones.
+
+Dividend data is sourced from Yahoo Finance and includes: annual rate, yield, and ex-dividend dates.
 
 ---
 
@@ -412,7 +434,7 @@ When a wallet is deleted:
 
 ## 5. Watchlists
 
-![Watchlist](../screenshots/watchlist.jpg)
+![Watchlist](../screenshots/watchlist.png)
 
 ### 5.1 Creating Watchlists
 
@@ -471,7 +493,7 @@ If set, the watchlist item shows a colored **🔔 BUY** or **🔔 SELL** badge.
 
 ## 6. Alerts
 
-![Alerts](../screenshots/alerts.jpg)
+![Alerts](../screenshots/alerts.png)
 
 ### 6.1 Creating Price Alerts
 
@@ -560,7 +582,7 @@ Select the time range for chart data:
 
 ### 7.5 Full-Screen Chart Detail
 
-![Chart Detail](../screenshots/chart-detail.jpg)
+![Chart Detail](../screenshots/chart-detail.png)
 
 Click on any ticker (in the markets grid, watchlist, or positions) to open a **full-screen chart detail modal**. This modal provides:
 
@@ -609,7 +631,7 @@ Strike prices are filtered to ±15% of the current price to keep the view focuse
 
 ## 9. Transactions
 
-![Transactions](../screenshots/transactions.jpg)
+![Transactions](../screenshots/transactions.png)
 
 ### 9.1 Transaction History
 
@@ -652,7 +674,7 @@ Sell transactions, combined with your entry prices, allow calculation of **reali
 
 ## 10. News Feed
 
-![News](../screenshots/news.jpg)
+![News](../screenshots/news.png)
 
 ### 10.1 Market News
 
@@ -688,9 +710,23 @@ The Dashboard features a **Performance Chart** that tracks your portfolio value 
 - **Daily snapshots:** Automatically saved on each visit and via a daily cron job (10 PM ET, Mon–Fri).
 - **Historical reconstruction:** Can rebuild history from your transactions and position data, fetching historical prices from Yahoo Finance.
 
-### 11.2 Allocation Donut Chart
+### 11.2 Allocation, Sector & Geographic Exposure
 
-![Allocation Donut Chart](../screenshots/allocation.jpg)
+![Allocation Donut Chart](../screenshots/allocation.png)
+
+A **donut chart** on the Dashboard shows portfolio breakdown, with three tabbed views:
+
+**📊 Allocation** — breakdown by individual position (default view).
+
+**🏭 Sectors** — breakdown by industry sector (Technology, Healthcare, etc.).
+
+![Sector Exposure](../screenshots/sector-exposure.png)
+
+**🌍 Regions** — breakdown by geographic region (North America, Europe, Asia, Crypto/Digital).
+
+![Region Exposure](../screenshots/region-exposure.png)
+
+Click the tab buttons above the chart to switch views. Crypto positions are categorized as "Crypto/Digital" in the regions view and "Crypto" in the sectors view. Sector and region data is sourced from Yahoo Finance with 24-hour caching.
 
 A **donut chart** on the Dashboard shows portfolio breakdown:
 - Each position gets a unique color slice.
@@ -710,7 +746,7 @@ The app stores daily **Open/High/Low/Close/Volume** data for all tracked symbols
 
 ## 12. Settings
 
-![Settings](../screenshots/settings.jpg)
+![Settings](../screenshots/settings.png)
 
 ### 12.1 Theme
 
@@ -831,7 +867,7 @@ When an update is available, the app shows how many commits are ahead and a butt
 
 ## 13. Oracle AI
 
-![Oracle AI](../screenshots/oracle-ai.jpg)
+![Oracle AI](../screenshots/oracle-response-top.png)
 
 Oracle AI connects your portfolio tracker to any LLM provider for intelligent analysis, chat, and insights — all without your data leaving your server.
 
