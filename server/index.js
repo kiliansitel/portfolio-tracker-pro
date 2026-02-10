@@ -32,6 +32,7 @@ const walletsRouter = require('./routes/wallets');
 const updatesRouter = require('./routes/updates');
 const backupRouter = require('./routes/backup');
 const aiRouter = require('./routes/ai');
+const reportsRouter = require('./routes/reports');
 
 // Currency utilities
 const { fetchExchangeRates, SUPPORTED_CURRENCIES } = require('./utils/currency');
@@ -117,6 +118,7 @@ app.use('/api/history', authenticateToken, historyRouter);
 app.use('/api/updates', authenticateToken, updatesRouter);
 app.use('/api/backup', authenticateToken, backupRouter);
 app.use('/api/ai', authenticateToken, aiRouter);
+app.use('/api/ai/reports', authenticateToken, reportsRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -141,6 +143,11 @@ app.get('*', (req, res) => {
 // Start server
 async function start() {
   await initDatabase();
+  
+  // Start report scheduler
+  const { startReportScheduler } = require('./utils/report-scheduler');
+  startReportScheduler();
+  
   app.listen(PORT, () => {
     logger.info(`🚀 Portfolio Tracker API running on http://localhost:${PORT}`);
   });

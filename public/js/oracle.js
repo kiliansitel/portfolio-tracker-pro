@@ -811,6 +811,28 @@ async function aiQuickAction(type) {
             endpoint = '/ai/analyze/news';
             userLabel = '📰 News digest for my holdings';
             break;
+        case 'strategy':
+            endpoint = '/ai/analyze/strategy';
+            userLabel = '🎯 Suggest trading strategies';
+            // Auto-enable Portfolio context chip
+            aiActiveContexts = [];
+            document.querySelectorAll('.ai-context-chip').forEach(c => c.classList.remove('active'));
+            ['portfolio'].forEach(ctx => {
+                const chip = document.querySelector(`.ai-context-chip[data-context="${ctx}"]`);
+                if (chip) { chip.classList.add('active'); aiActiveContexts.push(ctx); }
+            });
+            break;
+        case 'risk':
+            endpoint = '/ai/analyze/risk';
+            userLabel = '🛡️ Analyze portfolio risk';
+            // Auto-enable Portfolio context chip
+            aiActiveContexts = [];
+            document.querySelectorAll('.ai-context-chip').forEach(c => c.classList.remove('active'));
+            ['portfolio'].forEach(ctx => {
+                const chip = document.querySelector(`.ai-context-chip[data-context="${ctx}"]`);
+                if (chip) { chip.classList.add('active'); aiActiveContexts.push(ctx); }
+            });
+            break;
         case 'position':
             openTickerSearchModal();
             return;
@@ -1548,8 +1570,11 @@ async function loadAiConversations() {
         const date = new Date(conv.updated_at || conv.created_at);
         const timeStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
         const isActive = conv.id === aiCurrentConversationId;
-        const contextBadge = conv.context && conv.context !== 'general' ?
-            `<span style="font-size:0.7rem;background:var(--bg-tertiary);padding:1px 6px;border-radius:8px;">${conv.context}</span>` : '';
+        const isReport = conv.context && conv.context.startsWith('report-');
+        const contextBadge = isReport 
+            ? `<span style="font-size:0.7rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:1px 6px;border-radius:8px;">📊 ${conv.context === 'report-daily' ? 'Daily' : 'Weekly'}</span>`
+            : (conv.context && conv.context !== 'general' ?
+            `<span style="font-size:0.7rem;background:var(--bg-tertiary);padding:1px 6px;border-radius:8px;">${conv.context}</span>` : '');
 
         html += `<div class="ai-conv-item ${isActive ? 'active' : ''}" onclick="loadAiConversation(${conv.id})">
             <div style="overflow:hidden;">

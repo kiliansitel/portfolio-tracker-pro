@@ -49,6 +49,7 @@ function showPage(page) {
     if (page === 'news') loadNews();
     if (page === 'ai') initAi();
     if (page === 'wallets') renderWallets();
+    if (page === 'settings') loadReportSettings();
 }
 
 function closeModal(id) {

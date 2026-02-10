@@ -416,3 +416,83 @@ async function changeUpdateChannel() {
     }
 }
 
+// ============ SCHEDULED REPORTS ============
+
+async function loadReportSettings() {
+    if (!token) return; // Not logged in yet
+    try {
+        const settings = await api('/ai/reports/settings');
+        
+        document.getElementById('reportDailyEnabled').checked = !!settings.daily?.enabled;
+        document.getElementById('reportDailyTime').value = settings.daily?.time || '09:00';
+        if (settings.daily?.timezone) document.getElementById('reportDailyTimezone').value = settings.daily.timezone;
+        if (settings.daily?.lastGenerated) {
+            document.getElementById('reportDailyLastGen').textContent = 'Last generated: ' + new Date(settings.daily.lastGenerated).toLocaleString();
+        }
+
+        document.getElementById('reportWeeklyEnabled').checked = !!settings.weekly?.enabled;
+        if (settings.weekly?.day) document.getElementById('reportWeeklyDay').value = settings.weekly.day;
+        document.getElementById('reportWeeklyTime').value = settings.weekly?.time || '09:00';
+        if (settings.weekly?.timezone) document.getElementById('reportWeeklyTimezone').value = settings.weekly.timezone;
+        if (settings.weekly?.lastGenerated) {
+            document.getElementById('reportWeeklyLastGen').textContent = 'Last generated: ' + new Date(settings.weekly.lastGenerated).toLocaleString();
+        }
+    } catch (e) {
+        console.error('Failed to load report settings:', e);
+    }
+}
+
+async function saveReportSettings() {
+    try {
+        const payload = {
+            daily: {
+                enabled: document.getElementById('reportDailyEnabled').checked,
+                time: document.getElementById('reportDailyTime').value,
+                timezone: document.getElementById('reportDailyTimezone').value
+            },
+            weekly: {
+                enabled: document.getElementById('reportWeeklyEnabled').checked,
+                day: document.getElementById('reportWeeklyDay').value,
+                time: document.getElementById('reportWeeklyTime').value,
+                timezone: document.getElementById('reportWeeklyTimezone').value
+            }
+        };
+
+        await api('/ai/reports/settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        showToast('Report settings saved', 'success');
+    } catch (e) {
+        showToast('Failed to save report settings: ' + e.message, 'error');
+    }
+}
+
+async function generateReportNow(type) {
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Generating...';
+    btn.disabled = true;
+
+    try {
+        const result = await api('/ai/reports/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type })
+        });
+
+        showToast(`${type === 'daily' ? 'Daily' : 'Weekly'} report generated! Check Oracle conversations.`, 'success');
+        
+        // Update last generated time
+        const el = document.getElementById(type === 'daily' ? 'reportDailyLastGen' : 'reportWeeklyLastGen');
+        if (el) el.textContent = 'Last generated: ' + new Date().toLocaleString();
+    } catch (e) {
+        showToast('Report generation failed: ' + e.message, 'error');
+    } finally {
+        btn.textContent = originalText;
+        btn.disabled = false;
+    }
+}
+

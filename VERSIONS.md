@@ -1,4 +1,14 @@
 # Portfolio Tracker Pro — Version History
+## v0.26.0 (2026-02-10)
+### New Features
+- **Strategy Advisor**: New Oracle quick action (🎯) — personalized trading strategies including options plays, DCA plans, hedging suggestions, and position sizing recommendations
+- **Risk & Correlation Analysis**: New Oracle quick action (🛡️) — portfolio risk assessment covering concentration risk, correlation analysis, sector exposure, beta, tail risk scenarios, and diversification scoring
+- **Scheduled Auto-Reports**: In-app daily portfolio summaries and weekly digests — configure in Settings with time/timezone pickers. Reports save as Oracle conversations with 📊 badges. No external tools needed.
+
+### Technical
+- Added node-cron for in-app report scheduling
+- Report scheduler runs on server boot, checks every minute for due reports
+
 ## v0.25.0 (2026-02-10)
 ### New Features
 - **Voice input for Oracle AI**: Microphone button (🎤) next to chat input — speak your questions using Web Speech API. Pulsing red animation while listening, auto-hides on unsupported browsers.

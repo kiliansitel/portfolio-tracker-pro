@@ -129,7 +129,7 @@ async function buildSystemPrompt(userId, context) {
 
   // Handle analysis follow-ups: rebuild the same context the analysis had
   // 'analysis' (legacy) falls back to portfolio+market context
-  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.includes('analysis-rebalance') || contexts.some(c => c.startsWith('analysis-position:'))) {
+  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.includes('analysis-rebalance') || contexts.includes('analysis-strategy') || contexts.includes('analysis-risk') || contexts.some(c => c.startsWith('analysis-position:'))) {
     // Switch to analysis-style system prompt for continuity
     systemContent = `You are Oracle, an expert financial analyst built into Portfolio Tracker Pro.\n\n` +
       `## Analysis Guidelines\n` +
@@ -158,6 +158,14 @@ async function buildSystemPrompt(userId, context) {
     if (contexts.includes('analysis-rebalance')) {
       systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
       systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    if (contexts.includes('analysis-strategy')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += buildMarketContext() + '\n';
+    }
+    if (contexts.includes('analysis-risk')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
       systemContent += buildMarketContext() + '\n';
     }
     const posContext = contexts.find(c => c.startsWith('analysis-position:'));
@@ -887,6 +895,103 @@ router.post('/analyze/rebalance', async (req, res) => {
 Consider my watchlist items as potential buy candidates. Be specific with numbers — no vague suggestions.`;
 
   await runAnalysis(req, res, portfolioData + '\n' + watchlistData + '\n' + marketData, userPrompt, 'analysis-rebalance');
+});
+
+// POST /analyze/strategy — personalized trading strategy advisor
+router.post('/analyze/strategy', async (req, res) => {
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+  const marketData = buildMarketContext();
+
+  const userPrompt = `Based on my portfolio, act as my personal strategy advisor and suggest:
+
+1. **Options Strategies** — For my largest positions, recommend specific options plays:
+   - Covered calls (strike price, expiry, premium estimate)
+   - Protective puts for downside protection
+   - Spreads (bull/bear) where appropriate
+   - Be specific with strike prices and expiry dates
+
+2. **DCA Plan** — Which positions should I accumulate over time?
+   - Specific dollar amounts per week/month
+   - Target entry zones for adding
+   - Priority order (best opportunities first)
+
+3. **Hedging Strategies** — How to protect against downside:
+   - Portfolio-level hedges (index puts, inverse ETFs)
+   - Position-specific protection
+   - Cost of protection vs. portfolio value
+
+4. **Position Sizing** — Based on conviction levels:
+   - Which positions are oversized or undersized?
+   - Recommended allocation percentages
+   - Cash reserve recommendation
+
+Be specific with dollar amounts, strike prices, expiry dates, and percentages. Reference my actual positions and P&L data.`;
+
+  await runAnalysis(req, res, portfolioData + '\n' + marketData, userPrompt, 'analysis-strategy');
+});
+
+// POST /analyze/risk — portfolio risk & correlation analysis
+router.post('/analyze/risk', async (req, res) => {
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+  const marketData = buildMarketContext();
+
+  // Fetch exposure data (sectors/regions) if available
+  let exposureContext = '';
+  try {
+    const positions = dbAll(`
+      SELECT p.symbol, p.quantity, COALESCE(p.current_price, p.entry_price) as price,
+             p.entry_price, p.sector, p.region,
+             pf.name as portfolio_name
+      FROM positions p
+      JOIN portfolios pf ON p.portfolio_id = pf.id
+      WHERE pf.user_id = ?
+    `, [req.user.id]);
+
+    if (positions.length) {
+      const totalValue = positions.reduce((sum, p) => sum + (p.quantity * p.price), 0);
+      exposureContext = `\n## Position Weights\n\n`;
+      exposureContext += `| Symbol | Value | Weight | P&L % |\n|--------|-------|--------|-------|\n`;
+      for (const p of positions.sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price))) {
+        const value = p.quantity * p.price;
+        const weight = ((value / totalValue) * 100).toFixed(1);
+        const pnlPct = p.entry_price > 0 ? (((p.price - p.entry_price) / p.entry_price) * 100).toFixed(1) : '0.0';
+        exposureContext += `| ${p.symbol} | $${value.toFixed(0)} | ${weight}% | ${pnlPct}% |\n`;
+      }
+
+      // Sector breakdown if available
+      const sectors = {};
+      for (const p of positions) {
+        const sec = p.sector || 'Unknown';
+        sectors[sec] = (sectors[sec] || 0) + (p.quantity * p.price);
+      }
+      if (Object.keys(sectors).length > 1 || !sectors['Unknown']) {
+        exposureContext += `\n## Sector Exposure\n\n`;
+        for (const [sec, val] of Object.entries(sectors).sort((a, b) => b[1] - a[1])) {
+          exposureContext += `- **${sec}**: $${val.toFixed(0)} (${((val / totalValue) * 100).toFixed(1)}%)\n`;
+        }
+      }
+    }
+  } catch (e) {
+    logger.error('Risk analysis exposure fetch error:', e.message);
+  }
+
+  const userPrompt = `Analyze my portfolio's risk profile in depth:
+
+1. **Concentration Risk** — Which positions are oversized? What percentage of the portfolio is in the top 3 holdings? Flag any position above 15% weight.
+
+2. **Correlation Analysis** — Which holdings likely move together and create hidden concentration risk? Group correlated positions (e.g., multiple tech stocks, crypto pairs, same-sector bets). What's the effective number of independent bets?
+
+3. **Sector/Geographic Concentration** — Am I overexposed to any sector or region? What's missing?
+
+4. **Beta Exposure** — How volatile is my portfolio vs the market? Estimate the portfolio beta. Which positions contribute most to volatility?
+
+5. **Tail Risk Scenarios** — What happens in a -20% market crash? Estimate my portfolio drawdown. Which positions would be hit hardest? What about a sector-specific crash?
+
+6. **Diversification Score** (1-10) — Rate my portfolio's diversification with specific suggestions to improve it. What would I need to add or trim to reach a 9/10?
+
+Use my actual position sizes, weights, and percentages. Be specific with numbers.`;
+
+  await runAnalysis(req, res, portfolioData + '\n' + marketData + exposureContext, userPrompt, 'analysis-risk');
 });
 
 // ═══════════════════════════════════════════════════════════════════

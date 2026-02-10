@@ -4,7 +4,7 @@
   <img src="../logo.svg" alt="Portfolio Tracker Pro" width="96" height="96">
 </p>
 
-> **Version:** 0.25.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
+> **Version:** 0.26.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
 
 ---
 
@@ -931,6 +931,8 @@ Quick actions are one-tap analysis shortcuts that appear at the top of the AI pa
 - **📊 Portfolio Review** — Comprehensive analysis of your holdings, diversification, risk exposure, and suggestions
 - **👀 Watchlist Signals** — Scans your watchlist for entry/exit signals and momentum patterns
 - **🔍 Position Deep Dive** — In-depth analysis of a specific position (prompts you for the ticker)
+- **🎯 Strategy Advisor** — Personalized trading strategies including options plays, DCA plans, hedging suggestions, and position sizing recommendations
+- **🛡️ Risk & Correlation Analysis** — Portfolio risk assessment covering concentration risk, correlation analysis, sector exposure, beta, tail risk scenarios, and diversification scoring
 
 Quick actions automatically enable the relevant context chips and send a pre-crafted prompt.
 
@@ -945,7 +947,22 @@ Conversations are persisted so you can revisit past analyses:
 
 Each conversation stores the full message history, provider used, and timestamp.
 
-### 13.6 OpenClaw Integration
+### 13.6 Scheduled Auto-Reports
+
+Configure automated AI-generated portfolio reports from **Settings → Scheduled Reports**:
+
+- **Daily Summary** — A daily portfolio overview generated at your chosen time. Covers performance, movers, and key metrics.
+- **Weekly Digest** — A comprehensive weekly analysis generated on your chosen day/time. Includes trends, allocation changes, and recommendations.
+
+**Configuration:**
+1. Go to **Settings** → scroll to **Scheduled Reports**
+2. Toggle daily and/or weekly reports on
+3. Set your preferred time and timezone
+4. Reports are generated automatically and saved as Oracle conversations with a 📊 badge
+
+Reports use whichever AI provider you have configured. No external tools or cron jobs needed — scheduling runs entirely within the app.
+
+### 13.7 OpenClaw Integration
 
 If you're running Portfolio Tracker Pro alongside **OpenClaw**, AI is available with zero configuration:
 
@@ -1324,7 +1341,7 @@ The response is a Server-Sent Events (SSE) stream. Each event contains a `data` 
 **Info response:**
 ```json
 {
-  "version": "0.25.0",
+  "version": "0.26.0",
   "env": "production",
   "name": "Portfolio Pro"
 }

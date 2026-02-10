@@ -362,6 +362,8 @@
                         <button class="ai-quick-btn" onclick="aiQuickAction('rebalance')">⚖️ Rebalance Ideas</button>
                         <button class="ai-quick-btn" onclick="aiQuickAction('news')">📰 News Digest</button>
                         <button class="ai-quick-btn" onclick="aiQuickAction('position')">🔍 Analyze Position</button>
+                        <button class="ai-quick-btn" onclick="aiQuickAction('strategy')">🎯 Strategy Advisor</button>
+                        <button class="ai-quick-btn" onclick="aiQuickAction('risk')">🛡️ Risk Analysis</button>
                     </div>
                     <div class="ai-quick-actions" id="aiSuggestions" style="display:none;"></div>
 
@@ -536,6 +538,79 @@
                                     <button class="theme-btn active" data-theme="dark" onclick="setTheme('dark')">🌙</button>
                                     <button class="theme-btn" data-theme="auto" onclick="setThemeAuto()">🔄</button>
                                 </div>
+                            </div>
+                        </div>
+                        <div class="settings-section" id="scheduledReportsSection">
+                            <h3>📊 Scheduled Reports</h3>
+                            <div class="setting-desc" style="margin-bottom:12px;">Automatic AI-generated portfolio summaries on a schedule. Reports appear in Oracle conversations.</div>
+                            
+                            <div class="setting-item">
+                                <div style="flex:1;">
+                                    <div class="setting-label">Daily Report</div>
+                                    <div class="setting-desc">Portfolio summary, P&L, notable movers</div>
+                                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+                                        <input type="time" id="reportDailyTime" value="09:00" onchange="saveReportSettings()" style="padding:6px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.85rem;">
+                                        <select id="reportDailyTimezone" onchange="saveReportSettings()" style="padding:6px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.85rem;">
+                                            <option value="America/New_York">🇺🇸 US Eastern</option>
+                                            <option value="America/Chicago">🇺🇸 US Central</option>
+                                            <option value="America/Denver">🇺🇸 US Mountain</option>
+                                            <option value="America/Los_Angeles">🇺🇸 US Pacific</option>
+                                            <option value="UTC">🌐 UTC</option>
+                                            <option value="Europe/London">🇬🇧 London</option>
+                                            <option value="Europe/Brussels">🇧🇪 Brussels</option>
+                                            <option value="Europe/Berlin">🇩🇪 Berlin</option>
+                                            <option value="Europe/Paris">🇫🇷 Paris</option>
+                                            <option value="Asia/Tokyo">🇯🇵 Tokyo</option>
+                                            <option value="Asia/Shanghai">🇨🇳 Shanghai</option>
+                                            <option value="Australia/Sydney">🇦🇺 Sydney</option>
+                                        </select>
+                                        <button class="btn btn-secondary" onclick="generateReportNow('daily')" style="padding:4px 10px;font-size:0.8rem;">▶️ Generate Now</button>
+                                    </div>
+                                    <div class="setting-desc" id="reportDailyLastGen" style="margin-top:4px;font-size:0.7rem;"></div>
+                                </div>
+                                <label class="toggle-switch" style="margin-left:12px;">
+                                    <input type="checkbox" id="reportDailyEnabled" onchange="saveReportSettings()">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+
+                            <div class="setting-item" style="margin-top:8px;">
+                                <div style="flex:1;">
+                                    <div class="setting-label">Weekly Digest</div>
+                                    <div class="setting-desc">Week in review, performance, recommendations</div>
+                                    <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+                                        <select id="reportWeeklyDay" onchange="saveReportSettings()" style="padding:6px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.85rem;">
+                                            <option value="monday">Monday</option>
+                                            <option value="tuesday">Tuesday</option>
+                                            <option value="wednesday">Wednesday</option>
+                                            <option value="thursday">Thursday</option>
+                                            <option value="friday">Friday</option>
+                                            <option value="saturday">Saturday</option>
+                                            <option value="sunday">Sunday</option>
+                                        </select>
+                                        <input type="time" id="reportWeeklyTime" value="09:00" onchange="saveReportSettings()" style="padding:6px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.85rem;">
+                                        <select id="reportWeeklyTimezone" onchange="saveReportSettings()" style="padding:6px 8px;background:var(--bg-tertiary);border:1px solid var(--border-color);border-radius:4px;color:var(--text-primary);font-size:0.85rem;">
+                                            <option value="America/New_York">🇺🇸 US Eastern</option>
+                                            <option value="America/Chicago">🇺🇸 US Central</option>
+                                            <option value="America/Denver">🇺🇸 US Mountain</option>
+                                            <option value="America/Los_Angeles">🇺🇸 US Pacific</option>
+                                            <option value="UTC">🌐 UTC</option>
+                                            <option value="Europe/London">🇬🇧 London</option>
+                                            <option value="Europe/Brussels">🇧🇪 Brussels</option>
+                                            <option value="Europe/Berlin">🇩🇪 Berlin</option>
+                                            <option value="Europe/Paris">🇫🇷 Paris</option>
+                                            <option value="Asia/Tokyo">🇯🇵 Tokyo</option>
+                                            <option value="Asia/Shanghai">🇨🇳 Shanghai</option>
+                                            <option value="Australia/Sydney">🇦🇺 Sydney</option>
+                                        </select>
+                                        <button class="btn btn-secondary" onclick="generateReportNow('weekly')" style="padding:4px 10px;font-size:0.8rem;">▶️ Generate Now</button>
+                                    </div>
+                                    <div class="setting-desc" id="reportWeeklyLastGen" style="margin-top:4px;font-size:0.7rem;"></div>
+                                </div>
+                                <label class="toggle-switch" style="margin-left:12px;">
+                                    <input type="checkbox" id="reportWeeklyEnabled" onchange="saveReportSettings()">
+                                    <span class="toggle-slider"></span>
+                                </label>
                             </div>
                         </div>
                         <div class="settings-section">
