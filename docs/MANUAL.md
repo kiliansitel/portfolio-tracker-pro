@@ -28,6 +28,7 @@
   - [3.2 Grouped View](#32-grouped-view)
   - [3.3 Position Cards](#33-position-cards)
   - [3.4 Wallet-Synced Positions](#34-wallet-synced-positions)
+  - [3.5 Dividends](#35-dividends)
 - [4. Blockchain Wallets](#4-blockchain-wallets)
   - [4.1 Adding a Wallet](#41-adding-a-wallet)
   - [4.2 Supported Chains](#42-supported-chains)
@@ -69,7 +70,7 @@
   - [10.3 Custom Search](#103-custom-search)
 - [11. Performance & Analytics](#11-performance--analytics)
   - [11.1 Performance Chart](#111-performance-chart)
-  - [11.2 Allocation Donut Chart](#112-allocation-donut-chart)
+  - [11.2 Allocation, Sector & Geographic Exposure](#112-allocation-sector--geographic-exposure)
   - [11.3 Daily OHLCV Data](#113-daily-ohlcv-data)
 - [12. Settings](#12-settings)
   - [12.1 Theme](#121-theme)
@@ -90,37 +91,38 @@
   - [13.5 Conversation Management](#135-conversation-management)
   - [13.6 OpenClaw Integration](#136-openclaw-integration)
 - [14. API Reference](#14-api-reference)
-  - [13.1 Authentication](#131-authentication)
-  - [13.2 Auth Endpoints](#132-auth-endpoints)
-  - [13.3 Portfolio Endpoints](#133-portfolio-endpoints)
-  - [13.4 Watchlist Endpoints](#134-watchlist-endpoints)
-  - [13.5 Alert Endpoints](#135-alert-endpoints)
-  - [13.6 Market Data Endpoints](#136-market-data-endpoints)
-  - [13.7 Transaction Endpoints](#137-transaction-endpoints)
-  - [13.8 Wallet Endpoints](#138-wallet-endpoints)
-  - [13.9 Push Notification Endpoints](#139-push-notification-endpoints)
-  - [13.10 History Endpoints](#1310-history-endpoints)
-  - [13.11 Data & Performance Endpoints](#1311-data--performance-endpoints)
-  - [13.12 Update Endpoints](#1312-update-endpoints)
-  - [13.13 Backup Endpoints](#1313-backup-endpoints)
-  - [13.14 Utility Endpoints](#1314-utility-endpoints)
-  - [13.15 Rate Limiting](#1315-rate-limiting)
-  - [13.16 Error Format](#1316-error-format)
+  - [14.1 Authentication](#141-authentication)
+  - [14.2 Auth Endpoints](#142-auth-endpoints)
+  - [14.3 Portfolio Endpoints](#143-portfolio-endpoints)
+  - [14.4 Watchlist Endpoints](#144-watchlist-endpoints)
+  - [14.5 Alert Endpoints](#145-alert-endpoints)
+  - [14.6 Market Data Endpoints](#146-market-data-endpoints)
+  - [14.7 Transaction Endpoints](#147-transaction-endpoints)
+  - [14.8 Wallet Endpoints](#148-wallet-endpoints)
+  - [14.9 Push Notification Endpoints](#149-push-notification-endpoints)
+  - [14.10 History Endpoints](#1410-history-endpoints)
+  - [14.11 Data & Performance Endpoints](#1411-data--performance-endpoints)
+  - [14.12 Update Endpoints](#1412-update-endpoints)
+  - [14.13 Backup Endpoints](#1413-backup-endpoints)
+  - [14.14 AI Endpoints](#1414-ai-endpoints)
+  - [14.15 Utility Endpoints](#1415-utility-endpoints)
+  - [14.16 Rate Limiting](#1416-rate-limiting)
+  - [14.17 Error Format](#1417-error-format)
 - [15. Self-Hosting](#15-self-hosting)
-  - [14.1 Installation](#141-installation)
-  - [14.2 Environment Variables](#142-environment-variables)
-  - [14.3 Database Management](#143-database-management)
-  - [14.4 Backup and Restore](#144-backup-and-restore)
-  - [14.5 Systemd Service](#145-systemd-service)
+  - [15.1 Installation](#151-installation)
+  - [15.2 Environment Variables](#152-environment-variables)
+  - [15.3 Database Management](#153-database-management)
+  - [15.4 Backup and Restore](#154-backup-and-restore)
+  - [15.5 Systemd Service](#155-systemd-service)
 - [16. Mobile Gestures & Power Tips](#16-mobile-gestures--power-tips)
-  - [15.1 Swipe Actions](#151-swipe-actions)
-  - [15.2 Desktop Hover Actions](#152-desktop-hover-actions)
-  - [15.3 Power User Tips](#153-power-user-tips)
+  - [16.1 Swipe Actions](#161-swipe-actions)
+  - [16.2 Desktop Hover Actions](#162-desktop-hover-actions)
+  - [16.3 Power User Tips](#163-power-user-tips)
 - [17. Troubleshooting](#17-troubleshooting)
-  - [16.1 Common Issues](#161-common-issues)
-  - [16.2 Password Reset](#162-password-reset)
-  - [16.3 Database Recovery](#163-database-recovery)
-  - [16.4 Service Won't Start](#164-service-wont-start)
+  - [17.1 Common Issues](#171-common-issues)
+  - [17.2 Password Reset](#172-password-reset)
+  - [17.3 Database Recovery](#173-database-recovery)
+  - [17.4 Service Won't Start](#174-service-wont-start)
 
 ---
 
@@ -661,7 +663,7 @@ The **History** page (📜) shows all your buy and sell records, sorted by date 
 
 ### 9.3 On-Chain Imported Transactions
 
-When on-chain transactions are fetched for Bitcoin or Ethereum wallets (see [4.6](#46-on-chain-transaction-history)), they are automatically imported as app-level transactions with:
+When on-chain transactions are fetched for Bitcoin or Ethereum wallets (see [§4.6](#46-on-chain-transaction-history)), they are automatically imported as app-level transactions with:
 - `action`: "buy" for incoming, "sell" for outgoing.
 - `price`: the current market price at time of import.
 - `notes`: a tag referencing the on-chain transaction hash.
@@ -716,7 +718,7 @@ The Dashboard features a **Performance Chart** that tracks your portfolio value 
 
 A **donut chart** on the Dashboard shows portfolio breakdown, with three tabbed views:
 
-**📊 Allocation** — breakdown by individual position (default view).
+**📊 Allocation** — breakdown by individual position (default view). Each position gets a unique color slice. The **legend** shows the top 8 positions with their percentage allocation. **Cash** is shown as a gray slice. Hover or tap a slice to see the exact value and percentage.
 
 **🏭 Sectors** — breakdown by industry sector (Technology, Healthcare, etc.).
 
@@ -727,12 +729,6 @@ A **donut chart** on the Dashboard shows portfolio breakdown, with three tabbed 
 ![Region Exposure](../screenshots/region-exposure.png)
 
 Click the tab buttons above the chart to switch views. Crypto positions are categorized as "Crypto/Digital" in the regions view and "Crypto" in the sectors view. Sector and region data is sourced from Yahoo Finance with 24-hour caching.
-
-A **donut chart** on the Dashboard shows portfolio breakdown:
-- Each position gets a unique color slice.
-- **Legend** shows the top 8 positions with their percentage allocation.
-- **Cash** is shown as a gray slice.
-- Hover or tap a slice to see the exact value and percentage.
 
 ### 11.3 Daily OHLCV Data
 
@@ -806,7 +802,7 @@ Set your **Telegram Chat ID** to receive alert notifications via Telegram. The c
 
 Browser push notifications require:
 - **HTTPS** connection (won't work on plain HTTP).
-- **VAPID keys** configured on the server (see [Environment Variables](#142-environment-variables)).
+- **VAPID keys** configured on the server (see [§15.2](#152-environment-variables)).
 
 Controls:
 - **🔔 Enable** — subscribes to push notifications.
@@ -1327,7 +1323,7 @@ The response is a Server-Sent Events (SSE) stream. Each event contains a `data` 
 **Info response:**
 ```json
 {
-  "version": "0.20.0",
+  "version": "0.24.0",
   "env": "production",
   "name": "Portfolio Pro"
 }
@@ -1378,7 +1374,7 @@ HTTP status codes used:
 
 ## 15. Self-Hosting
 
-### 17.1 Installation
+### 15.1 Installation
 
 For detailed installation instructions (Docker, Docker Compose, Node.js, reverse proxy), see the **[Installation Guide](INSTALL.md)**.
 
@@ -1394,7 +1390,7 @@ cd portfolio-tracker-pro/server
 npm install && npm start
 ```
 
-### 17.2 Environment Variables
+### 15.2 Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -1415,7 +1411,7 @@ npm install && npm start
 npx web-push generate-vapid-keys
 ```
 
-### 17.3 Database Management
+### 15.3 Database Management
 
 Portfolio Tracker Pro uses **SQLite** (via sql.js, an in-memory SQLite compiled to WebAssembly):
 
@@ -1426,7 +1422,7 @@ Portfolio Tracker Pro uses **SQLite** (via sql.js, an in-memory SQLite compiled 
 
 > **⚠️ Important:** The database is loaded into memory on startup. If you need to edit the database file directly, **stop the service first**, make your changes, then restart. Otherwise the in-memory copy will overwrite your changes on the next save.
 
-### 17.4 Backup and Restore
+### 15.4 Backup and Restore
 
 **Backup:**
 ```bash
@@ -1449,7 +1445,7 @@ cp backup-20260207.db /path/to/server/portfolio.db
 sudo systemctl start portfolio-tracker.service
 ```
 
-### 17.5 Systemd Service
+### 15.5 Systemd Service
 
 For running on a Linux server with automatic restart:
 
@@ -1490,7 +1486,7 @@ journalctl -u portfolio-tracker.service -f
 
 ## 16. Mobile Gestures & Power Tips
 
-### 17.1 Swipe Actions
+### 16.1 Swipe Actions
 
 On **mobile** (touch devices), swipe left on list items to reveal action buttons:
 
@@ -1504,11 +1500,11 @@ On **mobile** (touch devices), swipe left on list items to reveal action buttons
 
 Swipe ~80px to the left to reveal buttons, then release. Tap the revealed button to perform the action.
 
-### 17.2 Desktop Hover Actions
+### 16.2 Desktop Hover Actions
 
 On **desktop**, hover over any list item to reveal the same action buttons on the right side. No swiping needed — just hover and click.
 
-### 17.3 Power User Tips
+### 16.3 Power User Tips
 
 - **Quick chart access:** Click any ticker symbol (in watchlist, positions, or markets grid) to instantly open a full chart.
 - **Autocomplete everywhere:** The ticker search in add-position, add-watchlist, and add-alert modals all support autocomplete with 90+ pre-loaded symbols.
@@ -1596,7 +1592,7 @@ Common causes:
 - **Port conflict:** Another process is using the configured port.
 - **Permission denied:** Ensure the service user has read/write access to the data directory.
 - **Node.js version:** Requires Node.js 18+. Check with `node --version`.
-- **Corrupt database:** See [16.3](#163-database-recovery).
+- **Corrupt database:** See [§17.3](#173-database-recovery).
 
 ---
 
