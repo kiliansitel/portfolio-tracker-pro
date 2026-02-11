@@ -74,7 +74,7 @@ jobs:
       
       - name: Test Docker container starts
         run: |
-          docker run -d --name test-container -p 8080:8080 portfolio-tracker-pro:test
+          docker run -d --name test-container -p 8080:8080 -e JWT_SECRET=test-secret-key-for-ci portfolio-tracker-pro:test
           sleep 10
           curl -f http://localhost:8080/api/tickers/popular || (docker logs test-container && exit 1)
           docker stop test-container
