@@ -63,6 +63,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Auto-deploy handled by server-side cron (git pull + restart)
-  # SSH not exposed externally — uses local deploy script instead
-  # See: scripts/auto-deploy.sh on the server
+  deploy:
+    name: Deploy to Server
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd ${{ secrets.DEPLOY_PATH || '/opt/portfolio-tracker' }}
+            docker pull ${{ env.IMAGE_NAME }}:beta
+            docker compose -f docker-compose-beta.yml down
+            docker compose -f docker-compose-beta.yml up -d
+            echo "Beta deployment complete"
