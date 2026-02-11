@@ -28,7 +28,7 @@ router.post('/', createPortfolioValidation, (req, res) => {
 // Add to watchlist
 router.post('/:id/items', watchlistItemValidation, (req, res) => {
   const { id } = req.params;
-  const { symbol, notes } = req.body;
+  const { symbol, notes, name, category, alert_below, alert_above } = req.body;
   
   const watchlist = dbGet('SELECT * FROM watchlists WHERE id = ? AND user_id = ?', [id, req.user.id]);
   if (!watchlist) {
@@ -45,21 +45,26 @@ router.post('/:id/items', watchlistItemValidation, (req, res) => {
     return res.status(400).json({ error: 'Symbol already in watchlist' });
   }
   
-  const result = dbRun('INSERT INTO watchlist_items (watchlist_id, symbol, notes) VALUES (?, ?, ?)', 
-    [id, symbol.toUpperCase(), notes || null]);
+  const result = dbRun(
+    'INSERT INTO watchlist_items (watchlist_id, symbol, notes, name, category, alert_below, alert_above) VALUES (?, ?, ?, ?, ?, ?, ?)', 
+    [id, symbol.toUpperCase(), notes || null, name || null, category || 'general', alert_below || null, alert_above || null]);
   
   res.json({
     id: result.lastInsertRowid,
     watchlist_id: parseInt(id),
     symbol: symbol.toUpperCase(),
-    notes
+    name: name || null,
+    category: category || 'general',
+    notes,
+    alert_below: alert_below || null,
+    alert_above: alert_above || null
   });
 });
 
 // Update watchlist item
 router.put('/items/:id', idParamValidation, (req, res) => {
   const { id } = req.params;
-  const { symbol, notes } = req.body;
+  const { symbol, notes, name, category, alert_below, alert_above } = req.body;
   
   const item = dbGet(`
     SELECT wi.* FROM watchlist_items wi 
@@ -71,8 +76,8 @@ router.put('/items/:id', idParamValidation, (req, res) => {
     return res.status(404).json({ error: 'Item not found' });
   }
   
-  dbRun('UPDATE watchlist_items SET symbol = ?, notes = ? WHERE id = ?', 
-    [symbol?.toUpperCase() || item.symbol, notes ?? item.notes, id]);
+  dbRun('UPDATE watchlist_items SET symbol = ?, notes = ?, name = ?, category = ?, alert_below = ?, alert_above = ? WHERE id = ?', 
+    [symbol?.toUpperCase() || item.symbol, notes ?? item.notes, name ?? item.name, category || item.category || 'general', alert_below !== undefined ? alert_below : item.alert_below, alert_above !== undefined ? alert_above : item.alert_above, id]);
   
   res.json({ message: 'Item updated' });
 });

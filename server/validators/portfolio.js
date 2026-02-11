@@ -24,7 +24,7 @@ const createPortfolioValidation = [
     .escape(),
   
   body('cash')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: 0, max: 999999999 })
     .withMessage('Cash must be a positive number'),
   
@@ -41,14 +41,14 @@ const positionValidation = [
     .withMessage('Invalid symbol format'),
   
   body('name')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 100 })
     .withMessage('Name too long')
     .escape(),
   
   body('type')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['stock', 'crypto', 'etf', 'option', 'bond', 'commodity'])
     .withMessage('Invalid position type'),
   
@@ -61,34 +61,39 @@ const positionValidation = [
     .withMessage('Entry price must be a positive number'),
   
   body('entry_date')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Invalid date format'),
   
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 1000 })
     .withMessage('Notes too long')
     .escape(),
   
   body('strike_price')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: 0, max: 999999 })
     .withMessage('Strike price must be positive'),
   
   body('expiry_date')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Invalid expiry date format'),
   
+  body('currency')
+    .optional({ values: 'falsy' })
+    .isIn(['USD', 'EUR', 'GBP', 'CHF', 'JPY', 'CAD', 'AUD', 'NZD', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'HUF', 'CNY', 'HKD', 'SGD', 'KRW', 'INR', 'BRL', 'MXN', 'ZAR', 'TRY', 'RUB', 'THB', 'TWD', 'ILS'])
+    .withMessage('Invalid currency code'),
+
   body('current_price')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: 0, max: 999999999 })
     .withMessage('Current price must be positive'),
   
   body('multiplier')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: 1, max: 10000 })
     .withMessage('Multiplier must be between 1 and 10000'),
   
@@ -105,21 +110,21 @@ const watchlistItemValidation = [
     .withMessage('Invalid symbol format'),
   
   body('name')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 100 })
     .withMessage('Name too long')
     .escape(),
   
   body('category')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 50 })
     .withMessage('Category too long')
     .escape(),
   
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 1000 })
     .withMessage('Notes too long')
@@ -146,7 +151,7 @@ const alertValidation = [
     .withMessage('Condition must be "above" or "below"'),
   
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 500 })
     .withMessage('Notes too long')
@@ -169,7 +174,7 @@ const transactionValidation = [
     .withMessage('Action must be "buy" or "sell"'),
   
   body('type')
-    .optional()
+    .optional({ values: 'falsy' })
     .isIn(['stock', 'crypto', 'etf', 'option', 'bond', 'commodity'])
     .withMessage('Invalid asset type'),
   
@@ -182,17 +187,17 @@ const transactionValidation = [
     .withMessage('Price must be positive'),
   
   body('executed_at')
-    .optional()
+    .optional({ values: 'falsy' })
     .isISO8601()
     .withMessage('Invalid date format'),
   
   body('fees')
-    .optional()
+    .optional({ values: 'falsy' })
     .isFloat({ min: 0, max: 999999 })
     .withMessage('Fees must be positive'),
   
   body('notes')
-    .optional()
+    .optional({ values: 'falsy' })
     .trim()
     .isLength({ max: 500 })
     .withMessage('Notes too long')

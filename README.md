@@ -5,276 +5,192 @@
 <h1 align="center">Portfolio Tracker Pro</h1>
 
 <p align="center">
-  A TradingView-inspired portfolio tracker with real-time prices, interactive charts, crypto wallet tracking, and multi-user support.
+  <strong>Self-hosted portfolio tracker with AI assistant, real-time prices, and TradingView-style charts.</strong><br>
+  Privacy-first. Mobile-ready. One Docker command to start.
 </p>
 
-![Version](https://img.shields.io/badge/version-0.21.0-blue)
-![Tests](https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg)
-![License](https://img.shields.io/badge/license-MIT-green)
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.28.0-blue" alt="Version">
+  <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
+  <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
+  <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
+</p>
 
-## Features
-
-- 🧠 **Oracle AI** — Multi-provider AI chat (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw), portfolio review, watchlist signals, position deep dive, streaming SSE with markdown, conversation persistence
-- 📊 **Charts & Analytics** — Interactive area/candlestick charts, MA overlays, allocation donut, performance history
-- 💼 **Portfolio Tracking** — Positions, options, cash, transactions with P&L and source/location tracking
-- 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT
-- 🪙 **42 Auto-Detected Tokens** — ERC-20, SPL, and DeFi positions (Aave, Compound, Lido, Rocket Pool)
-- 👀 **Watchlists & Alerts** — 12+ categories, price targets, Telegram & push notifications
-- ⛓️ **Options Chain** — Calls/puts with strikes, expiry dates, ITM highlighting
-- 📰 **News & Multi-Currency** — Real-time market news, EUR/USD/GBP/CHF with live FX rates
-- 📱 **Mobile-First PWA** — Installable app, responsive design, compact numbers ($1.5M), swipe actions, loading skeletons
-- 🔀 **Sort & Search** — Sort positions/watchlist by name, value, P&L%, or change%. Instant search filter
-- 🔒 **Secure & Fast** — JWT + Argon2id, CSP, rate limiting, SQLite with indexed queries, session timeout warning
-- 💾 **Backup & Restore** — Full database backup/restore, smart broker CSV import (Keytrade, IBKR, DeGiro)
-- 🎁 **Demo Mode** — Pre-loaded portfolio for instant exploration
-- 🐳 **Docker & CI/CD** — Multi-arch images (amd64/arm64), GitHub Actions pipeline
-
-## Tech Stack
-
-- **Frontend:** Vanilla JS, [LightweightCharts](https://tradingview.github.io/lightweight-charts/), CSS3
-- **Backend:** Node.js, Express, Helmet
-- **Database:** SQLite (sql.js) with indexed queries
-- **Auth:** JWT + Argon2id (OWASP recommended)
-- **Notifications:** Web Push (VAPID), Telegram Bot API
-- **CI/CD:** GitHub Actions, Docker (multi-arch amd64/arm64)
-- **AI:** Multi-Provider AI (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw)
-- **Security:** Rate limiting, input validation, CSP, audit logging
+<p align="center">
+  <img src="screenshots/dashboard.png" width="280" alt="Dashboard">
+  <img src="screenshots/oracle-response-top.png" width="280" alt="Oracle AI in Action">
+</p>
 
 ## Quick Start
 
-### Docker (Recommended)
 ```bash
-docker run -d -p 8080:8080 -v portfolio-data:/app/data kiliansitel/portfolio-tracker-pro:latest
+docker run -d -p 8080:8080 -e JWT_SECRET=$(openssl rand -hex 32) -v portfolio-data:/app/data kiliansitel/portfolio-tracker-pro:latest
 ```
 
+Open **http://localhost:8080** → create an account → start tracking.
+
+> 🔑 **Set `JWT_SECRET`** for persistent sessions across container restarts.
+
+> **Demo account included** — Username: `demo` / Password: `DemoPass123!`
+
+## Features
+
+- 🧠 **Oracle AI Assistant** — Chat with your portfolio. Build a portfolio from scratch with guided onboarding. Multi-provider support with streaming responses, context injection, and conversation history
+- 🎤 **Voice Input for Oracle AI** — Speak your questions using Web Speech API. Mic button with pulsing animation while listening
+- 📄 **Export AI Conversations as PDF** — Per-message and full conversation export with clean print-friendly layout and branding
+- 🎯 **Strategy Advisor** — Oracle quick action for personalized trading strategies (options plays, DCA plans, hedging, position sizing)
+- 🛡️ **Risk & Correlation Analysis** — Oracle quick action for portfolio risk assessment (concentration, correlation, sector exposure, beta, tail risk)
+- 📊 **Scheduled AI Reports** — Daily portfolio summaries and weekly digests, configurable in Settings. Reports save as Oracle conversations
+- 🤖 **6 AI Providers** — OpenAI, Anthropic, Google, Ollama (with model auto-detection), OpenRouter, and any OpenAI-compatible endpoint
+- 🦙 **Ollama Integration** — Auto-detects available models from any Ollama server (custom ports supported). Configurable context window (`num_ctx`) per model
+- 📈 **Live Charts** — TradingView-quality candlestick charts with RSI (14), MA100/MA200 toggles, 6 timeframes (1D/5D/1M/3M/1Y/All), logarithmic scale on All, auto-fitting, dynamic bar spacing
+- ⚡ **Real-Time Pricing (SSE)** — Server-Sent Events live price streaming (crypto 3s, stocks 8s), micro-tick animations, green/red flash on changes, pulsing live indicator, after-hours/pre-market ticking, index futures on dashboard
+- 📊 **Interactive Charts** — TradingView-powered area/candlestick charts with MA overlays, allocation donut, performance tracking
+- 💼 **Full Portfolio Tracking** — Stocks, options, crypto, cash. P&L, cost basis, transaction history, source/location tracking. Smart P&L handling shows "—" when cost basis is unknown (e.g. wallet-synced positions)
+- 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB + 9 more. Chain-specific address validation, auto-sync on add, wallet delete, ERC-20/SPL token and DeFi position detection
+- 📥 **CSV Import** — Auto-detect format for Interactive Brokers, Keytrade Bank, CoinMarketCap portfolio export, and generic CSV
+- 💱 **Multi-Currency Support** — Positions store original purchase currency (EUR, GBP, etc.). Dashboard aggregates using live exchange rates. Entry prices display in original currency
+- 🕐 **After-Hours / Pre-Market Pricing** — PM (blue) and AH (purple) badges show extended hours prices on position cards, watchlist, and dashboard
+- 💰 **Dividend Tracking & Income Calendar** — Yield badges on positions, annual income estimate, monthly bar chart, upcoming ex-dates
+- 🗺️ **Sector & Geographic Exposure** — Tabbed donut charts (Allocation | Sectors | Regions) on dashboard with Yahoo Finance data
+- 🌍 **Global Market Search** — Autocomplete searches all markets via Yahoo Finance (EU, Asia, all exchanges). Local popular tickers prioritized for speed
+- 👀 **Smart Watchlists** — Multiple lists, category grouping, price targets, Telegram & push alerts
+- 📱 **Mobile-First PWA** — Installable on any device. Service worker with network-first HTML caching for offline support. Responsive design, swipe actions, compact numbers
+- 🔒 **Secure Multi-User** — JWT + Argon2id auth, CSP, rate limiting, session management. JWT session persistence in Docker (survives container restarts)
+- 💾 **Backup & Restore** — Full database backup/restore with one click
+- 🐳 **Docker Ready** — Multi-arch images (amd64/arm64), CI/CD pipeline, one-line deploy. Auto-detects Docker environment and shows `docker pull` upgrade instructions
+
+<p align="center">
+  <img src="screenshots/oracle-welcome.png" width="280" alt="Oracle Welcome">
+  <img src="screenshots/oracle-response-bottom.png" width="280" alt="Oracle Action Buttons">
+</p>
+
+<p align="center">
+  <img src="screenshots/positions.png" width="280" alt="Positions">
+  <img src="screenshots/chart-detail.png" width="280" alt="TradingView Charts">
+</p>
+
+<details>
+<summary>📸 More Screenshots</summary>
+
+<p align="center">
+  <img src="screenshots/allocation.png" width="280" alt="Allocation">
+  <img src="screenshots/watchlist.png" width="280" alt="Watchlist">
+</p>
+
+<p align="center">
+  <img src="screenshots/news.png" width="280" alt="News">
+  <img src="screenshots/transactions.png" width="280" alt="Transactions">
+</p>
+
+<p align="center">
+  <img src="screenshots/wallets.png" width="280" alt="Wallet Sync">
+  <img src="screenshots/settings.png" width="280" alt="Settings">
+</p>
+
+<p align="center">
+  <img src="screenshots/login.png" width="280" alt="Login">
+  <img src="screenshots/alerts.png" width="280" alt="Alerts">
+</p>
+
+</details>
+
+## Installation
+
 ### Docker Compose
+
 ```bash
 git clone https://github.com/kiliansitel/portfolio-tracker-pro.git
 cd portfolio-tracker-pro
 docker-compose up -d
 ```
 
-### Node.js
+### Manual
+
 ```bash
 git clone https://github.com/kiliansitel/portfolio-tracker-pro.git
 cd portfolio-tracker-pro/server
 npm install && npm start
 ```
 
-Open http://localhost:8080
+📖 **[Full Manual](docs/MANUAL.md)** — User guide, API reference, self-hosting docs  
+📦 **[Installation Guide](docs/INSTALL.md)** — Reverse proxy, env variables, backups
 
-### Demo Account
-A pre-loaded demo portfolio is included for exploration:
-- **Username:** demo
-- **Password:** DemoPass123!
+## Tech Stack
 
-📖 **[Full Manual](docs/MANUAL.md)** — Complete user guide, API reference, and self-hosting docs
-
-📦 **[Installation Guide](docs/INSTALL.md)** — Docker, reverse proxy, environment variables, backups
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Create account |
-| POST | `/api/auth/login` | Get JWT token |
-| GET | `/api/portfolios` | List portfolios |
-| POST | `/api/portfolios/:id/positions` | Add position |
-| GET | `/api/watchlists` | List watchlists |
-| GET | `/api/alerts` | List alerts |
-| GET | `/api/options/:symbol` | Get options chain |
-| GET | `/api/options/:symbol/:expiry` | Get options for expiry |
-| GET | `/api/exchange-rates` | Get currency exchange rates |
-| POST | `/api/push/subscribe` | Subscribe to push notifications |
-| POST | `/api/push/unsubscribe` | Unsubscribe from push |
-| POST | `/api/push/test` | Send test push notification |
-| GET | `/api/history/:symbol` | Get stored OHLCV data |
-| GET | `/api/history/status` | Collection stats |
-| POST | `/api/history/collect` | Trigger OHLCV backfill |
-| POST | `/api/portfolios/:id/snapshot/auto` | Auto portfolio snapshot |
-| GET | `/api/wallets` | List connected wallets |
-| POST | `/api/wallets` | Add wallet (chain, address) |
-| DELETE | `/api/wallets/:id` | Remove wallet |
-| POST | `/api/wallets/:id/sync` | Sync wallet balance |
-| POST | `/api/wallets/sync-all` | Sync all wallets |
-| GET | `/api/wallets/summary` | On-chain value summary |
-| POST | `/api/wallets/:id/fetch-transactions` | Fetch chain transactions |
-| GET | `/api/wallets/:id/transactions` | List chain transactions |
-| GET | `/api/wallets/:id/tokens` | List wallet tokens |
-| POST | `/api/wallets/:id/sync-tokens` | Sync tokens only |
-| POST | `/api/portfolios/:id/duplicate` | Clone portfolio with positions |
-| PUT | `/api/auth/password` | Change password |
-| PUT | `/api/auth/email` | Update email |
-| GET | `/api/backup` | Download full database backup |
-| POST | `/api/backup/restore` | Restore from backup file |
-| GET | `/api/info` | App version & environment |
-| GET | `/api/ai/providers` | List available AI providers |
-| POST | `/api/ai/providers` | Save AI provider config |
-| DELETE | `/api/ai/providers/:provider` | Remove provider API key |
-| POST | `/api/ai/chat` | Send chat message (SSE stream) |
-| POST | `/api/ai/analyze/portfolio` | Quick portfolio review |
-| POST | `/api/ai/analyze/watchlist` | Quick watchlist signals |
-| POST | `/api/ai/analyze/position` | Quick position deep dive |
-| GET | `/api/ai/conversations` | List saved conversations |
-| POST | `/api/ai/conversations` | Save conversation |
-| GET | `/api/ai/conversations/:id` | Load conversation |
-| DELETE | `/api/ai/conversations/:id` | Delete conversation |
-
-## Screenshots
-
-### Dashboard
-![Dashboard](screenshots/dashboard.jpg)
-
-### Positions
-![Positions](screenshots/positions.jpg)
-
-### Add/Edit Position
-![Add Position](screenshots/add-position.jpg)
-
-### Watchlist
-![Watchlist](screenshots/watchlist.jpg)
-
-### Add to Watchlist
-![Add Watchlist](screenshots/add-watchlist.jpg)
-
-### Alerts
-![Alerts](screenshots/alerts.jpg)
-
-### News
-![News](screenshots/news.jpg)
-
-### Transactions
-![Transactions](screenshots/transactions.jpg)
-
-### Chart Detail
-![Chart Detail](screenshots/chart-detail.jpg)
-
-### Options Chain
-![Options Chain](screenshots/options-chain.jpg)
-
-### Wallets
-![Wallets](screenshots/wallets.jpg)
-
-### Wallet Tokens
-![Wallet Tokens](screenshots/wallet-tokens.jpg)
-
-### Oracle AI Assistant
-![Oracle AI](screenshots/oracle-ai.jpg)
-
-### Oracle AI (Mobile)
-![Oracle AI Mobile](screenshots/oracle-ai-mobile.jpg)
-
-### Settings
-![Settings](screenshots/settings.jpg)
+| Layer | Tech |
+|-------|------|
+| Frontend | Vanilla JS (12 modules), [LightweightCharts](https://tradingview.github.io/lightweight-charts/), CSS3 |
+| Backend | Node.js, Express, Helmet |
+| Database | SQLite (sql.js) |
+| Auth | JWT + Argon2id |
+| AI | OpenAI, Anthropic, Google, Ollama, OpenRouter, Custom OpenAI-compatible |
+| Offline | Service Worker (network-first HTML caching) |
+| Real-Time | Server-Sent Events (SSE) for live price streaming |
+| Infra | Docker multi-arch, GitHub Actions CI/CD |
 
 ## Version History
 
-See [VERSIONS.md](VERSIONS.md) for full changelog.
+See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
-- **v0.21.0 "Oracle"** — AI Intelligence Layer: multi-provider AI chat, streaming SSE, context injection, conversation persistence, OpenClaw auto-detection
-- **v0.20.3** — Visual polish: 4-char logos, blue ADD buttons, centered empty states, 20-color donut
-- **v0.20.2** — Position/watchlist sorting, empty states, skeletons, smart logo caching, session timeout
-- **v0.20.1** — Password change, email edit, backup/restore, PWA, position search, keyboard shortcuts, smart broker import
-- **v0.20.0 "Compass"** — Position source tracking, exchange/location fields, compact numbers, demo database, SPL tokens, DeFi tracking
-- **v0.19.1** — ERC-20 token tracking, self-update system, UI polish
-- **v0.19.0 "Chain"** — Blockchain wallet tracking (13 chains), positions redesign, auto-sync, on-chain transactions
-- **v0.18.2 "Vault"** — Historical OHLCV storage, auto-snapshots, Docker/CI fixes, Playwright caching
-- **v0.18.1 "Forge"** — Code modularization, multi-currency (EUR/USD/GBP/CHF), push notifications
-- **v0.18.0 "Chain"** — Options chain viewer + security hardening (CSP, CORS, validators, debounced writes)
-- **v0.17.5** — Logo in app header, CI fix
-- **v0.17.4** — Project logo and favicon
-- **v0.17.3** — Performance chart uses cost basis (matches P&L)
-- **v0.17.2** — Fix performance chart rendering, allocation option prices
-- **v0.17.1** — Fix options multiplier, rate limiting
-- **v0.17.0 "Horizon"** — Portfolio performance chart with historical reconstruction
-- **v0.16.0 "Slice"** — Portfolio allocation donut chart
-- **v0.15.0 "Ironclad"** — Security hardening, CI pipeline, tests
-- **v0.14.0 "Fortress"** — Argon2id password hashing (fixes #1)
-- **v0.13.0 "Newswire"** — Market news integration
-- **v0.12.0 "Chronicle"** — Transaction history, alert notifications
-- **v0.11.0 "Container"** — Docker support
-- **v0.10.0 "Export"** — CSV/PDF export
-- **v0.9.0 "Theme"** — Dark/light mode
-- **v0.8.0 "Detail"** — Full-screen charts, MA toggles
+| Version | Highlights |
+|---------|-----------|
+| **v0.28.0** | Live Charts & Real-Time Pricing — candlestick charts with RSI/MA, SSE live streaming, after-hours pricing, index futures |
+| **v0.27.0** | Security hardening — DOMPurify XSS protection, rate limiting, input validation, error sanitization |
+| **v0.26.0** | Strategy Advisor, Risk & Correlation Analysis, Scheduled Auto-Reports (daily/weekly) |
+| **v0.25.0** | Voice input for Oracle AI, PDF export for AI insights, modal fixes, AH badge improvements |
+| **v0.24.0** | After-hours/pre-market pricing, dividend tracking & income calendar, sector/geo exposure |
+| **v0.23.0** | Native multi-currency support, alerts API auth fix, full position API responses |
+| **v0.22.0** | Frontend modularization (14 files) + validation fix (#9) |
+| **v0.21.12** | Global ticker search (Yahoo Finance — all markets) + alert fix |
+| **v0.21.11** | Reverse proxy compatibility + AI provider resilience |
+| **v0.21.10** | Prevent bad snapshots from failed price fetches |
+| **v0.21.9** | Fix service worker cache issues, JS syntax error |
+| **v0.21.8** | Fix P&L display for wallet-synced positions, service worker cache |
+| **v0.21.7** | CoinMarketCap portfolio CSV import support |
+| **v0.21.6** | Configurable context window (num_ctx) for Ollama models |
+| **v0.21.5** | Fix Ollama model persistence, JWT session survival in Docker |
+| **v0.21.4** | Fix Ollama model selection persistence after save |
+| **v0.21.3** | Fix Ollama auto-detect on custom ports, model:tag format, Docker git suppression |
+| **v0.21.2** | Ollama/LM Studio model auto-detection, login error fix |
+| **v0.21.1** | Docker path fix, wallet delete button, chain address validation |
+| **v0.21.0** "Oracle" | AI chat assistant, multi-provider, streaming SSE, conversation persistence |
+| **v0.20.3** | Visual polish: 4-char logos, blue buttons, centered empty states, 20-color donut |
+| **v0.20.2** | Position/watchlist sorting, loading skeletons, session timeout warning |
+| **v0.20.1** | Password change, backup/restore, PWA, smart broker CSV import |
+| **v0.20.0** "Compass" | Position source tracking, compact numbers, demo database, DeFi tracking |
+
+## Supported CSV Formats
+
+| Broker/Source | Auto-Detect | Notes |
+|---------------|:-----------:|-------|
+| Interactive Brokers | ✅ | Trades, dividends, positions |
+| Keytrade Bank | ✅ | Transaction export |
+| CoinMarketCap | ✅ | Portfolio CSV export |
+| Generic CSV | — | Manual column mapping |
 
 ## Roadmap
 
-### ✅ Completed
-- [x] User authentication (JWT + Argon2id)
-- [x] Portfolio & position tracking (stocks, options, crypto)
-- [x] Watchlist with 12+ categories and price alerts
-- [x] Telegram alert notifications
-- [x] Transaction history with realized P&L
-- [x] Interactive charts (area/candle, MA20/50/200)
-- [x] Options chain viewer (calls/puts, expiry selector, ITM highlighting)
-- [x] Portfolio performance chart
-- [x] Allocation donut chart
-- [x] News integration (Google News RSS)
-- [x] Export to CSV/PDF
-- [x] Docker + CI/CD pipeline
-- [x] Security hardening (CSP, CORS, rate limiting, input validation, audit logging)
-- [x] SVG ticker icons for crypto, commodities, indices, forex
-- [x] Multi-currency support (EUR/USD/GBP/CHF) with live exchange rates
-- [x] Push notifications (browser, VAPID-based)
-- [x] Modular architecture (8 route modules, utility services)
-- [x] Historical OHLCV price storage with daily collection
-- [x] Automated daily portfolio snapshots
-- [x] Blockchain wallet tracking (13 chains, auto-sync)
-- [x] On-chain transaction history (BTC, ETH)
-- [x] Positions page redesign (grouped, sorted, summary bar)
-- [x] ERC-20 token tracking (20 popular tokens via RPC)
-- [x] Token → position sync (auto-create portfolio positions from wallet tokens)
-- [x] Self-update system (check updates, switch channels, one-click apply)
-- [x] Comprehensive product manual (16 chapters)
-- [x] Automated screenshot generation
-- [x] Position source/location tracking with exchange fields
-- [x] Demo database with example data
-- [x] Compact number formatting for mobile
-- [x] Password change, email edit from Settings UI
-- [x] Full database backup & restore
-- [x] PWA (installable, offline support, service worker)
-- [x] Position/watchlist sorting and search
-- [x] Smart broker CSV import (Keytrade, IBKR, DeGiro)
-- [x] Loading skeletons, empty states, session timeout warning
-- [x] Smart logo caching (zero 404s)
-
-### 🧠 v0.21.0 "Oracle" — AI Intelligence Layer ✅
-- [x] Multi-provider support (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw, Custom)
-- [x] API key management with encryption
-- [x] Portfolio review & rebalancing suggestions
-- [x] Watchlist scanner with entry/exit signals
-- [x] Chat interface with streaming SSE and markdown rendering
-- [x] Context injection (Portfolio, Watchlist, Market data)
-- [x] Conversation persistence (save, load, delete)
-- [x] Dynamic follow-up suggestions
-- [x] OpenClaw auto-detection — zero config
-- [x] Anthropic setup-token support
-- [ ] Strategy advisor (options plays, DCA plans, hedging)
-- [ ] Risk & correlation analysis
-- [ ] AI-powered news digest for your holdings
-- [ ] Scheduled auto-reports (daily/weekly AI briefings)
-
-### 🔗 Blockchain Integration
-- [x] Connect public addresses (13 chains: BTC, ETH, SOL, BNB, AVAX, MATIC, ARB, OP, LTC, DOGE, XRP, ADA, DOT)
-- [x] Auto-sync balances from on-chain data (every 5 min)
-- [x] Transaction history from block explorers (BTC, ETH)
-- [x] Multi-wallet aggregation (sum per chain)
-- [x] ERC-20 token tracking (20 popular tokens, direct RPC)
-- [x] SPL token tracking (Solana — 14 popular tokens)
-- [x] Token → position sync (wallet tokens auto-create positions)
-- [x] DeFi position tracking (Aave, Compound, Rocket Pool, Lido)
-
-### 🏦 Broker Integrations
-- [ ] Exchange/broker API integration (Keytrade Bank, IBKR)
-- [x] Import positions from broker CSV (Keytrade, IBKR, DeGiro, generic)
-- [ ] More brokers TBD
-
-### 🌐 Platform
-- [ ] Google Cloud Run demo instance
-- [x] PWA with offline support
-- [ ] Mobile app (React Native or Capacitor)
-- [ ] Multi-user sharing (read-only portfolio links)
+- [x] ~~Docker JWT session persistence~~
+- [x] ~~Wallet management (delete, auto-sync on add)~~
+- [x] ~~Chain-specific address validation (13 chains)~~
+- [x] ~~Ollama model auto-detection & custom ports~~
+- [x] ~~CoinMarketCap CSV import~~
+- [x] ~~Configurable context window for Ollama~~
+- [x] ~~Smart P&L for wallet-synced positions~~
+- [x] ~~Global market search (EU, Asia, all exchanges via Yahoo Finance)~~
+- [x] ~~Multi-currency support (native currency storage + live FX rates)~~
+- [x] ~~After-hours / pre-market pricing~~
+- [x] ~~Voice input for Oracle AI (Web Speech API)~~
+- [x] ~~Export/share AI insights as PDF~~
+- [ ] Live broker API sync (Keytrade, IBKR)
+- [x] ~~Dividend tracking & income calendar~~
+- [x] ~~AI news digest & scheduled reports~~
+- [x] ~~Portfolio rebalance suggestions~~
+- [x] ~~Sector & geographic exposure views~~
+- [ ] Google Cloud Run public demo
+- [ ] Mobile app (React Native / Capacitor)
 
 ## License
 
-MIT
+MIT — Use it, fork it, self-host it.

@@ -64,8 +64,8 @@ const PROVIDER_DEFS = {
     name: 'Ollama',
     baseUrl: 'http://localhost:11434',
     models: [
-      { id: 'llama3', name: 'LLaMA 3' },
-      { id: 'mistral', name: 'Mistral' }
+      { id: 'llama3:latest', name: 'LLaMA 3' },
+      { id: 'mistral:latest', name: 'Mistral' }
     ],
     requiresKey: false
   },
@@ -83,8 +83,8 @@ const PROVIDER_DEFS = {
     name: 'OpenClaw',
     baseUrl: 'https://api.anthropic.com',
     models: [
-      { id: 'claude-opus-4-6', name: 'Claude Opus 4' },
-      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' }
+      { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4' },
+      { id: 'claude-opus-4-6', name: 'Claude Opus 4' }
     ],
     requiresKey: true,
     description: 'Uses your OpenClaw Anthropic subscription — auto-detected, zero config'
@@ -105,6 +105,7 @@ class AIProvider {
     this.apiKey = config.apiKey || null;
     this.baseUrl = config.baseUrl || PROVIDER_DEFS[name]?.baseUrl || '';
     this.model = config.model || null;
+    this.contextLength = config.contextLength || null;
   }
 
   getModels() {
@@ -407,7 +408,8 @@ class AIProvider {
       stream: true,
       options: {
         temperature: options.temperature ?? 0.7,
-        num_predict: options.maxTokens || 4096
+        num_predict: options.maxTokens || 4096,
+        ...(this.contextLength && { num_ctx: this.contextLength })
       }
     };
 
@@ -518,6 +520,51 @@ class AIProvider {
 
 // ─── Context builders ──────────────────────────────────────────────
 
+function buildPriceHistory(symbol, dbAll) {
+  try {
+    const history = dbAll(
+      'SELECT date, close, high, low FROM price_history WHERE symbol = ? ORDER BY date DESC LIMIT 90',
+      [symbol]
+    );
+    if (!history.length) return null;
+
+    const current = history[0].close;
+    const latestDate = history[0].date;
+    const week = history.find((_, i) => i >= 5)?.close;
+    const month = history.find((_, i) => i >= 20)?.close;
+    const high52w = Math.max(...history.map(h => h.high));
+    const low52w = Math.min(...history.map(h => h.low));
+
+    // Determine trend from last 7 data points
+    let trend = '→ flat';
+    if (history.length >= 5) {
+      const recent5 = history.slice(0, 5).map(h => h.close);
+      const avgRecent = recent5.slice(0, 2).reduce((a, b) => a + b, 0) / 2;
+      const avgOlder = recent5.slice(3, 5).reduce((a, b) => a + b, 0) / 2;
+      const diff = ((avgRecent - avgOlder) / avgOlder) * 100;
+      if (diff > 1.5) trend = '↗ rising';
+      else if (diff < -1.5) trend = '↘ declining';
+    }
+
+    const weekChg = week ? (((current - week) / week) * 100).toFixed(1) : null;
+    const monthChg = month ? (((current - month) / month) * 100).toFixed(1) : null;
+
+    return { current, latestDate, weekChg, monthChg, high52w, low52w, trend, dataPoints: history.length };
+  } catch {
+    return null;
+  }
+}
+
+function formatPriceHistoryLine(symbol, ph) {
+  if (!ph) return null;
+  let line = `${symbol}: $${ph.current.toLocaleString('en-US', { maximumFractionDigits: 2 })} now`;
+  if (ph.weekChg) line += ` | 7d: ${ph.weekChg > 0 ? '+' : ''}${ph.weekChg}%`;
+  if (ph.monthChg) line += ` | 30d: ${ph.monthChg > 0 ? '+' : ''}${ph.monthChg}%`;
+  line += ` | 52w H: $${ph.high52w.toLocaleString('en-US', { maximumFractionDigits: 2 })} L: $${ph.low52w.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+  line += ` | ${ph.trend}`;
+  return line;
+}
+
 async function buildPortfolioContext(userId, dbAll, dbGet) {
   const portfolios = dbAll('SELECT * FROM portfolios WHERE user_id = ? ORDER BY name', [userId]);
 
@@ -597,6 +644,22 @@ async function buildPortfolioContext(userId, dbAll, dbGet) {
 
     const totalPnL = totalValue - totalCost - (pf.cash || 0);
     md += `\n**${positions.length} positions | Total Value:** $${totalValue.toFixed(2)} | **Total P&L:** $${totalPnL.toFixed(2)}\n\n`;
+
+    // Add price trends for positions in this portfolio
+    const symbols = [...new Set(positions.map(p => p.symbol))];
+    const trendLines = [];
+    for (const sym of symbols) {
+      const ph = buildPriceHistory(sym, dbAll);
+      const line = formatPriceHistoryLine(sym, ph);
+      if (line) trendLines.push(line);
+    }
+    if (trendLines.length) {
+      md += `**Price Trends (${pf.name}):**\n`;
+      for (const line of trendLines) {
+        md += `- ${line}\n`;
+      }
+      md += '\n';
+    }
   }
 
   return md;
@@ -672,18 +735,47 @@ async function buildWatchlistContext(userId, dbAll) {
   return md;
 }
 
-function buildMarketContext() {
+function buildMarketContext(dbAll) {
   const now = new Date();
   const dayOfWeek = now.getUTCDay();
   const hour = now.getUTCHours();
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
   const isUSMarketHours = !isWeekend && hour >= 14 && hour < 21; // 9:30 AM - 4 PM ET ≈ 14:30 - 21:00 UTC
 
-  return `## Market Context\n\n` +
+  let md = `## Market Context\n\n` +
     `- **Date:** ${now.toISOString().slice(0, 10)}\n` +
     `- **Time (UTC):** ${now.toISOString().slice(11, 16)}\n` +
-    `- **US Markets:** ${isUSMarketHours ? 'Open' : isWeekend ? 'Closed (Weekend)' : 'Closed'}\n` +
-    `\n_Note: Real-time price data may not be available. Base analysis on positions shown._\n`;
+    `- **US Markets:** ${isUSMarketHours ? 'Open' : isWeekend ? 'Closed (Weekend)' : 'Closed'}\n`;
+
+  // Add key index/market trends from price_history if available
+  if (dbAll) {
+    const indices = [
+      { symbol: '^GSPC', label: 'S&P 500' },
+      { symbol: '^IXIC', label: 'Nasdaq' },
+      { symbol: 'BTC-USD', label: 'Bitcoin' },
+      { symbol: '^VIX', label: 'VIX' }
+    ];
+    const trendLines = [];
+    for (const { symbol, label } of indices) {
+      const ph = buildPriceHistory(symbol, dbAll);
+      if (ph) {
+        let line = `${label}: $${ph.current.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
+        if (ph.weekChg) line += ` | 7d: ${ph.weekChg > 0 ? '+' : ''}${ph.weekChg}%`;
+        if (ph.monthChg) line += ` | 30d: ${ph.monthChg > 0 ? '+' : ''}${ph.monthChg}%`;
+        line += ` | ${ph.trend}`;
+        trendLines.push(line);
+      }
+    }
+    if (trendLines.length) {
+      md += `\n**Key Market Trends:**\n`;
+      for (const line of trendLines) {
+        md += `- ${line}\n`;
+      }
+    }
+  }
+
+  md += `\n_Note: Real-time price data may not be available. Base analysis on positions shown._\n`;
+  return md;
 }
 
 // ─── Exports ───────────────────────────────────────────────────────

@@ -16,7 +16,14 @@ router.post('/portfolios/:id/snapshot', (req, res) => {
   }
   
   const today = new Date().toISOString().split('T')[0];
-  
+
+  // Validate: positions_value should be > 0 if portfolio has positions
+  // This prevents saving cash-only snapshots when prices haven't loaded yet
+  const positionCount = dbGet('SELECT COUNT(*) as cnt FROM positions WHERE portfolio_id = ?', [id]);
+  if (positionCount && positionCount.cnt > 0 && (!positions_value || positions_value <= 0)) {
+    return res.status(400).json({ error: 'Snapshot rejected: portfolio has positions but positions_value is 0 (prices not loaded?)' });
+  }
+
   // Get yesterday's snapshot for daily change calculation
   const yesterday = dbGet(
     'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
@@ -66,22 +73,15 @@ router.get('/portfolios/:id/performance', (req, res) => {
   
   const snapshots = dbAll(sql, params);
   
-  // Get cost basis from positions (what was actually paid)
-  const positions = dbAll('SELECT * FROM positions WHERE portfolio_id = ?', [id]);
-  let costBasis = 0;
-  for (const pos of positions) {
-    const mult = pos.multiplier || 1;
-    costBasis += (pos.entry_price || 0) * pos.quantity * mult;
-  }
-  costBasis += portfolio.cash || 0;
-  
-  // Calculate performance based on cost basis
+  // Use first and last snapshots for summary (matches what the chart shows)
+  const first = snapshots[0];
   const last = snapshots[snapshots.length - 1];
+  const startValue = first?.total_value || 0;
   const currentValue = last?.total_value || 0;
   
-  const totalReturn = currentValue - costBasis;
-  const totalReturnPct = costBasis > 0 
-    ? ((currentValue - costBasis) / costBasis) * 100 
+  const totalReturn = currentValue - startValue;
+  const totalReturnPct = startValue > 0 
+    ? ((currentValue - startValue) / startValue) * 100 
     : 0;
   
   res.json({
@@ -89,7 +89,7 @@ router.get('/portfolios/:id/performance', (req, res) => {
     summary: {
       total_return: totalReturn,
       total_return_pct: totalReturnPct,
-      start_value: costBasis,
+      start_value: startValue,
       current_value: currentValue,
       days: snapshots.length
     }
@@ -107,7 +107,7 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
   
   // Get all transactions ordered by date
   const transactions = dbAll(
-    'SELECT * FROM transactions WHERE portfolio_id = ? ORDER BY date ASC',
+    'SELECT * FROM transactions WHERE portfolio_id = ? ORDER BY executed_at ASC',
     [id]
   );
   
@@ -173,7 +173,9 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
       // Check if snapshot exists
       const existing = dbGet('SELECT id FROM portfolio_snapshots WHERE portfolio_id = ? AND date = ?', [id, date]);
       
-      if (!existing && totalValue > 0) {
+      // Only create snapshot if we actually priced some positions (positionsValue > 0)
+      // This prevents creating cash-only snapshots when price fetches fail
+      if (!existing && totalValue > 0 && positionsValue > 0) {
         const prev = dbGet(
           'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
           [id, date]
@@ -202,7 +204,7 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
   // Group transactions by date
   const txByDate = {};
   transactions.forEach(tx => {
-    const date = tx.date;
+    const date = tx.executed_at?.split('T')[0] || tx.executed_at;
     if (!txByDate[date]) txByDate[date] = [];
     txByDate[date].push(tx);
   });
@@ -274,7 +276,8 @@ router.post('/portfolios/:id/reconstruct', async (req, res) => {
     
     const existing = dbGet('SELECT id FROM portfolio_snapshots WHERE portfolio_id = ? AND date = ?', [id, date]);
     
-    if (!existing && totalValue > 0) {
+    // Require positionsValue > 0 when there are active positions to avoid cash-only snapshots
+    if (!existing && totalValue > 0 && (symbols.length === 0 || positionsValue > 0)) {
       const prev = dbGet(
         'SELECT total_value FROM portfolio_snapshots WHERE portfolio_id = ? AND date < ? ORDER BY date DESC LIMIT 1',
         [id, date]

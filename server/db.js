@@ -9,6 +9,10 @@ const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 
 // Seed demo database on fresh install: if no DB exists yet, copy demo-portfolio.db as starting point
 if (!fs.existsSync(DB_PATH)) {
+  // Ensure data directory exists
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
   const seedPath = path.join(__dirname, 'demo-portfolio.db');
   if (fs.existsSync(seedPath)) {
     fs.copyFileSync(seedPath, DB_PATH);
@@ -210,6 +214,7 @@ async function initDatabase() {
   try { db.run(`ALTER TABLE positions ADD COLUMN current_price REAL`); } catch (e) { /* exists */ }
   try { db.run("ALTER TABLE positions ADD COLUMN source TEXT DEFAULT 'manual'"); } catch (e) { /* exists */ }
   try { db.run("ALTER TABLE positions ADD COLUMN location TEXT DEFAULT NULL"); } catch (e) { /* exists */ }
+  try { db.run("ALTER TABLE positions ADD COLUMN currency TEXT DEFAULT 'USD'"); } catch (e) { /* exists */ }
 
   // Backfill source for existing wallet-synced positions — only those that still say 'wallet-synced |' at the start
   // Don't re-override positions that were intentionally converted back to manual
@@ -423,6 +428,15 @@ async function initDatabase() {
       FOREIGN KEY (conversation_id) REFERENCES ai_conversations(id) ON DELETE CASCADE
     )
   `);
+
+  // Add context_length column if not exists (v0.24+)
+  try {
+    const cols = db.exec('PRAGMA table_info(ai_api_keys)');
+    const hasContextLength = cols.length > 0 && cols[0].values.some(c => c[1] === 'context_length');
+    if (!hasContextLength) {
+      db.run('ALTER TABLE ai_api_keys ADD COLUMN context_length INTEGER');
+    }
+  } catch (e) { /* table may not exist yet, CREATE TABLE above handles it */ }
 
   db.run('CREATE INDEX IF NOT EXISTS idx_ai_keys_user ON ai_api_keys(user_id)');
   db.run('CREATE INDEX IF NOT EXISTS idx_ai_conversations_user ON ai_conversations(user_id)');

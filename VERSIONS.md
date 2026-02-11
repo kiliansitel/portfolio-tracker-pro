@@ -1,4 +1,173 @@
 # Portfolio Tracker Pro — Version History
+## v0.28.0 — Live Charts & Real-Time Pricing (2026-02-11)
+
+### Chart Overhaul
+- Default chart type changed to candlestick (was area)
+- Auto-fitting charts — no scroll/zoom, always fitContent()
+- RSI (14) indicator below every chart
+- MA100/MA200 toggles on detail chart (off by default)
+- All 6 timeframes: 1D, 5D, 1M, 3M, 1Y, All
+- "All" timeframe with logarithmic scale and monthly candles (full history)
+- Proper candle intervals: 1D=5m, 5D=15m, 1M=daily, 3M=daily, 1Y=weekly, All=monthly
+- Dynamic bar spacing for large datasets
+- Crypto symbol normalization (BTC → BTC-USD automatically)
+
+### Live Pricing (SSE)
+- Server-Sent Events (SSE) endpoint for real-time price streaming
+- Crypto updates every 3 seconds, stocks every 8 seconds
+- Simulated micro-tick animation between real updates (crypto 800ms, stocks 2s)
+- Price flash animations (green/red) on price changes
+- Pulsing green "live" indicator dot
+- After-hours (AH) and pre-market (PM) price display with live ticking
+- AH prices tick when regular market is closed, regular prices stay frozen
+- Orange dashed AH/PM price line on charts
+- Index futures (ES=F, NQ=F, YM=F) shown on market cards when cash market closed
+
+### Other
+- Yahoo API range=max fix with period1/period2 (bypasses Yahoo's data cap)
+- 1Y chart interval changed to weekly candles
+- Oracle default model changed to Sonnet (from Opus)
+
+## v0.27.0 — Security Hardening (2026-02-10)
+- DOMPurify XSS protection on AI response rendering
+- Rate limiting on AI endpoints (10 req/min chat, 5 req/min analysis)
+- Input validation on AI actions (symbol format, positive quantities/prices)
+- Message length limit (5,000 characters)
+- Removed fallback JWT secret
+- Sanitized SQL error messages
+- Updated manual with §18 Security section
+
+## v0.26.0 (2026-02-10)
+### New Features
+- **Strategy Advisor**: New Oracle quick action (🎯) — personalized trading strategies including options plays, DCA plans, hedging suggestions, and position sizing recommendations
+- **Risk & Correlation Analysis**: New Oracle quick action (🛡️) — portfolio risk assessment covering concentration risk, correlation analysis, sector exposure, beta, tail risk scenarios, and diversification scoring
+- **Scheduled Auto-Reports**: In-app daily portfolio summaries and weekly digests — configure in Settings with time/timezone pickers. Reports save as Oracle conversations with 📊 badges. No external tools needed.
+
+### Technical
+- Added node-cron for in-app report scheduling
+- Report scheduler runs on server boot, checks every minute for due reports
+
+## v0.25.0 (2026-02-10)
+### New Features
+- **Voice input for Oracle AI**: Microphone button (🎤) next to chat input — speak your questions using Web Speech API. Pulsing red animation while listening, auto-hides on unsupported browsers.
+- **Export AI insights as PDF**: Per-message 📄 button and header export button. Clean print-friendly layout with Portfolio Pro branding and date.
+
+### Improvements
+- AH/PM extended hours badges: improved visibility with larger font, higher contrast, and bolder colors
+- Modal management: opening a new modal now properly closes any existing open modal (fixes dividend calendar overlapping add position)
+
+### Bug Fixes
+- Fixed modal z-index overlap between dividend calendar and add position form
+
+## v0.24.0 (2026-02-10)
+### New Features
+- **After-hours / Pre-market pricing**: PM (blue) and AH (purple) badges show extended hours prices on position cards, watchlist items, and dashboard markets grid
+- **Dividend tracking & income calendar**: Yield badges on positions, annual income estimate, monthly bar chart, upcoming ex-dates with status
+- **Sector & geographic exposure**: Tabbed donut charts (Allocation | Sectors | Regions) on dashboard, with sector/industry/country data from Yahoo Finance
+
+### Improvements
+- Yahoo Finance quote API integration for richer company data (sector, industry, country, dividends)
+- 24-hour cache for company metadata to minimize API calls
+- Crumb-based Yahoo Finance authentication for reliable data access
+
+## v0.23.0 (2026-02-10)
+- 🌍 **Native currency support** — positions store original purchase currency (EUR, GBP, etc.) instead of converting to USD
+- 🌍 Dashboard aggregates in user's app currency using live exchange rates
+- 🌍 Entry prices display in original currency on position cards
+- 🔧 API responses now return full position records (fixes #10)
+- 🔧 Fixed alerts API auth — `/api/alerts/check` endpoint now works with API key authentication
+- 🐛 Validators use `optional({ values: 'falsy' })` to properly handle empty form fields (fixes #9)
+
+## v0.22.0 (2026-02-09)
+- 🏗️ **Frontend modularization** — split 9,489-line index.html into 14 files
+  - `public/css/styles.css` — all CSS (2,107 lines)
+  - `public/js/` — 12 JavaScript modules (utils, auth, portfolio, watchlist, oracle, charts, etc.)
+  - `public/index.html` — clean HTML shell (~1,100 lines)
+- 🐛 Fix position creation validation — empty optional fields (entry_date, notes, etc.) no longer cause "Validation failed"
+- Fixes #9
+
+## v0.21.12 (2026-02-09)
+- 🌍 Global ticker search — autocomplete falls back to Yahoo Finance search API when local tickers don't match
+- 🌍 Supports all markets: European (BMW.DE, ASML.AS), Asian (005930.KS Samsung), and thousands more
+- 🌍 Addresses GitHub issue #8 (EU stock markets support)
+- 🐛 Fix alert creation crash (`NOT NULL constraint failed: alerts.target_price`) in manual add
+- 🐛 Fix alert creation crash from Oracle AI action buttons (same constraint issue)
+
+## v0.21.11 (2026-02-09)
+- 🐛 Trust proxy support for reverse proxy (SWAG/nginx)
+- 🐛 Rate limiting removed — delegated to reverse proxy
+- 🐛 Cross-Origin-Opener-Policy header disabled for proxy compatibility
+- 🐛 Graceful handling of non-JSON responses (proxy error pages no longer crash)
+- 🐛 Token survives rapid page refreshes (don't clear on non-401 errors during init)
+- 🐛 AI provider auto-selects first configured provider (OpenClaw auto-detect)
+- 🐛 AI provider retry on failure — initAi retries, ensureAiProvider retries before chat
+- 🐛 Settings panel retry button when provider load fails
+- 🐛 Performance chart refreshes after price data loads
+- 🐛 Smart initial render — skip summary until prices are cached (prevents wrong values flash)
+
+## v0.21.10 (2026-02-09)
+- 🐛 Prevent bad snapshots when price fetches fail (cash-only values no longer saved)
+- 🐛 `collectDailySnapshot()` skips snapshot when positions exist but none could be priced
+- 🐛 `POST /snapshot` rejects snapshots with positions_value=0 when positions exist
+- 🐛 `POST /reconstruct` requires positionsValue > 0 when active positions exist
+
+## v0.21.9 (2026-02-09)
+- 🐛 Self-destructing service worker that kills stale SW cache for all existing users
+- 🐛 Removed SW registration, replaced with unregister + cache clear on page load
+- 🐛 Fixed JavaScript syntax error from dangling .then() chain
+
+## v0.21.8 (2026-02-09)
+- 🐛 P&L shows "—" with "Set cost basis" badge when entry price is $0 (wallet sync positions)
+- 🐛 Positions with no cost basis excluded from total P&L calculation
+- 🐛 Performance snapshot logic no longer records misleading $0 entry prices
+- 🐛 Service worker switched to network-first for HTML, cache bumped to v22
+- 🐛 CSV/PDF exports handle missing cost basis gracefully
+
+## v0.21.7 (2026-02-09)
+- ✨ CoinMarketCap portfolio CSV import support
+- Auto-detects CMC export format and maps columns
+- Crypto type auto-set for CMC imports
+
+## v0.21.6 (2026-02-09)
+- ✨ Configurable context window (num_ctx) for Ollama models in AI provider settings
+- Only sent when explicitly set, otherwise uses model default
+- Persisted to database per-user
+
+## v0.21.5 (2026-02-09)
+- 🔧 Fix Ollama model selection no longer resets to hardcoded defaults (dynamic models preserved)
+- 🔧 Header model dropdown now fetches real Ollama models dynamically
+- 🔧 JWT secret auto-persists to data volume in Docker (sessions survive container restarts)
+- 🔧 Ollama model fetch no longer triggers false "session expired" errors
+
+---
+
+## v0.21.4 (2026-02-09)
+- 🔧 Fix Ollama model selection persistence — dropdown no longer snaps back to first model after save
+- 🔧 Fixed provider data refresh order (refresh before re-render)
+
+---
+
+## v0.21.3 (2026-02-09)
+- 🔧 Fix Ollama model auto-detect on custom ports (was using invalid fetch timeout option)
+- 🔧 Model name fallbacks use proper `model:tag` format (e.g. `mistral:latest`)
+- 🐳 Suppress `git: not found` errors in Docker containers
+
+---
+
+## v0.21.2 (2026-02-09)
+- 🤖 Ollama/LM Studio model auto-detection — fetches available models from `/api/tags`
+- 🐛 Fix wrong password showing "Session expired" instead of "Invalid credentials"
+
+---
+
+## v0.21.1 (2026-02-09)
+- 🐛 Fix Docker path issue — `ENOENT: /public/index.html` (GitHub #3)
+- 🗑️ Visible wallet delete button — no more hidden swipe-to-delete (GitHub #4)
+- ✅ Chain-specific wallet address validation for all 13 chains (GitHub #5)
+- 🔄 Service worker cache bump to v21
+
+---
+
 ## v0.21.0 "Oracle" — AI Intelligence Layer (2026-02-08)
 - 🧠 Multi-provider AI chat (OpenAI, Anthropic, Google, Ollama, OpenRouter, OpenClaw, Custom)
 - 🔗 OpenClaw auto-detection — zero config when running alongside OpenClaw gateway

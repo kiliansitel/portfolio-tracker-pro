@@ -16,11 +16,36 @@ const {
 } = require('../utils/ai-providers');
 const { logger } = require('../utils/logger');
 
+const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const router = express.Router();
+
+// Rate limiters for AI endpoints
+const chatLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?.id || ipKeyGenerator(req.ip),
+  validate: { ip: false },
+  message: { error: 'Too many chat requests. Please wait a minute before trying again.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const analysisLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  keyGenerator: (req) => req.user?.id || ipKeyGenerator(req.ip),
+  validate: { ip: false },
+  message: { error: 'Too many analysis requests. Please wait a minute before trying again.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 // JWT_SECRET used for encrypting API keys
 const crypto = require('crypto');
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is required');
+}
 
 // Find the first configured/available provider for a user
 function findDefaultProvider(userId) {
@@ -48,10 +73,11 @@ function getProviderForUser(userId, providerName) {
 
   const config = {
     model: row?.model_preference || null,
-    baseUrl: row?.base_url || PROVIDER_DEFS[providerName].baseUrl
+    baseUrl: row?.base_url || PROVIDER_DEFS[providerName].baseUrl,
+    contextLength: row?.context_length || null
   };
 
-  if (row?.encrypted_key) {
+  if (row?.encrypted_key && row.encrypted_key !== 'auto-detected') {
     try {
       config.apiKey = decryptKey(row.encrypted_key, JWT_SECRET);
     } catch (err) {
@@ -128,7 +154,7 @@ async function buildSystemPrompt(userId, context) {
 
   // Handle analysis follow-ups: rebuild the same context the analysis had
   // 'analysis' (legacy) falls back to portfolio+market context
-  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.includes('analysis-rebalance') || contexts.some(c => c.startsWith('analysis-position:'))) {
+  if (contexts.includes('analysis') || contexts.includes('analysis-portfolio') || contexts.includes('analysis-watchlist') || contexts.includes('analysis-news') || contexts.includes('analysis-rebalance') || contexts.includes('analysis-strategy') || contexts.includes('analysis-risk') || contexts.some(c => c.startsWith('analysis-position:'))) {
     // Switch to analysis-style system prompt for continuity
     systemContent = `You are Oracle, an expert financial analyst built into Portfolio Tracker Pro.\n\n` +
       `## Analysis Guidelines\n` +
@@ -144,20 +170,28 @@ async function buildSystemPrompt(userId, context) {
     if (contexts.includes('analysis-portfolio') || contexts.includes('analysis')) {
       // 'analysis' (legacy) defaults to portfolio+market for backwards compat
       systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
-      systemContent += buildMarketContext() + '\n';
+      systemContent += buildMarketContext(dbAll) + '\n';
     }
     if (contexts.includes('analysis-watchlist')) {
       systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
-      systemContent += buildMarketContext() + '\n';
+      systemContent += buildMarketContext(dbAll) + '\n';
     }
     if (contexts.includes('analysis-news')) {
       systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
-      systemContent += buildMarketContext() + '\n';
+      systemContent += buildMarketContext(dbAll) + '\n';
     }
     if (contexts.includes('analysis-rebalance')) {
       systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
       systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
-      systemContent += buildMarketContext() + '\n';
+      systemContent += buildMarketContext(dbAll) + '\n';
+    }
+    if (contexts.includes('analysis-strategy')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += buildMarketContext(dbAll) + '\n';
+    }
+    if (contexts.includes('analysis-risk')) {
+      systemContent += await buildPortfolioContext(userId, dbAll, dbGet) + '\n';
+      systemContent += buildMarketContext(dbAll) + '\n';
     }
     const posContext = contexts.find(c => c.startsWith('analysis-position:'));
     if (posContext) {
@@ -188,7 +222,7 @@ async function buildSystemPrompt(userId, context) {
           }
         }
         systemContent += positionData;
-        systemContent += buildMarketContext() + '\n';
+        systemContent += buildMarketContext(dbAll) + '\n';
       }
     }
     return systemContent;
@@ -201,10 +235,82 @@ async function buildSystemPrompt(userId, context) {
     systemContent += await buildWatchlistContext(userId, dbAll) + '\n';
   }
   if (contexts.includes('market')) {
-    systemContent += buildMarketContext() + '\n';
+    systemContent += buildMarketContext(dbAll) + '\n';
   }
 
   return systemContent;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Model Discovery
+// ═══════════════════════════════════════════════════════════════════
+
+// GET /models/ollama — fetch available models from Ollama server
+router.get('/models/ollama', async (req, res) => {
+  const { baseUrl } = req.query;
+  
+  if (!baseUrl) {
+    return res.status(400).json({ error: 'baseUrl parameter is required' });
+  }
+
+  // Validate URL format
+  try {
+    new URL(baseUrl);
+  } catch (err) {
+    return res.status(400).json({ error: 'Invalid baseUrl format' });
+  }
+
+  const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
+  const tagsUrl = `${cleanBaseUrl}/api/tags`;
+  
+  try {
+    const resp = await fetch(tagsUrl, { 
+      signal: AbortSignal.timeout(10000),
+      headers: { 'Accept': 'application/json' }
+    });
+    
+    if (!resp.ok) {
+      throw new Error(`Server responded with ${resp.status}: ${resp.statusText}`);
+    }
+
+    const data = await resp.json();
+    
+    // Transform Ollama response to our model format
+    const models = (data.models || []).map(model => ({
+      id: model.name || model.model,
+      name: formatOllamaModelName(model)
+    }));
+
+    res.json({ models });
+  } catch (err) {
+    console.error('Ollama model discovery error:', err.message);
+    res.status(500).json({ 
+      error: `Failed to fetch models: ${err.message}`,
+      fallback: true // Signal frontend to use hardcoded fallback
+    });
+  }
+});
+
+// Helper to format Ollama model names with size/quantization info
+function formatOllamaModelName(model) {
+  const name = model.name || model.model || 'Unknown';
+  const details = model.details || {};
+  
+  let displayName = name;
+  
+  // Add parameter size if available
+  if (details.parameter_size) {
+    displayName += ` (${details.parameter_size}`;
+    
+    // Add quantization level if available
+    if (details.quantization_level) {
+      displayName += `, ${details.quantization_level}`;
+    }
+    
+    displayName += ')';
+  }
+  
+  return displayName;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -214,7 +320,7 @@ async function buildSystemPrompt(userId, context) {
 // GET /providers — list providers with configuration status
 router.get('/providers', (req, res) => {
   const userKeys = dbAll(
-    'SELECT provider, model_preference, base_url, created_at FROM ai_api_keys WHERE user_id = ?',
+    'SELECT provider, model_preference, base_url, context_length, created_at FROM ai_api_keys WHERE user_id = ?',
     [req.user.id]
   );
 
@@ -236,6 +342,7 @@ router.get('/providers', (req, res) => {
     models: def.models,
     modelPreference: keyMap[id]?.model_preference || null,
     baseUrl: keyMap[id]?.base_url || def.baseUrl || null,
+    contextLength: keyMap[id]?.context_length || null,
     configuredAt: keyMap[id]?.created_at || null
   }));
 
@@ -245,17 +352,19 @@ router.get('/providers', (req, res) => {
 // PUT /providers/:provider/key — save (or update) API key
 router.put('/providers/:provider/key', (req, res) => {
   const { provider } = req.params;
-  const { apiKey, model, baseUrl } = req.body;
+  const { apiKey, model, baseUrl, contextLength } = req.body;
 
   if (!PROVIDER_DEFS[provider]) {
     return res.status(400).json({ error: `Unknown provider: ${provider}` });
   }
 
-  if (PROVIDER_DEFS[provider].requiresKey && !apiKey) {
+  // Skip key requirement for openclaw when auto-detected via gateway token
+  const openclawAutoDetected = provider === 'openclaw' && !!process.env.OPENCLAW_GATEWAY_TOKEN;
+  if (PROVIDER_DEFS[provider].requiresKey && !apiKey && !openclawAutoDetected) {
     return res.status(400).json({ error: 'API key is required for this provider' });
   }
 
-  const encrypted = apiKey ? encryptKey(apiKey, JWT_SECRET) : '';
+  const encrypted = apiKey ? encryptKey(apiKey, JWT_SECRET) : (openclawAutoDetected ? 'auto-detected' : '');
 
   // Upsert
   const existing = dbGet(
@@ -265,13 +374,13 @@ router.put('/providers/:provider/key', (req, res) => {
 
   if (existing) {
     dbRun(
-      'UPDATE ai_api_keys SET encrypted_key = ?, model_preference = ?, base_url = ? WHERE id = ?',
-      [encrypted, model || null, baseUrl || null, existing.id]
+      'UPDATE ai_api_keys SET encrypted_key = ?, model_preference = ?, base_url = ?, context_length = ? WHERE id = ?',
+      [encrypted, model || null, baseUrl || null, contextLength ? parseInt(contextLength) : null, existing.id]
     );
   } else {
     dbRun(
-      'INSERT INTO ai_api_keys (user_id, provider, encrypted_key, model_preference, base_url) VALUES (?, ?, ?, ?, ?)',
-      [req.user.id, provider, encrypted, model || null, baseUrl || null]
+      'INSERT INTO ai_api_keys (user_id, provider, encrypted_key, model_preference, base_url, context_length) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.user.id, provider, encrypted, model || null, baseUrl || null, contextLength ? parseInt(contextLength) : null]
     );
   }
 
@@ -330,11 +439,15 @@ router.get('/providers/:provider/test', async (req, res) => {
 // ═══════════════════════════════════════════════════════════════════
 
 // POST /chat — send message, stream response via SSE
-router.post('/chat', async (req, res) => {
+router.post('/chat', chatLimiter, async (req, res) => {
   const { message, provider: providerName, model, context, conversationId } = req.body;
 
   if (!message || typeof message !== 'string' || !message.trim()) {
     return res.status(400).json({ error: 'Message is required' });
+  }
+
+  if (message.length > 5000) {
+    return res.status(400).json({ error: 'Message too long. Please keep messages under 5,000 characters.' });
   }
 
   // Determine provider: explicit > first configured > error
@@ -427,7 +540,7 @@ router.post('/chat', async (req, res) => {
   const startTime = Date.now();
 
   try {
-    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 2048 });
+    const stream = instance.chat(apiMessages, { model: selectedModel, maxTokens: 4096 });
 
     for await (const chunk of stream) {
       fullResponse += chunk;
@@ -640,9 +753,9 @@ async function runAnalysis(req, res, systemExtra, userPrompt, analysisContext) {
 }
 
 // POST /analyze/portfolio — full portfolio review
-router.post('/analyze/portfolio', async (req, res) => {
+router.post('/analyze/portfolio', analysisLimiter, async (req, res) => {
   const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
-  const marketData = buildMarketContext();
+  const marketData = buildMarketContext(dbAll);
 
   const userPrompt = `Please analyze my portfolio and provide:
 1. **Diversification Assessment** — sector/asset allocation, concentration risk
@@ -656,9 +769,9 @@ Be specific with numbers from my portfolio data.`;
 });
 
 // POST /analyze/watchlist — watchlist entry/exit signals
-router.post('/analyze/watchlist', async (req, res) => {
+router.post('/analyze/watchlist', analysisLimiter, async (req, res) => {
   const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
-  const marketData = buildMarketContext();
+  const marketData = buildMarketContext(dbAll);
 
   const userPrompt = `Analyze my watchlist and provide actionable entry/exit signals:
 
@@ -684,7 +797,7 @@ Be specific with price levels and percentages. No vague "might go up" — give c
 });
 
 // POST /analyze/position/:symbol — deep dive on specific position
-router.post('/analyze/position/:symbol', async (req, res) => {
+router.post('/analyze/position/:symbol', analysisLimiter, async (req, res) => {
   const { symbol } = req.params;
   const upperSymbol = symbol.toUpperCase();
 
@@ -723,7 +836,7 @@ router.post('/analyze/position/:symbol', async (req, res) => {
     positionContext = `No position found for ${upperSymbol} in user's portfolios. Analyze based on general knowledge and current market data.\n`;
   }
 
-  const marketData = buildMarketContext();
+  const marketData = buildMarketContext(dbAll);
 
   const userPrompt = `Provide a deep-dive analysis of ${upperSymbol}:
 1. **Position Summary** — current standing, profit/loss assessment
@@ -738,7 +851,7 @@ Be specific and reference the position data provided.`;
 });
 
 // POST /analyze/news — AI-powered news digest for holdings
-router.post('/analyze/news', async (req, res) => {
+router.post('/analyze/news', analysisLimiter, async (req, res) => {
   // Get user's position symbols
   const positions = dbAll(`
     SELECT DISTINCT p.symbol FROM positions p
@@ -792,10 +905,10 @@ Be concise and focus on what's actionable.`;
 });
 
 // POST /analyze/rebalance — rebalancing suggestions with concrete targets
-router.post('/analyze/rebalance', async (req, res) => {
+router.post('/analyze/rebalance', analysisLimiter, async (req, res) => {
   const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
   const watchlistData = await buildWatchlistContext(req.user.id, dbAll);
-  const marketData = buildMarketContext();
+  const marketData = buildMarketContext(dbAll);
 
   const userPrompt = `Analyze my current portfolio allocation and provide a concrete rebalancing plan:
 
@@ -813,12 +926,110 @@ Consider my watchlist items as potential buy candidates. Be specific with number
   await runAnalysis(req, res, portfolioData + '\n' + watchlistData + '\n' + marketData, userPrompt, 'analysis-rebalance');
 });
 
+// POST /analyze/strategy — personalized trading strategy advisor
+router.post('/analyze/strategy', analysisLimiter, async (req, res) => {
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+  const marketData = buildMarketContext(dbAll);
+
+  const userPrompt = `Based on my portfolio, act as my personal strategy advisor and suggest:
+
+1. **Options Strategies** — For my largest positions, recommend specific options plays:
+   - Covered calls (strike price, expiry, premium estimate)
+   - Protective puts for downside protection
+   - Spreads (bull/bear) where appropriate
+   - Be specific with strike prices and expiry dates
+
+2. **DCA Plan** — Which positions should I accumulate over time?
+   - Specific dollar amounts per week/month
+   - Target entry zones for adding
+   - Priority order (best opportunities first)
+
+3. **Hedging Strategies** — How to protect against downside:
+   - Portfolio-level hedges (index puts, inverse ETFs)
+   - Position-specific protection
+   - Cost of protection vs. portfolio value
+
+4. **Position Sizing** — Based on conviction levels:
+   - Which positions are oversized or undersized?
+   - Recommended allocation percentages
+   - Cash reserve recommendation
+
+Be specific with dollar amounts, strike prices, expiry dates, and percentages. Reference my actual positions and P&L data.`;
+
+  await runAnalysis(req, res, portfolioData + '\n' + marketData, userPrompt, 'analysis-strategy');
+});
+
+// POST /analyze/risk — portfolio risk & correlation analysis
+router.post('/analyze/risk', analysisLimiter, async (req, res) => {
+  const portfolioData = await buildPortfolioContext(req.user.id, dbAll, dbGet);
+  const marketData = buildMarketContext(dbAll);
+
+  // Fetch exposure data (sectors/regions) if available
+  let exposureContext = '';
+  try {
+    const positions = dbAll(`
+      SELECT p.symbol, p.quantity, COALESCE(p.current_price, p.entry_price) as price,
+             p.entry_price, p.sector, p.region,
+             pf.name as portfolio_name
+      FROM positions p
+      JOIN portfolios pf ON p.portfolio_id = pf.id
+      WHERE pf.user_id = ?
+    `, [req.user.id]);
+
+    if (positions.length) {
+      const totalValue = positions.reduce((sum, p) => sum + (p.quantity * p.price), 0);
+      exposureContext = `\n## Position Weights\n\n`;
+      exposureContext += `| Symbol | Value | Weight | P&L % |\n|--------|-------|--------|-------|\n`;
+      for (const p of positions.sort((a, b) => (b.quantity * b.price) - (a.quantity * a.price))) {
+        const value = p.quantity * p.price;
+        const weight = ((value / totalValue) * 100).toFixed(1);
+        const pnlPct = p.entry_price > 0 ? (((p.price - p.entry_price) / p.entry_price) * 100).toFixed(1) : '0.0';
+        exposureContext += `| ${p.symbol} | $${value.toFixed(0)} | ${weight}% | ${pnlPct}% |\n`;
+      }
+
+      // Sector breakdown if available
+      const sectors = {};
+      for (const p of positions) {
+        const sec = p.sector || 'Unknown';
+        sectors[sec] = (sectors[sec] || 0) + (p.quantity * p.price);
+      }
+      if (Object.keys(sectors).length > 1 || !sectors['Unknown']) {
+        exposureContext += `\n## Sector Exposure\n\n`;
+        for (const [sec, val] of Object.entries(sectors).sort((a, b) => b[1] - a[1])) {
+          exposureContext += `- **${sec}**: $${val.toFixed(0)} (${((val / totalValue) * 100).toFixed(1)}%)\n`;
+        }
+      }
+    }
+  } catch (e) {
+    logger.error('Risk analysis exposure fetch error:', e.message);
+  }
+
+  const userPrompt = `Analyze my portfolio's risk profile in depth:
+
+1. **Concentration Risk** — Which positions are oversized? What percentage of the portfolio is in the top 3 holdings? Flag any position above 15% weight.
+
+2. **Correlation Analysis** — Which holdings likely move together and create hidden concentration risk? Group correlated positions (e.g., multiple tech stocks, crypto pairs, same-sector bets). What's the effective number of independent bets?
+
+3. **Sector/Geographic Concentration** — Am I overexposed to any sector or region? What's missing?
+
+4. **Beta Exposure** — How volatile is my portfolio vs the market? Estimate the portfolio beta. Which positions contribute most to volatility?
+
+5. **Tail Risk Scenarios** — What happens in a -20% market crash? Estimate my portfolio drawdown. Which positions would be hit hardest? What about a sector-specific crash?
+
+6. **Diversification Score** (1-10) — Rate my portfolio's diversification with specific suggestions to improve it. What would I need to add or trim to reach a 9/10?
+
+Use my actual position sizes, weights, and percentages. Be specific with numbers.`;
+
+  await runAnalysis(req, res, portfolioData + '\n' + marketData + exposureContext, userPrompt, 'analysis-risk');
+});
+
 // ═══════════════════════════════════════════════════════════════════
 // Action Execution (AI-suggested inline actions)
 // ═══════════════════════════════════════════════════════════════════
 
-router.post('/action', async (req, res) => {
+router.post('/action', analysisLimiter, async (req, res) => {
   const { type, params } = req.body;
+  logger.info('AI action request', { type, params, userId: req.user?.id, username: req.user?.username });
 
   if (!type || !Array.isArray(params)) {
     return res.status(400).json({ error: 'Missing type or params' });
@@ -831,11 +1042,19 @@ router.post('/action', async (req, res) => {
         if (!symbol || !price) {
           return res.status(400).json({ error: 'Missing symbol or price for alert' });
         }
-        // Schema: alerts(user_id, symbol, condition, value, is_active)
-        // condition maps to direction (above/below)
+        if (!/^[A-Za-z0-9.-]{1,20}$/.test(symbol)) {
+          return res.status(400).json({ error: 'Invalid symbol format' });
+        }
+        const priceVal = parseFloat(price);
+        if (!Number.isFinite(priceVal) || priceVal <= 0) {
+          return res.status(400).json({ error: 'Price must be a positive number' });
+        }
+        if (direction && !['above', 'below'].includes(direction)) {
+          return res.status(400).json({ error: 'Direction must be "above" or "below"' });
+        }
         dbRun(
-          'INSERT INTO alerts (user_id, symbol, condition, value, is_active) VALUES (?, ?, ?, ?, 1)',
-          [req.user.id, symbol.toUpperCase(), direction || 'above', parseFloat(price)]
+          'INSERT INTO alerts (user_id, symbol, condition, target_price, value, is_active) VALUES (?, ?, ?, ?, ?, 1)',
+          [req.user.id, symbol.toUpperCase(), direction || 'above', priceVal, priceVal]
         );
         return res.json({ success: true, message: `Alert set: ${symbol.toUpperCase()} ${direction || 'above'} $${price}` });
       }
@@ -843,6 +1062,9 @@ router.post('/action', async (req, res) => {
         const [symbol] = params;
         if (!symbol) {
           return res.status(400).json({ error: 'Missing symbol for watchlist' });
+        }
+        if (!/^[A-Za-z0-9.-]{1,20}$/.test(symbol)) {
+          return res.status(400).json({ error: 'Invalid symbol format' });
         }
         // Get or create default watchlist
         let watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
@@ -863,6 +1085,15 @@ router.post('/action', async (req, res) => {
         if (!symbol || !quantity || !price) {
           return res.status(400).json({ error: 'Missing symbol, quantity, or price for position' });
         }
+        if (!/^[A-Za-z0-9.-]{1,20}$/.test(symbol)) {
+          return res.status(400).json({ error: 'Invalid symbol format' });
+        }
+        if (!Number.isFinite(parseFloat(quantity)) || parseFloat(quantity) <= 0) {
+          return res.status(400).json({ error: 'Quantity must be a positive number' });
+        }
+        if (!Number.isFinite(parseFloat(price)) || parseFloat(price) <= 0) {
+          return res.status(400).json({ error: 'Price must be a positive number' });
+        }
         // Get first portfolio
         const portfolio = dbGet('SELECT id FROM portfolios WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
         if (!portfolio) {
@@ -871,28 +1102,75 @@ router.post('/action', async (req, res) => {
         // Schema: positions(portfolio_id, symbol, quantity, entry_price, type)
         // Check for existing position (UNIQUE on portfolio_id, symbol)
         const existingPos = dbGet('SELECT id, quantity, entry_price FROM positions WHERE portfolio_id = ? AND symbol = ?', [portfolio.id, symbol.toUpperCase()]);
+        const parsedQty = parseFloat(quantity);
+        const parsedPrice = parseFloat(price);
+        const upperSymbol = symbol.toUpperCase();
+
         if (existingPos) {
           // Update: average in the new position
-          const totalQty = existingPos.quantity + parseFloat(quantity);
-          const avgPrice = ((existingPos.quantity * existingPos.entry_price) + (parseFloat(quantity) * parseFloat(price))) / totalQty;
+          const totalQty = existingPos.quantity + parsedQty;
+          const avgPrice = ((existingPos.quantity * existingPos.entry_price) + (parsedQty * parsedPrice)) / totalQty;
           dbRun(
             'UPDATE positions SET quantity = ?, entry_price = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
             [totalQty, avgPrice, existingPos.id]
           );
-          return res.json({ success: true, message: `Updated ${symbol.toUpperCase()}: now ${totalQty} shares @ $${avgPrice.toFixed(2)} avg` });
+          // Also create a buy transaction for history
+          dbRun(
+            `INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, notes, source)
+             VALUES (?, ?, 'stock', 'buy', ?, ?, 0, datetime('now'), 'Added via Oracle AI', 'ai')`,
+            [portfolio.id, upperSymbol, parsedQty, parsedPrice]
+          );
+          // Auto-add to default watchlist if not already there
+          try {
+            const watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+            if (watchlist) {
+              const existingWl = dbGet('SELECT id FROM watchlist_items WHERE watchlist_id = ? AND symbol = ?', [watchlist.id, upperSymbol]);
+              if (!existingWl) {
+                dbRun('INSERT INTO watchlist_items (watchlist_id, symbol, name, category) VALUES (?, ?, ?, ?)',
+                  [watchlist.id, upperSymbol, upperSymbol, 'general']);
+                logger.info(`Auto-added ${upperSymbol} to watchlist ${watchlist.id} for user ${req.user.id}`);
+              }
+            }
+          } catch (wlErr) {
+            logger.error('Auto-add to watchlist failed:', wlErr.message);
+          }
+
+          return res.json({ success: true, message: `Updated ${upperSymbol}: now ${totalQty} shares @ $${avgPrice.toFixed(2)} avg` });
         }
         dbRun(
           'INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, type) VALUES (?, ?, ?, ?, ?)',
-          [portfolio.id, symbol.toUpperCase(), parseFloat(quantity), parseFloat(price), 'stock']
+          [portfolio.id, upperSymbol, parsedQty, parsedPrice, 'stock']
         );
-        return res.json({ success: true, message: `Added ${quantity} ${symbol.toUpperCase()} @ $${price}` });
+        // Create a buy transaction for history
+        dbRun(
+          `INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, notes, source)
+           VALUES (?, ?, 'stock', 'buy', ?, ?, 0, datetime('now'), 'Added via Oracle AI', 'ai')`,
+          [portfolio.id, upperSymbol, parsedQty, parsedPrice]
+        );
+
+        // Auto-add to default watchlist if not already there
+        try {
+          const watchlist = dbGet('SELECT id FROM watchlists WHERE user_id = ? ORDER BY id LIMIT 1', [req.user.id]);
+          if (watchlist) {
+            const existingWl = dbGet('SELECT id FROM watchlist_items WHERE watchlist_id = ? AND symbol = ?', [watchlist.id, upperSymbol]);
+            if (!existingWl) {
+              dbRun('INSERT INTO watchlist_items (watchlist_id, symbol, name, category) VALUES (?, ?, ?, ?)',
+                [watchlist.id, upperSymbol, upperSymbol, 'general']);
+              logger.info(`Auto-added ${upperSymbol} to watchlist ${watchlist.id} for user ${req.user.id}`);
+            }
+          }
+        } catch (wlErr) {
+          logger.error('Auto-add to watchlist failed:', wlErr.message);
+        }
+
+        return res.json({ success: true, message: `Added ${quantity} ${upperSymbol} @ $${price}` });
       }
       default:
         return res.status(400).json({ error: `Unknown action type: ${type}` });
     }
   } catch (err) {
-    logger.error('AI action error:', err.message);
-    return res.status(500).json({ error: err.message });
+    logger.error('AI action error:', err.message, err.stack);
+    return res.status(500).json({ error: 'Failed to execute action. Please try again.' });
   }
 });
 

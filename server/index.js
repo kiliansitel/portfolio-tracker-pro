@@ -22,7 +22,7 @@ const { logger, requestLogger } = require('./utils/logger');
 const { router: authRouter, authenticateToken } = require('./routes/auth');
 const portfolioRouter = require('./routes/portfolio');
 const watchlistRouter = require('./routes/watchlist');
-const alertsRouter = require('./routes/alerts');
+const { router: alertsRouter, checkRouter: alertsCheckRouter } = require('./routes/alerts');
 const marketRouter = require('./routes/market');
 const transactionsRouter = require('./routes/transactions');
 const dataRouter = require('./routes/data');
@@ -32,11 +32,13 @@ const walletsRouter = require('./routes/wallets');
 const updatesRouter = require('./routes/updates');
 const backupRouter = require('./routes/backup');
 const aiRouter = require('./routes/ai');
+const reportsRouter = require('./routes/reports');
 
 // Currency utilities
 const { fetchExchangeRates, SUPPORTED_CURRENCIES } = require('./utils/currency');
 
 const app = express();
+app.set('trust proxy', 1); // Trust first proxy (SWAG/nginx)
 const PORT = process.env.PORT || 8080;
 
 // Middleware - Security Stack
@@ -63,9 +65,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Apply rate limiting
-app.use('/api/auth', authLimiter);
-app.use('/api', apiLimiter);
+// Rate limiting disabled — app runs behind reverse proxy (SWAG) which handles rate limiting
 
 // App info endpoint (public)
 const pkg = require('./package.json');
@@ -83,6 +83,7 @@ app.use('/api/auth', authRouter);
 // All other API routes require authentication
 app.use('/api/portfolios', authenticateToken, portfolioRouter);
 app.use('/api/watchlists', authenticateToken, watchlistRouter);
+app.use('/api/alerts/check', alertsCheckRouter); // API key auth only, no JWT
 app.use('/api/alerts', authenticateToken, alertsRouter);
 app.use('/api', marketRouter); // Market data is public
 
@@ -117,6 +118,7 @@ app.use('/api/history', authenticateToken, historyRouter);
 app.use('/api/updates', authenticateToken, updatesRouter);
 app.use('/api/backup', authenticateToken, backupRouter);
 app.use('/api/ai', authenticateToken, aiRouter);
+app.use('/api/ai/reports', authenticateToken, reportsRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {
@@ -141,6 +143,11 @@ app.get('*', (req, res) => {
 // Start server
 async function start() {
   await initDatabase();
+  
+  // Start report scheduler
+  const { startReportScheduler } = require('./utils/report-scheduler');
+  startReportScheduler();
+  
   app.listen(PORT, () => {
     logger.info(`🚀 Portfolio Tracker API running on http://localhost:${PORT}`);
   });

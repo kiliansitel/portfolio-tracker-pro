@@ -4,7 +4,7 @@
   <img src="../logo.svg" alt="Portfolio Tracker Pro" width="96" height="96">
 </p>
 
-> **Version:** 0.21.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
+> **Version:** 0.26.0 · **License:** MIT · **Self-hosted** — your data stays on your machine.
 
 ---
 
@@ -28,6 +28,7 @@
   - [3.2 Grouped View](#32-grouped-view)
   - [3.3 Position Cards](#33-position-cards)
   - [3.4 Wallet-Synced Positions](#34-wallet-synced-positions)
+  - [3.5 Dividends](#35-dividends)
 - [4. Blockchain Wallets](#4-blockchain-wallets)
   - [4.1 Adding a Wallet](#41-adding-a-wallet)
   - [4.2 Supported Chains](#42-supported-chains)
@@ -69,7 +70,7 @@
   - [10.3 Custom Search](#103-custom-search)
 - [11. Performance & Analytics](#11-performance--analytics)
   - [11.1 Performance Chart](#111-performance-chart)
-  - [11.2 Allocation Donut Chart](#112-allocation-donut-chart)
+  - [11.2 Allocation, Sector & Geographic Exposure](#112-allocation-sector--geographic-exposure)
   - [11.3 Daily OHLCV Data](#113-daily-ohlcv-data)
 - [12. Settings](#12-settings)
   - [12.1 Theme](#121-theme)
@@ -90,37 +91,44 @@
   - [13.5 Conversation Management](#135-conversation-management)
   - [13.6 OpenClaw Integration](#136-openclaw-integration)
 - [14. API Reference](#14-api-reference)
-  - [13.1 Authentication](#131-authentication)
-  - [13.2 Auth Endpoints](#132-auth-endpoints)
-  - [13.3 Portfolio Endpoints](#133-portfolio-endpoints)
-  - [13.4 Watchlist Endpoints](#134-watchlist-endpoints)
-  - [13.5 Alert Endpoints](#135-alert-endpoints)
-  - [13.6 Market Data Endpoints](#136-market-data-endpoints)
-  - [13.7 Transaction Endpoints](#137-transaction-endpoints)
-  - [13.8 Wallet Endpoints](#138-wallet-endpoints)
-  - [13.9 Push Notification Endpoints](#139-push-notification-endpoints)
-  - [13.10 History Endpoints](#1310-history-endpoints)
-  - [13.11 Data & Performance Endpoints](#1311-data--performance-endpoints)
-  - [13.12 Update Endpoints](#1312-update-endpoints)
-  - [13.13 Backup Endpoints](#1313-backup-endpoints)
-  - [13.14 Utility Endpoints](#1314-utility-endpoints)
-  - [13.15 Rate Limiting](#1315-rate-limiting)
-  - [13.16 Error Format](#1316-error-format)
+  - [14.1 Authentication](#141-authentication)
+  - [14.2 Auth Endpoints](#142-auth-endpoints)
+  - [14.3 Portfolio Endpoints](#143-portfolio-endpoints)
+  - [14.4 Watchlist Endpoints](#144-watchlist-endpoints)
+  - [14.5 Alert Endpoints](#145-alert-endpoints)
+  - [14.6 Market Data Endpoints](#146-market-data-endpoints)
+  - [14.7 Transaction Endpoints](#147-transaction-endpoints)
+  - [14.8 Wallet Endpoints](#148-wallet-endpoints)
+  - [14.9 Push Notification Endpoints](#149-push-notification-endpoints)
+  - [14.10 History Endpoints](#1410-history-endpoints)
+  - [14.11 Data & Performance Endpoints](#1411-data--performance-endpoints)
+  - [14.12 Update Endpoints](#1412-update-endpoints)
+  - [14.13 Backup Endpoints](#1413-backup-endpoints)
+  - [14.14 AI Endpoints](#1414-ai-endpoints)
+  - [14.15 Utility Endpoints](#1415-utility-endpoints)
+  - [14.16 Rate Limiting](#1416-rate-limiting)
+  - [14.17 Error Format](#1417-error-format)
 - [15. Self-Hosting](#15-self-hosting)
-  - [14.1 Installation](#141-installation)
-  - [14.2 Environment Variables](#142-environment-variables)
-  - [14.3 Database Management](#143-database-management)
-  - [14.4 Backup and Restore](#144-backup-and-restore)
-  - [14.5 Systemd Service](#145-systemd-service)
+  - [15.1 Installation](#151-installation)
+  - [15.2 Environment Variables](#152-environment-variables)
+  - [15.3 Database Management](#153-database-management)
+  - [15.4 Backup and Restore](#154-backup-and-restore)
+  - [15.5 Systemd Service](#155-systemd-service)
 - [16. Mobile Gestures & Power Tips](#16-mobile-gestures--power-tips)
-  - [15.1 Swipe Actions](#151-swipe-actions)
-  - [15.2 Desktop Hover Actions](#152-desktop-hover-actions)
-  - [15.3 Power User Tips](#153-power-user-tips)
+  - [16.1 Swipe Actions](#161-swipe-actions)
+  - [16.2 Desktop Hover Actions](#162-desktop-hover-actions)
+  - [16.3 Power User Tips](#163-power-user-tips)
 - [17. Troubleshooting](#17-troubleshooting)
-  - [16.1 Common Issues](#161-common-issues)
-  - [16.2 Password Reset](#162-password-reset)
-  - [16.3 Database Recovery](#163-database-recovery)
-  - [16.4 Service Won't Start](#164-service-wont-start)
+  - [17.1 Common Issues](#171-common-issues)
+  - [17.2 Password Reset](#172-password-reset)
+  - [17.3 Database Recovery](#173-database-recovery)
+  - [17.4 Service Won't Start](#174-service-wont-start)
+- [18. Security](#18-security)
+  - [18.1 Authentication & Sessions](#181-authentication--sessions)
+  - [18.2 XSS Protection](#182-xss-protection)
+  - [18.3 Rate Limiting](#183-rate-limiting)
+  - [18.4 Input Validation](#184-input-validation)
+  - [18.5 Error Handling](#185-error-handling)
 
 ---
 
@@ -130,7 +138,7 @@
 
 When you first open Portfolio Tracker Pro, you'll see the login screen.
 
-![Login & Registration](../screenshots/login.jpg)
+![Login & Registration](../screenshots/login.png)
 
 1. Click the **Register** tab at the top of the auth box.
 2. Enter a **username**, **email**, and **password** (minimum 8 characters, must include uppercase, lowercase, and a number).
@@ -141,7 +149,7 @@ On successful registration, the app automatically:
 - Creates a **Main Watchlist** for you to start tracking tickers.
 - Logs you in with a 30-day session.
 
-![Dashboard](../screenshots/dashboard.jpg)
+![Dashboard](../screenshots/dashboard.png)
 
 ### 1.2 Login
 
@@ -157,7 +165,8 @@ After logging in, you land on the **Dashboard** page. It shows:
 
 - **Portfolio Summary** — total value, P&L (profit & loss), today's change, and cash balance.
 - **Performance Chart** — a line chart tracking your portfolio value over time (1W / 1M / 3M / 1Y / All views).
-- **Allocation Chart** — a donut chart showing how your portfolio is split across positions.
+- **Allocation Chart** — a donut chart showing how your portfolio is split across positions. Use the **Allocation | Sectors | Regions** tabs to view sector/industry and geographic exposure breakdowns.
+- **Extended Hours** — position cards and market tiles show **PM** (pre-market, blue) and **AH** (after-hours, purple) badges with extended hours pricing when markets are closed.
 - **Interactive Chart** — a full TradingView-style chart for any ticker, with area/candlestick views and moving average overlays.
 - **Markets Overview** — pinned tickers showing live prices and daily changes.
 
@@ -201,9 +210,11 @@ A "Main Portfolio" is created automatically on registration. To create additiona
    - **Ticker:** Start typing and the autocomplete dropdown suggests matching symbols (e.g., type "BTC" → select "BTC-USD Bitcoin USD").
    - **Quantity:** Number of shares/contracts/coins.
    - **Entry Price:** Your average cost per unit.
-   - **Currency:** The currency of the entry price (USD, EUR, GBP, CHF).
+   - **Currency:** The currency you purchased in (USD, EUR, GBP, CHF, JPY, CAD, AUD, and 20+ more). The entry price is stored in the original currency — no automatic conversion.
    - For **Options**: additional fields appear for Strike Price, Expiry Date, and Multiplier (defaults to 100).
 4. Click **Add Position**.
+
+**Multi-currency handling:** Positions are stored in their original purchase currency. For example, if you buy ASML on Euronext at €650, it stays as €650 in your records. The dashboard and summary calculations convert all positions to your chosen app currency (see [§12.4](#124-currency)) using live exchange rates — so your total portfolio value is always shown in one consistent currency.
 
 **Tip:** If you add a position for a ticker that already exists, the app automatically calculates a new weighted average entry price and updates the quantity.
 
@@ -256,7 +267,7 @@ Cash is included in total portfolio value and the allocation chart (displayed in
 
 ## 3. Positions Page
 
-![Positions](../screenshots/positions.jpg)
+![Positions](../screenshots/positions.png)
 
 ### 3.1 Summary Bar
 
@@ -291,11 +302,14 @@ Each position card shows:
 |---------|-------------|
 | **Symbol + Icon** | Ticker symbol with SVG icon (crypto, commodities, indices get custom icons) |
 | **Type Badge** | Colored badge (Stock / Option / Crypto / ETF) |
-| **Current Price** | Live price in your selected currency |
+| **Current Price** | Live price from market data |
 | **Daily Change** | Today's price change in absolute and percentage |
 | **Quantity** | Number of shares/contracts/coins |
 | **Total Value** | Current price × quantity (× multiplier for options) |
-| **P&L** | Unrealized profit/loss with percentage |
+| **Entry Price** | Original purchase price shown in the position's currency (e.g., €650) |
+| **P&L** | Unrealized profit/loss with percentage (converted to display currency) |
+| **Dividend Yield** | Annual yield badge (if the stock pays dividends) |
+| **PM / AH Badge** | Pre-market (blue) or after-hours (purple) extended hours price when available |
 
 ### 3.4 Wallet-Synced Positions
 
@@ -304,6 +318,28 @@ Positions created or updated from on-chain wallets display a **🔗** badge next
 - Are automatically updated when wallets sync (every 5 minutes).
 - Reflect the aggregated balance across all wallets for that chain.
 - Are removed if all wallets for that chain are deleted.
+
+---
+
+### 3.5 Dividends
+
+Positions that pay dividends show a **💰 yield badge** on their card with the annual dividend yield percentage.
+
+A **Dividends summary** appears on the Portfolio page showing:
+- **Annual Income** — estimated total annual dividend income across all positions.
+- **Average Yield** — weighted average dividend yield.
+- **Next Ex-Date** — the soonest upcoming ex-dividend date.
+
+Click the **📅 Calendar** button to open the **Dividend Income Calendar**:
+
+![Dividend Income Calendar](../screenshots/dividend-calendar.png)
+
+The calendar shows:
+- **Monthly breakdown** — horizontal bar chart of expected income by month.
+- **Upcoming ex-dates** — list of positions with their next ex-dividend date and countdown.
+- **Status badges** — "passed" for past dates, countdown (e.g., "in 2d") for upcoming ones.
+
+Dividend data is sourced from Yahoo Finance and includes: annual rate, yield, and ex-dividend dates.
 
 ---
 
@@ -406,7 +442,7 @@ When a wallet is deleted:
 
 ## 5. Watchlists
 
-![Watchlist](../screenshots/watchlist.jpg)
+![Watchlist](../screenshots/watchlist.png)
 
 ### 5.1 Creating Watchlists
 
@@ -465,7 +501,7 @@ If set, the watchlist item shows a colored **🔔 BUY** or **🔔 SELL** badge.
 
 ## 6. Alerts
 
-![Alerts](../screenshots/alerts.jpg)
+![Alerts](../screenshots/alerts.png)
 
 ### 6.1 Creating Price Alerts
 
@@ -554,7 +590,7 @@ Select the time range for chart data:
 
 ### 7.5 Full-Screen Chart Detail
 
-![Chart Detail](../screenshots/chart-detail.jpg)
+![Chart Detail](../screenshots/chart-detail.png)
 
 Click on any ticker (in the markets grid, watchlist, or positions) to open a **full-screen chart detail modal**. This modal provides:
 
@@ -603,7 +639,7 @@ Strike prices are filtered to ±15% of the current price to keep the view focuse
 
 ## 9. Transactions
 
-![Transactions](../screenshots/transactions.jpg)
+![Transactions](../screenshots/transactions.png)
 
 ### 9.1 Transaction History
 
@@ -633,7 +669,7 @@ The **History** page (📜) shows all your buy and sell records, sorted by date 
 
 ### 9.3 On-Chain Imported Transactions
 
-When on-chain transactions are fetched for Bitcoin or Ethereum wallets (see [4.6](#46-on-chain-transaction-history)), they are automatically imported as app-level transactions with:
+When on-chain transactions are fetched for Bitcoin or Ethereum wallets (see [§4.6](#46-on-chain-transaction-history)), they are automatically imported as app-level transactions with:
 - `action`: "buy" for incoming, "sell" for outgoing.
 - `price`: the current market price at time of import.
 - `notes`: a tag referencing the on-chain transaction hash.
@@ -646,7 +682,7 @@ Sell transactions, combined with your entry prices, allow calculation of **reali
 
 ## 10. News Feed
 
-![News](../screenshots/news.jpg)
+![News](../screenshots/news.png)
 
 ### 10.1 Market News
 
@@ -682,15 +718,23 @@ The Dashboard features a **Performance Chart** that tracks your portfolio value 
 - **Daily snapshots:** Automatically saved on each visit and via a daily cron job (10 PM ET, Mon–Fri).
 - **Historical reconstruction:** Can rebuild history from your transactions and position data, fetching historical prices from Yahoo Finance.
 
-### 11.2 Allocation Donut Chart
+### 11.2 Allocation, Sector & Geographic Exposure
 
-![Allocation Donut Chart](../screenshots/allocation.jpg)
+![Allocation Donut Chart](../screenshots/allocation.png)
 
-A **donut chart** on the Dashboard shows portfolio breakdown:
-- Each position gets a unique color slice.
-- **Legend** shows the top 8 positions with their percentage allocation.
-- **Cash** is shown as a gray slice.
-- Hover or tap a slice to see the exact value and percentage.
+A **donut chart** on the Dashboard shows portfolio breakdown, with three tabbed views:
+
+**📊 Allocation** — breakdown by individual position (default view). Each position gets a unique color slice. The **legend** shows the top 8 positions with their percentage allocation. **Cash** is shown as a gray slice. Hover or tap a slice to see the exact value and percentage.
+
+**🏭 Sectors** — breakdown by industry sector (Technology, Healthcare, etc.).
+
+![Sector Exposure](../screenshots/sector-exposure.png)
+
+**🌍 Regions** — breakdown by geographic region (North America, Europe, Asia, Crypto/Digital).
+
+![Region Exposure](../screenshots/region-exposure.png)
+
+Click the tab buttons above the chart to switch views. Crypto positions are categorized as "Crypto/Digital" in the regions view and "Crypto" in the sectors view. Sector and region data is sourced from Yahoo Finance with 24-hour caching.
 
 ### 11.3 Daily OHLCV Data
 
@@ -704,7 +748,7 @@ The app stores daily **Open/High/Low/Close/Volume** data for all tracked symbols
 
 ## 12. Settings
 
-![Settings](../screenshots/settings.jpg)
+![Settings](../screenshots/settings.png)
 
 ### 12.1 Theme
 
@@ -738,7 +782,7 @@ The app validates the email format and checks for duplicates before saving.
 
 ### 12.4 Currency
 
-Choose your display currency from the dropdown:
+Choose your **display currency** (the currency used for dashboard totals, P&L, and aggregated values) from the dropdown:
 
 | Currency | Symbol | Flag |
 |----------|--------|------|
@@ -747,7 +791,14 @@ Choose your display currency from the dropdown:
 | **GBP** | £ | 🇬🇧 |
 | **CHF** | CHF | 🇨🇭 |
 
-All prices, values, and P&L figures are converted using **live exchange rates** fetched from Yahoo Finance. The currency preference is saved both locally and on the server so it persists across devices.
+This is separate from **position currencies** — each position stores the currency it was purchased in (set when adding the position). The display currency controls how the dashboard aggregates everything.
+
+**How it works:**
+- Entry prices are shown in their **original currency** on position cards (e.g., €650 for a EUR purchase).
+- Dashboard totals, P&L, and allocation charts convert all positions to your **display currency** using live exchange rates.
+- Exchange rates are fetched from Yahoo Finance and cached.
+
+The currency preference is saved both locally and on the server so it persists across devices.
 
 ### 12.5 Telegram Integration
 
@@ -757,7 +808,7 @@ Set your **Telegram Chat ID** to receive alert notifications via Telegram. The c
 
 Browser push notifications require:
 - **HTTPS** connection (won't work on plain HTTP).
-- **VAPID keys** configured on the server (see [Environment Variables](#142-environment-variables)).
+- **VAPID keys** configured on the server (see [§15.2](#152-environment-variables)).
 
 Controls:
 - **🔔 Enable** — subscribes to push notifications.
@@ -818,7 +869,7 @@ When an update is available, the app shows how many commits are ahead and a butt
 
 ## 13. Oracle AI
 
-![Oracle AI](../screenshots/oracle-ai.jpg)
+![Oracle AI](../screenshots/oracle-response-top.png)
 
 Oracle AI connects your portfolio tracker to any LLM provider for intelligent analysis, chat, and insights — all without your data leaving your server.
 
@@ -853,8 +904,9 @@ The AI chat is a full conversational interface:
 
 1. Navigate to the **AI** page (🧠 tab)
 2. Type your question in the input box
-3. Press **Send** or hit Enter
+3. Press **Send** or hit Enter — or click the 🎤 **microphone button** next to the input field to speak your question. The button pulses red while listening. Speech is transcribed to text for you to review before sending.
 4. Responses stream in real-time via SSE with full markdown rendering
+5. Click the 📄 button on any AI response to export it as a PDF, or use the 📄 button in the header to export the full conversation.
 
 **Tips:**
 - Ask about your portfolio: *"How diversified am I?"*
@@ -862,7 +914,7 @@ The AI chat is a full conversational interface:
 - Request strategies: *"Suggest a hedging strategy for my NVDA position"*
 - Follow-up questions maintain conversation context
 
-Responses are capped at **2048 tokens** to keep them focused. Conversation history is limited to the **last 20 messages** sent to the AI for context.
+Messages are limited to **5,000 characters**. Responses are capped at **2048 tokens** to keep them focused. Conversation history is limited to the **last 20 messages** sent to the AI for context.
 
 ### 13.3 Context Chips
 
@@ -885,6 +937,8 @@ Quick actions are one-tap analysis shortcuts that appear at the top of the AI pa
 - **📊 Portfolio Review** — Comprehensive analysis of your holdings, diversification, risk exposure, and suggestions
 - **👀 Watchlist Signals** — Scans your watchlist for entry/exit signals and momentum patterns
 - **🔍 Position Deep Dive** — In-depth analysis of a specific position (prompts you for the ticker)
+- **🎯 Strategy Advisor** — Personalized trading strategies including options plays, DCA plans, hedging suggestions, and position sizing recommendations
+- **🛡️ Risk & Correlation Analysis** — Portfolio risk assessment covering concentration risk, correlation analysis, sector exposure, beta, tail risk scenarios, and diversification scoring
 
 Quick actions automatically enable the relevant context chips and send a pre-crafted prompt.
 
@@ -899,7 +953,22 @@ Conversations are persisted so you can revisit past analyses:
 
 Each conversation stores the full message history, provider used, and timestamp.
 
-### 13.6 OpenClaw Integration
+### 13.6 Scheduled Auto-Reports
+
+Configure automated AI-generated portfolio reports from **Settings → Scheduled Reports**:
+
+- **Daily Summary** — A daily portfolio overview generated at your chosen time. Covers performance, movers, and key metrics.
+- **Weekly Digest** — A comprehensive weekly analysis generated on your chosen day/time. Includes trends, allocation changes, and recommendations.
+
+**Configuration:**
+1. Go to **Settings** → scroll to **Scheduled Reports**
+2. Toggle daily and/or weekly reports on
+3. Set your preferred time and timezone
+4. Reports are generated automatically and saved as Oracle conversations with a 📊 badge
+
+Reports use whichever AI provider you have configured. No external tools or cron jobs needed — scheduling runs entirely within the app.
+
+### 13.7 OpenClaw Integration
 
 If you're running Portfolio Tracker Pro alongside **OpenClaw**, AI is available with zero configuration:
 
@@ -1016,10 +1085,15 @@ POST /api/portfolios/1/positions
 {
   "symbol": "NVDA",
   "quantity": 10,
-  "entry_price": 450.00
+  "entry_price": 450.00,
+  "currency": "USD",
+  "type": "stock",
+  "entry_date": "2026-01-15"
 }
-→ { "id": 5, "portfolio_id": 1, "symbol": "NVDA", "quantity": 10, "entry_price": 450.00 }
+→ { "id": 5, "portfolio_id": 1, "symbol": "NVDA", "quantity": 10, "entry_price": 450.00, "currency": "USD", "type": "stock", "entry_date": "2026-01-15", ... }
 ```
+
+The `currency` field stores the original purchase currency (defaults to `USD` if omitted). Supported currencies: USD, EUR, GBP, CHF, JPY, CAD, AUD, NZD, SEK, NOK, DKK, PLN, CZK, HUF, RON, BGN, HRK, ISK, TRY, ZAR, BRL, MXN, INR, CNY, HKD, SGD, KRW.
 
 **Duplicate handling:** If a position for `NVDA` already exists, the quantity is summed and entry price is recalculated as a weighted average.
 
@@ -1246,6 +1320,8 @@ Body: raw binary database file
 | `POST` | `/api/ai/analyze/portfolio` | ✅ | Quick portfolio review |
 | `POST` | `/api/ai/analyze/watchlist` | ✅ | Quick watchlist signals |
 | `POST` | `/api/ai/analyze/position` | ✅ | Quick position deep dive |
+| `POST` | `/api/ai/analyze/strategy` | ✅ | Strategy advisor (options, DCA, hedging) |
+| `POST` | `/api/ai/analyze/risk` | ✅ | Risk & correlation analysis |
 | `GET` | `/api/ai/conversations` | ✅ | List saved conversations |
 | `POST` | `/api/ai/conversations` | ✅ | Save conversation |
 | `GET` | `/api/ai/conversations/:id` | ✅ | Load conversation |
@@ -1273,7 +1349,7 @@ The response is a Server-Sent Events (SSE) stream. Each event contains a `data` 
 **Info response:**
 ```json
 {
-  "version": "0.20.0",
+  "version": "0.26.0",
   "env": "production",
   "name": "Portfolio Pro"
 }
@@ -1287,6 +1363,8 @@ The API enforces rate limits to prevent abuse:
 |-------|-------|--------|
 | **Auth endpoints** | 10 requests | 15 minutes |
 | **General API** | 100 requests | 1 minute |
+| **AI chat** | 10 requests | 1 minute |
+| **AI analysis** | 5 requests | 1 minute |
 | **Write operations** | 30 requests | 1 minute |
 | **OHLCV collection** | Stricter limit | Shared with write ops |
 
@@ -1324,7 +1402,7 @@ HTTP status codes used:
 
 ## 15. Self-Hosting
 
-### 17.1 Installation
+### 15.1 Installation
 
 For detailed installation instructions (Docker, Docker Compose, Node.js, reverse proxy), see the **[Installation Guide](INSTALL.md)**.
 
@@ -1340,7 +1418,7 @@ cd portfolio-tracker-pro/server
 npm install && npm start
 ```
 
-### 17.2 Environment Variables
+### 15.2 Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
@@ -1361,7 +1439,7 @@ npm install && npm start
 npx web-push generate-vapid-keys
 ```
 
-### 17.3 Database Management
+### 15.3 Database Management
 
 Portfolio Tracker Pro uses **SQLite** (via sql.js, an in-memory SQLite compiled to WebAssembly):
 
@@ -1372,7 +1450,7 @@ Portfolio Tracker Pro uses **SQLite** (via sql.js, an in-memory SQLite compiled 
 
 > **⚠️ Important:** The database is loaded into memory on startup. If you need to edit the database file directly, **stop the service first**, make your changes, then restart. Otherwise the in-memory copy will overwrite your changes on the next save.
 
-### 17.4 Backup and Restore
+### 15.4 Backup and Restore
 
 **Backup:**
 ```bash
@@ -1395,7 +1473,7 @@ cp backup-20260207.db /path/to/server/portfolio.db
 sudo systemctl start portfolio-tracker.service
 ```
 
-### 17.5 Systemd Service
+### 15.5 Systemd Service
 
 For running on a Linux server with automatic restart:
 
@@ -1436,7 +1514,7 @@ journalctl -u portfolio-tracker.service -f
 
 ## 16. Mobile Gestures & Power Tips
 
-### 17.1 Swipe Actions
+### 16.1 Swipe Actions
 
 On **mobile** (touch devices), swipe left on list items to reveal action buttons:
 
@@ -1450,11 +1528,11 @@ On **mobile** (touch devices), swipe left on list items to reveal action buttons
 
 Swipe ~80px to the left to reveal buttons, then release. Tap the revealed button to perform the action.
 
-### 17.2 Desktop Hover Actions
+### 16.2 Desktop Hover Actions
 
 On **desktop**, hover over any list item to reveal the same action buttons on the right side. No swiping needed — just hover and click.
 
-### 17.3 Power User Tips
+### 16.3 Power User Tips
 
 - **Quick chart access:** Click any ticker symbol (in watchlist, positions, or markets grid) to instantly open a full chart.
 - **Autocomplete everywhere:** The ticker search in add-position, add-watchlist, and add-alert modals all support autocomplete with 90+ pre-loaded symbols.
@@ -1542,7 +1620,56 @@ Common causes:
 - **Port conflict:** Another process is using the configured port.
 - **Permission denied:** Ensure the service user has read/write access to the data directory.
 - **Node.js version:** Requires Node.js 18+. Check with `node --version`.
-- **Corrupt database:** See [16.3](#163-database-recovery).
+- **Corrupt database:** See [§17.3](#173-database-recovery).
+
+---
+
+## 18. Security
+
+Portfolio Tracker Pro includes multiple layers of security hardening to protect your data and prevent abuse.
+
+### 18.1 Authentication & Sessions
+
+- Passwords are hashed with **Argon2id** (OWASP-recommended) with tuned memory/time/parallelism parameters.
+- Sessions use **httpOnly JWT cookies** (not accessible to JavaScript) with 30-day expiry.
+- Password requirements enforce minimum 8 characters with uppercase, lowercase, and numeric characters.
+
+### 18.2 XSS Protection
+
+All AI-generated responses are sanitized with **DOMPurify** before rendering in the browser. This prevents cross-site scripting (XSS) attacks through malicious content in AI responses or any user-facing rendered HTML. Markdown rendering (via marked.js) passes through DOMPurify before insertion into the DOM.
+
+### 18.3 Rate Limiting
+
+Rate limits are enforced at multiple tiers to prevent abuse (see also [§14.16](#1416-rate-limiting)):
+
+| Scope | Limit | Window |
+|-------|-------|--------|
+| **Auth endpoints** (login/register) | 10 requests | 15 minutes |
+| **AI chat messages** | 10 requests | 1 minute |
+| **AI analysis actions** | 5 requests | 1 minute |
+| **General API** | 100 requests | 1 minute |
+| **Write operations** | 30 requests | 1 minute |
+
+Exceeding any limit returns HTTP `429 Too Many Requests` with a `Retry-After` header.
+
+### 18.4 Input Validation
+
+All AI-related inputs are validated server-side:
+
+- **Ticker symbols** must match a valid format (1–10 uppercase alphanumeric characters, with optional `-`, `.`, `^`, `=` for special tickers like `BTC-USD` or `GC=F`).
+- **Quantities and prices** must be positive numbers.
+- **Chat messages** are capped at **5,000 characters**.
+- **Provider names** are validated against the list of supported providers.
+
+General input validation is applied across all endpoints — field types, lengths, and formats are checked before processing.
+
+### 18.5 Error Handling
+
+Error responses are **sanitized** to prevent information leakage:
+
+- No database schema details, SQL queries, or stack traces are exposed in error responses.
+- All errors return a generic, human-readable message (see [§14.17](#1417-error-format)).
+- Server-side errors are logged internally for debugging but the client only sees `"Internal server error"`.
 
 ---
 

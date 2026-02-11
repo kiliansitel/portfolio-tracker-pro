@@ -296,6 +296,85 @@ router.get('/prices', async (req, res) => {
   res.json(results);
 });
 
+// SSE live price stream
+router.get('/prices/stream', (req, res) => {
+  const { symbols } = req.query;
+  if (!symbols) return res.status(400).json({ error: 'symbols required' });
+  
+  const symbolList = symbols.split(',').slice(0, 50).map(s => s.trim());
+  
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no'
+  });
+  res.flushHeaders();
+  res.write(':\n\n'); // SSE comment to establish connection
+  
+  let alive = true;
+  req.on('close', () => { alive = false; });
+  
+  const sendPrices = async () => {
+    if (!alive) return;
+    try {
+      const results = {};
+      // Fetch in parallel batches
+      const batchSize = 10;
+      for (let i = 0; i < symbolList.length; i += batchSize) {
+        const batch = symbolList.slice(i, i + batchSize);
+        const promises = batch.map(s => fetchYahooPrice(s));
+        const batchResults = await Promise.all(promises);
+        batch.forEach((sym, idx) => {
+          if (batchResults[idx]) results[sym] = batchResults[idx];
+        });
+      }
+      if (alive) {
+        res.write(`data: ${JSON.stringify(results)}\n\n`);
+      }
+    } catch (e) {
+      if (alive) res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+    }
+  };
+  
+  // Split symbols into crypto (fast) and stocks (normal)
+  const cryptoSymbols = symbolList.filter(s => s.endsWith('-USD') || s.includes('BTC') || s.includes('ETH') || s.includes('DOGE') || s.includes('SOL') || s.includes('XRP'));
+  const stockSymbols = symbolList.filter(s => !cryptoSymbols.includes(s));
+  
+  const sendBatch = async (syms) => {
+    if (!alive || syms.length === 0) return;
+    try {
+      const results = {};
+      const batchSize = 10;
+      for (let i = 0; i < syms.length; i += batchSize) {
+        const batch = syms.slice(i, i + batchSize);
+        const promises = batch.map(s => fetchYahooPrice(s));
+        const batchResults = await Promise.all(promises);
+        batch.forEach((sym, idx) => {
+          if (batchResults[idx]) results[sym] = batchResults[idx];
+        });
+      }
+      if (alive && Object.keys(results).length > 0) {
+        res.write(`data: ${JSON.stringify(results)}\n\n`);
+      }
+    } catch (e) {
+      if (alive) res.write(`data: ${JSON.stringify({ error: e.message })}\n\n`);
+    }
+  };
+
+  // Send all immediately
+  sendPrices();
+  
+  // Crypto: every 3 seconds | Stocks: every 8 seconds
+  const cryptoInterval = cryptoSymbols.length > 0 ? setInterval(() => sendBatch(cryptoSymbols), 3000) : null;
+  const stockInterval = stockSymbols.length > 0 ? setInterval(() => sendBatch(stockSymbols), 8000) : null;
+  
+  req.on('close', () => {
+    if (cryptoInterval) clearInterval(cryptoInterval);
+    if (stockInterval) clearInterval(stockInterval);
+  });
+});
+
 // Get chart data
 router.get('/chart/:symbol', async (req, res) => {
   const { symbol } = req.params;
@@ -436,18 +515,50 @@ function getTimeAgo(date) {
 }
 
 // Ticker search
-router.get('/tickers/search', (req, res) => {
+router.get('/tickers/search', async (req, res) => {
   const { q } = req.query;
   if (!q) {
     return res.json(POPULAR_TICKERS.slice(0, 20));
   }
   
   const query = q.toUpperCase();
-  const matches = POPULAR_TICKERS.filter(t => 
+  const localMatches = POPULAR_TICKERS.filter(t => 
     t.symbol.includes(query) || t.name.toUpperCase().includes(query)
   );
   
-  res.json(matches.slice(0, 20));
+  // If we have enough local matches, return them
+  if (localMatches.length >= 5) {
+    return res.json(localMatches.slice(0, 20));
+  }
+  
+  // Fall back to Yahoo Finance search for broader coverage (all markets)
+  try {
+    const yahooRes = await fetch(
+      `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=15&newsCount=0`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(5000) }
+    );
+    if (yahooRes.ok) {
+      const data = await yahooRes.json();
+      const yahooResults = (data.quotes || [])
+        .filter(q => q.symbol && q.shortname && !q.symbol.includes('='))
+        .map(q => ({ symbol: q.symbol, name: q.shortname, exchange: q.exchange || '' }));
+      
+      // Merge: local matches first, then Yahoo results (deduplicated)
+      const seen = new Set(localMatches.map(m => m.symbol));
+      const merged = [...localMatches];
+      for (const r of yahooResults) {
+        if (!seen.has(r.symbol)) {
+          merged.push(r);
+          seen.add(r.symbol);
+        }
+      }
+      return res.json(merged.slice(0, 20));
+    }
+  } catch (e) {
+    // Yahoo search failed — return local results only
+  }
+  
+  res.json(localMatches.slice(0, 20));
 });
 
 router.get('/tickers/popular', (req, res) => {

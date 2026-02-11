@@ -1,12 +1,12 @@
 {
   "name": "portfolio-tracker-server",
-  "version": "0.21.0",
+  "version": "0.28.0",
   "description": "Portfolio tracker backend with user auth and portfolio management",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "test": "jest --coverage --detectOpenHandles --forceExit",
+    "test": "jest --coverage --forceExit",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
     "lint": "eslint .",
@@ -24,6 +24,7 @@
     "helmet": "^7.1.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.2.1",
     "sql.js": "^1.10.2",
     "web-push": "^3.6.7",
     "winston": "^3.19.0"

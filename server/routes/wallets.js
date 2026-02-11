@@ -4,6 +4,7 @@ const { idParamValidation } = require('../validators/portfolio');
 const { body, validationResult } = require('express-validator');
 const { fetchYahooPrice } = require('../utils/yahoo');
 const { logger } = require('../utils/logger');
+const { autoAddToWatchlist } = require('../utils/watchlist-sync');
 
 const router = express.Router();
 
@@ -499,6 +500,100 @@ const validate = (req, res, next) => {
   next();
 };
 
+// Chain-specific address validation functions
+function validateBtcAddress(address) {
+  // Bitcoin: starts with 1, 3, or bc1 (base58check or bech32)
+  const base58Regex = /^[13][a-km-zA-HJ-NP-Z1-9]{25,34}$/;
+  const bech32Regex = /^bc1[02-9ac-hj-np-z]{7,87}$/;
+  return base58Regex.test(address) || bech32Regex.test(address);
+}
+
+function validateEvmAddress(address) {
+  // EVM chains: 0x + 40 hex chars (42 total)
+  return /^0x[a-fA-F0-9]{40}$/.test(address);
+}
+
+function validateSolAddress(address) {
+  // Solana: base58, 32-44 chars
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+  return base58Regex.test(address);
+}
+
+function validateLtcAddress(address) {
+  // Litecoin: starts with L, M, or ltc1
+  const legacyRegex = /^[LM][a-km-zA-HJ-NP-Z1-9]{26,33}$/;
+  const bech32Regex = /^ltc1[02-9ac-hj-np-z]{7,87}$/;
+  return legacyRegex.test(address) || bech32Regex.test(address);
+}
+
+function validateDogeAddress(address) {
+  // Dogecoin: starts with D
+  return /^D[5-9A-HJ-NP-U][1-9A-HJ-NP-Za-km-z]{32}$/.test(address);
+}
+
+function validateXrpAddress(address) {
+  // XRP: starts with r, 25-35 chars
+  return /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(address);
+}
+
+function validateAdaAddress(address) {
+  // Cardano: starts with addr1
+  return /^addr1[02-9ac-hj-np-z]{7,103}$/.test(address);
+}
+
+function validateDotAddress(address) {
+  // Polkadot: starts with 1, 25-48 chars
+  return /^1[a-km-zA-HJ-NP-Z1-9]{24,47}$/.test(address);
+}
+
+// Address validation mapping
+const ADDRESS_VALIDATORS = {
+  btc: validateBtcAddress,
+  eth: validateEvmAddress,
+  bnb: validateEvmAddress,
+  avax: validateEvmAddress,
+  matic: validateEvmAddress,
+  arb: validateEvmAddress,
+  op: validateEvmAddress,
+  sol: validateSolAddress,
+  ltc: validateLtcAddress,
+  doge: validateDogeAddress,
+  xrp: validateXrpAddress,
+  ada: validateAdaAddress,
+  dot: validateDotAddress,
+};
+
+// Custom validator that checks chain-specific address format
+function validateChainAddress(address, { req }) {
+  const chain = req.body.chain;
+  if (!chain) return false;
+  
+  const validator = ADDRESS_VALIDATORS[chain];
+  if (!validator) return false;
+  
+  if (!validator(address)) {
+    const chainName = CHAIN_NAMES[chain] || chain.toUpperCase();
+    const examples = {
+      btc: '1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa or bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+      eth: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7',
+      bnb: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7',
+      avax: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7',
+      matic: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7',
+      arb: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7',
+      op: '0x742d35Cc6639C0532fBa96F4a92b0D9b8F7b5b7',
+      sol: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+      ltc: 'LdP8Qox1VAhCzLJNqrr74YovaWYyNBUWvL or ltc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4',
+      doge: 'DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L',
+      xrp: 'rDfNhYvC2TmFyJ4BFqwbVHDyVGvF7j1M2',
+      ada: 'addr1qxy3rsdp8g7qvs9z8w6z8m3j6x9q5v8n7m6k5j4h3g2f1e9d8c7b6a5',
+      dot: '15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5',
+    };
+    throw new Error(`Invalid ${chainName} address format. Example: ${examples[chain] || 'please check the address format'}`);
+  }
+  
+  return true;
+}
+
 const walletValidation = [
   body('chain')
     .trim()
@@ -508,7 +603,8 @@ const walletValidation = [
   body('address')
     .trim()
     .isLength({ min: 20, max: 128 })
-    .withMessage('Address must be 20-128 characters'),
+    .withMessage('Address must be 20-128 characters')
+    .custom(validateChainAddress),
   body('label')
     .optional()
     .trim()
@@ -732,6 +828,7 @@ function syncPositionsFromWallets(userId, chainBalances) {
         [portfolioId, symbol, totalBalance, `wallet-synced | ${WALLET_SYNCED_NOTE}`]
       );
       updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+      autoAddToWatchlist(userId, symbol, CHAIN_NAMES[chain]);
     }
   }
 
@@ -790,6 +887,7 @@ function syncTokenPositionsFromWallets(userId) {
           [portfolioId, symbol, totalBalance, WALLET_TOKEN_NOTE]
         );
         updatedPositions.push({ id: result.lastInsertRowid, symbol, quantity: totalBalance, action: 'created' });
+        autoAddToWatchlist(userId, symbol, token.symbol);
       } catch (e) {
         logger.info(`Failed to create wallet token position for ${symbol}: ${e.message}`);
       }
@@ -1074,7 +1172,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /wallets — add wallet
-router.post('/', walletValidation, (req, res) => {
+router.post('/', walletValidation, async (req, res) => {
   try {
     const { chain, address, label } = req.body;
 
@@ -1092,7 +1190,7 @@ router.post('/', walletValidation, (req, res) => {
       [req.user.id, chain, address, label || null]
     );
 
-    res.json({
+    const newWallet = {
       id: result.lastInsertRowid,
       user_id: req.user.id,
       chain,
@@ -1101,6 +1199,44 @@ router.post('/', walletValidation, (req, res) => {
       balance: 0,
       last_synced: null,
       created_at: new Date().toISOString(),
+    };
+
+    // Auto-sync balance and create position immediately after adding
+    try {
+      const updated = await syncWalletBalance(newWallet);
+      newWallet.balance = updated.balance;
+      newWallet.last_synced = updated.last_synced;
+
+      // Sync tokens for supported chains
+      if (TOKEN_CHAINS.includes(chain)) {
+        try { await syncWalletTokens(newWallet); } catch (e) { logger.error('Token sync on add failed:', e.message); }
+      }
+
+      // Aggregate all wallets for this chain and sync position
+      const allWalletsForChain = dbAll('SELECT * FROM wallets WHERE user_id = ? AND chain = ?', [req.user.id, chain]);
+      const totalBalance = allWalletsForChain.reduce((sum, w) => sum + (w.balance || 0), 0);
+      syncPositionsFromWallets(req.user.id, { [chain]: totalBalance });
+      syncTokenPositionsFromWallets(req.user.id);
+
+      // Fetch transactions
+      try { await fetchAndStoreTransactions(newWallet); } catch (e) { logger.error('Tx fetch on add failed:', e.message); }
+    } catch (syncErr) {
+      logger.error('Auto-sync on wallet add failed:', syncErr.message);
+      // Still return the wallet — user can manually sync later
+    }
+
+    const price = await getChainPrice(chain).catch(() => 0);
+    const tokens = TOKEN_CHAINS.includes(chain) ? getWalletTokens(newWallet.id) : [];
+    const tokensUsd = tokens.reduce((sum, t) => sum + (t.usd_value || 0), 0);
+    const nativeUsd = (newWallet.balance || 0) * price;
+
+    res.json({
+      ...newWallet,
+      usd_value: nativeUsd + tokensUsd,
+      chain_price: price,
+      chain_name: CHAIN_NAMES[chain] || chain.toUpperCase(),
+      tokens,
+      token_count: tokens.length,
     });
   } catch (error) {
     logger.error('Error adding wallet:', error);
