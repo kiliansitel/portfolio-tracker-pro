@@ -1190,10 +1190,19 @@ async function loadPerformance() {
         renderPerformanceChart(data.snapshots);
         
         // Update summary
-        document.getElementById('perfStart').textContent = fc(data.summary.start_value);
-        document.getElementById('perfCurrent').textContent = fc(data.summary.current_value);
+        // Compact format for mobile — no decimals for large values
+        const fcc = (v) => {
+            const abs = Math.abs(v);
+            const sym = CURRENCY_SYMBOLS[userCurrency] || userCurrency + ' ';
+            if (abs >= 1e6) return sym + (v / 1e6).toFixed(1).replace('.0', '') + 'M';
+            if (abs >= 1e3) return sym + (v / 1e3).toFixed(1).replace('.0', '') + 'K';
+            return sym + v.toFixed(0);
+        };
+        document.getElementById('perfStart').textContent = fcc(data.summary.start_value);
+        document.getElementById('perfCurrent').textContent = fcc(data.summary.current_value);
         const returnEl = document.getElementById('perfReturn');
-        returnEl.textContent = (data.summary.total_return >= 0 ? '+' : '') + fc(data.summary.total_return) + ' (' + data.summary.total_return_pct.toFixed(2) + '%)';
+        const retSign = data.summary.total_return >= 0 ? '+' : '';
+        returnEl.textContent = retSign + fcc(data.summary.total_return) + ' (' + data.summary.total_return_pct.toFixed(1) + '%)';
         returnEl.className = data.summary.total_return >= 0 ? 'positive' : 'negative';
     } catch (e) {
         console.warn('Failed to load performance:', e);
@@ -1221,7 +1230,7 @@ function renderPerformanceChart(snapshots) {
 
     performanceChart = LightweightCharts.createChart(el, {
         width: el.clientWidth || 300,
-        height: 200,
+        height: el.clientHeight || 260,
         layout: { background: { type: 'solid', color: '#1e222d' }, textColor: '#d1d4dc' },
         grid: { vertLines: { color: '#2a2e39' }, horzLines: { color: '#2a2e39' } },
         rightPriceScale: {
