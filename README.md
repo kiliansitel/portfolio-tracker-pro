@@ -17,8 +17,8 @@
 </p>
 
 <p align="center">
-  <img src="screenshots/desktop-dark-dashboard.jpg" width="280" alt="Dashboard">
-  <img src="screenshots/oracle-chat.jpg" width="280" alt="Oracle AI">
+  <img src="screenshots/desktop-dark-dashboard.jpg" width="420" alt="Dashboard">
+  <img src="screenshots/oracle-chat.jpg" width="160" alt="Oracle AI">
 </p>
 
 ## Quick Start
@@ -61,8 +61,8 @@ Open **http://localhost:8080** → create an account → start tracking.
 - 🐳 **Docker Ready** — Multi-arch images (amd64/arm64), CI/CD pipeline, one-line deploy. Auto-detects Docker environment and shows `docker pull` upgrade instructions
 
 <p align="center">
-  <img src="screenshots/oracle-welcome.jpg" width="280" alt="Oracle Welcome">
-  <img src="screenshots/oracle-desktop.jpg" width="280" alt="Oracle Desktop">
+  <img src="screenshots/oracle-welcome.jpg" width="160" alt="Oracle Welcome">
+  <img src="screenshots/oracle-desktop.jpg" width="420" alt="Oracle Desktop">
 </p>
 
 <p align="center">
