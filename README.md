@@ -17,8 +17,8 @@
 </p>
 
 <p align="center">
-  <img src="screenshots/dashboard.jpg" width="280" alt="Dashboard">
-  <img src="screenshots/oracle-response-top.png" width="280" alt="Oracle AI in Action">
+  <img src="screenshots/desktop-dark-dashboard.jpg" width="280" alt="Dashboard">
+  <img src="screenshots/oracle-chat.jpg" width="280" alt="Oracle AI">
 </p>
 
 ## Quick Start
@@ -61,36 +61,36 @@ Open **http://localhost:8080** → create an account → start tracking.
 - 🐳 **Docker Ready** — Multi-arch images (amd64/arm64), CI/CD pipeline, one-line deploy. Auto-detects Docker environment and shows `docker pull` upgrade instructions
 
 <p align="center">
-  <img src="screenshots/oracle-welcome.png" width="280" alt="Oracle Welcome">
-  <img src="screenshots/oracle-response-bottom.png" width="280" alt="Oracle Action Buttons">
+  <img src="screenshots/oracle-welcome.jpg" width="280" alt="Oracle Welcome">
+  <img src="screenshots/oracle-desktop.jpg" width="280" alt="Oracle Desktop">
 </p>
 
 <p align="center">
-  <img src="screenshots/positions.jpg" width="280" alt="Positions">
-  <img src="screenshots/chart-detail.jpg" width="280" alt="TradingView Charts">
+  <img src="screenshots/desktop-dark-positions.jpg" width="280" alt="Positions">
+  <img src="screenshots/desktop-dark-chart-detail.jpg" width="280" alt="TradingView Charts">
 </p>
 
 <details>
 <summary>📸 More Screenshots</summary>
 
 <p align="center">
-  <img src="screenshots/allocation.jpg" width="280" alt="Allocation">
-  <img src="screenshots/watchlist.jpg" width="280" alt="Watchlist">
+  <img src="screenshots/desktop-dark-allocation.jpg" width="280" alt="Allocation">
+  <img src="screenshots/desktop-dark-watchlist.jpg" width="280" alt="Watchlist">
 </p>
 
 <p align="center">
-  <img src="screenshots/news.jpg" width="280" alt="News">
-  <img src="screenshots/transactions.jpg" width="280" alt="Transactions">
+  <img src="screenshots/desktop-dark-news.jpg" width="280" alt="News">
+  <img src="screenshots/desktop-dark-transactions.jpg" width="280" alt="Transactions">
 </p>
 
 <p align="center">
-  <img src="screenshots/wallets.jpg" width="280" alt="Wallet Sync">
-  <img src="screenshots/settings.jpg" width="280" alt="Settings">
+  <img src="screenshots/desktop-dark-wallets.jpg" width="280" alt="Wallet Sync">
+  <img src="screenshots/desktop-dark-settings.jpg" width="280" alt="Settings">
 </p>
 
 <p align="center">
   <img src="screenshots/login.jpg" width="280" alt="Login">
-  <img src="screenshots/alerts.jpg" width="280" alt="Alerts">
+  <img src="screenshots/desktop-dark-alerts.jpg" width="280" alt="Alerts">
 </p>
 
 </details>
