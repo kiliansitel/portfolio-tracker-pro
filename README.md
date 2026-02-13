@@ -17,7 +17,7 @@
 </p>
 
 <p align="center">
-  <img src="screenshots/dashboard.png" width="280" alt="Dashboard">
+  <img src="screenshots/dashboard.jpg" width="280" alt="Dashboard">
   <img src="screenshots/oracle-response-top.png" width="280" alt="Oracle AI in Action">
 </p>
 
@@ -66,31 +66,31 @@ Open **http://localhost:8080** → create an account → start tracking.
 </p>
 
 <p align="center">
-  <img src="screenshots/positions.png" width="280" alt="Positions">
-  <img src="screenshots/chart-detail.png" width="280" alt="TradingView Charts">
+  <img src="screenshots/positions.jpg" width="280" alt="Positions">
+  <img src="screenshots/chart-detail.jpg" width="280" alt="TradingView Charts">
 </p>
 
 <details>
 <summary>📸 More Screenshots</summary>
 
 <p align="center">
-  <img src="screenshots/allocation.png" width="280" alt="Allocation">
-  <img src="screenshots/watchlist.png" width="280" alt="Watchlist">
+  <img src="screenshots/allocation.jpg" width="280" alt="Allocation">
+  <img src="screenshots/watchlist.jpg" width="280" alt="Watchlist">
 </p>
 
 <p align="center">
-  <img src="screenshots/news.png" width="280" alt="News">
-  <img src="screenshots/transactions.png" width="280" alt="Transactions">
+  <img src="screenshots/news.jpg" width="280" alt="News">
+  <img src="screenshots/transactions.jpg" width="280" alt="Transactions">
 </p>
 
 <p align="center">
-  <img src="screenshots/wallets.png" width="280" alt="Wallet Sync">
-  <img src="screenshots/settings.png" width="280" alt="Settings">
+  <img src="screenshots/wallets.jpg" width="280" alt="Wallet Sync">
+  <img src="screenshots/settings.jpg" width="280" alt="Settings">
 </p>
 
 <p align="center">
-  <img src="screenshots/login.png" width="280" alt="Login">
-  <img src="screenshots/alerts.png" width="280" alt="Alerts">
+  <img src="screenshots/login.jpg" width="280" alt="Login">
+  <img src="screenshots/alerts.jpg" width="280" alt="Alerts">
 </p>
 
 </details>
