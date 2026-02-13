@@ -130,7 +130,7 @@ function initDetailChart() {
         layout: { background: { type: 'solid', color: '#1e222d' }, textColor: '#d1d4dc' },
         grid: { vertLines: { color: '#2a2e39' }, horzLines: { color: '#2a2e39' } },
         rightPriceScale: { borderColor: '#363a45', scaleMargins: { top: 0.1, bottom: 0.1 } },
-        timeScale: { borderColor: '#363a45', timeVisible: true, barSpacing: 8, minBarSpacing: 6 },
+        timeScale: { borderColor: '#363a45', timeVisible: true, barSpacing: 6, minBarSpacing: 1 },
         handleScroll: false,
         handleScale: false,
         crosshair: {
@@ -228,13 +228,10 @@ async function updateDetailChart() {
         mode: useLog ? 1 : 0  // 1 = Logarithmic, 0 = Normal
     });
     
-    // Adjust bar spacing so all candles fit on screen
-    const chartWidth = document.getElementById('chartDetailContainer')?.clientWidth || 400;
-    detailChart.timeScale().applyOptions({
-        barSpacing: dataLen > 100 ? 2 : 8,
-        minBarSpacing: dataLen > 100 ? 0.5 : 3
-    });
-    
+    // Cap candle width: slim on desktop, comfortable on mobile
+    const chartEl2 = document.getElementById('detailChart') || document.getElementById('marketDetailChart');
+    const chartW2 = chartEl2?.clientWidth || 800;
+    detailChart.timeScale().applyOptions({ minBarSpacing: 0.5 });
     detailChart.timeScale().fitContent();
     
     // RSI

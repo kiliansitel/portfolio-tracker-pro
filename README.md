@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.28.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.28.1-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -135,6 +135,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.28.1** | Chart Density Fix — higher-resolution candle intervals (hourly/daily), smart barSpacing cap |
 | **v0.28.0** | Live Charts & Real-Time Pricing — candlestick charts with RSI/MA, SSE live streaming, after-hours pricing, index futures |
 | **v0.27.0** | Security hardening — DOMPurify XSS protection, rate limiting, input validation, error sanitization |
 | **v0.26.0** | Strategy Advisor, Risk & Correlation Analysis, Scheduled Auto-Reports (daily/weekly) |

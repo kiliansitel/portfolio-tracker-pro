@@ -1,4 +1,14 @@
 # Portfolio Tracker Pro — Version History
+## v0.28.1 — Chart Density Fix (2026-02-13)
+
+### Chart Improvements
+- Higher-density chart intervals for better desktop experience:
+  - 1M: daily → hourly candles (~155 bars)
+  - 3M: daily → hourly candles (~430 bars)
+  - 1Y: weekly → daily candles (~251 bars)
+- Smart barSpacing cap on desktop — prevents oversized candles when data is sparse
+- Added cache-busting for JS assets
+
 ## v0.28.0 — Live Charts & Real-Time Pricing (2026-02-11)
 
 ### Chart Overhaul

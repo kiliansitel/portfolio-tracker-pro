@@ -673,7 +673,7 @@ async function fetchChartData(symbol, range) {
     }
     chartAbortController = new AbortController();
     
-    const intervals = { '1d': '5m', '5d': '15m', '1mo': '1d', '3mo': '1d', '6mo': '1d', '1y': '1wk', '2y': '1wk', '5y': '1wk', 'max': '1mo' };
+    const intervals = { '1d': '5m', '5d': '15m', '1mo': '1h', '3mo': '1h', '6mo': '1d', '1y': '1d', '2y': '1wk', '5y': '1wk', 'max': '1mo' };
     
     // Try server API first (cached), then fallback to CORS proxies
     const sources = [

@@ -131,13 +131,25 @@ function renderChartData(data) {
         mode: useLog ? 1 : 0
     });
     
-    // Dynamic bar spacing for large datasets
-    chart.timeScale().applyOptions({
-        barSpacing: data.length > 100 ? 2 : 8,
-        minBarSpacing: data.length > 100 ? 0.5 : 3
-    });
-    
-    chart.timeScale().fitContent();
+    // Fit content — cap candle width on desktop using setVisibleLogicalRange
+    const _chartW = document.getElementById('chartContainer')?.clientWidth || 800;
+    const _maxBarSp = 14;
+    const _capThreshold = 25; // only cap if natural spacing exceeds this
+    const _naturalSp = _chartW / Math.max(1, data.length);
+    if (_chartW >= 600 && _naturalSp > _capThreshold && data.length > 0) {
+        // Widen visible range to force smaller barSpacing (~35px)
+        const barsNeeded = Math.ceil(_chartW / _maxBarSp);
+        const totalPad = barsNeeded - data.length;
+        const rightPad = Math.min(3, Math.floor(totalPad * 0.1));
+        const leftPad = totalPad - rightPad;
+        chart.timeScale().setVisibleLogicalRange({
+            from: -leftPad,
+            to: data.length - 1 + rightPad
+        });
+    } else {
+        chart.timeScale().applyOptions({ minBarSpacing: 0.5 });
+        chart.timeScale().fitContent();
+    }
     
     // After-hours price line on main chart
     if (window._mainAhLine && mainSeries) {
