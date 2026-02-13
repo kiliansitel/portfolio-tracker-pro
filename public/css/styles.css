@@ -1076,15 +1076,20 @@
             align-items: center;
         }
         
-        /* Desktop: hover to reveal actions */
+        /* Desktop: hover to reveal actions by sliding content left */
         @media (pointer: fine) {
-            .swipe-actions {
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.2s ease;
+            .swipe-container .swipe-content {
+                transition: transform 0.2s ease;
+            }
+            /* Single action (delete only): 70px */
+            .swipe-container:hover .swipe-content {
+                transform: translateX(-70px);
+            }
+            /* Two actions (edit + delete): 140px */
+            .swipe-container:has(.swipe-action.edit):hover .swipe-content {
+                transform: translateX(-140px);
             }
             .swipe-container:hover .swipe-actions {
-                opacity: 1;
                 pointer-events: auto;
             }
         }

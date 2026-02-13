@@ -1250,6 +1250,8 @@ function renderPerformanceChart(snapshots) {
                 return months[d.getUTCMonth()] + ' ' + d.getUTCDate();
             }
         },
+        handleScroll: false,
+        handleScale: false,
         crosshair: {
             mode: LightweightCharts.CrosshairMode.Normal,
             vertLine: { labelVisible: true },
