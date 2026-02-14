@@ -1198,11 +1198,11 @@ async function loadPerformance() {
             if (abs >= 1e3) return sym + (v / 1e3).toFixed(1).replace('.0', '') + 'K';
             return sym + v.toFixed(0);
         };
-        document.getElementById('perfStart').textContent = fcc(data.summary.start_value);
-        document.getElementById('perfCurrent').textContent = fcc(data.summary.current_value);
+        document.getElementById('perfStart').textContent = fcc(convertPrice(data.summary.start_value, userCurrency));
+        document.getElementById('perfCurrent').textContent = fcc(convertPrice(data.summary.current_value, userCurrency));
         const returnEl = document.getElementById('perfReturn');
         const retSign = data.summary.total_return >= 0 ? '+' : '';
-        returnEl.textContent = retSign + fcc(data.summary.total_return) + ' (' + data.summary.total_return_pct.toFixed(1) + '%)';
+        returnEl.textContent = retSign + fcc(convertPrice(data.summary.total_return, userCurrency)) + ' (' + data.summary.total_return_pct.toFixed(1) + '%)';
         returnEl.className = data.summary.total_return >= 0 ? 'positive' : 'negative';
     } catch (e) {
         console.warn('Failed to load performance:', e);
