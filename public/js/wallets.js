@@ -370,7 +370,7 @@ function toggleWalletTokens(walletId) {
 }
 
 async function deleteWallet(id) {
-    if (!confirm('Remove this wallet?')) return;
+    if (!await confirmDialog('Remove this wallet?', { title: 'Remove Wallet', confirmText: 'Remove', danger: true })) return;
     try {
         await api('/wallets/' + id, { method: 'DELETE' });
         showToast('Wallet removed', 'success');
@@ -670,7 +670,7 @@ async function saveTransaction(e) {
 }
 
 async function deleteTransaction(id) {
-    if (!confirm('Delete this transaction?')) return;
+    if (!await confirmDialog('Delete this transaction?', { title: 'Delete Transaction', confirmText: 'Delete', danger: true })) return;
     try {
         await api(`/transactions/${id}`, { method: 'DELETE' });
         renderTransactions();
@@ -680,7 +680,7 @@ async function deleteTransaction(id) {
 }
 
 async function deletePosition(id) {
-    if (!confirm('Delete this position?')) return;
+    if (!await confirmDialog('Delete this position?', { title: 'Delete Position', confirmText: 'Delete', danger: true })) return;
     try {
         await api(`/portfolios/positions/${id}`, { method: 'DELETE' });
         await loadPortfolio();
@@ -690,7 +690,7 @@ async function deletePosition(id) {
 }
 
 async function deleteWatchlistItem(id) {
-    if (!confirm('Remove from watchlist?')) return;
+    if (!await confirmDialog('Remove from watchlist?', { title: 'Remove Item', confirmText: 'Remove', danger: true })) return;
     try {
         await api(`/watchlists/items/${id}`, { method: 'DELETE' });
         await loadWatchlists();
@@ -700,7 +700,7 @@ async function deleteWatchlistItem(id) {
 }
 
 async function deleteAlert(id) {
-    if (!confirm('Delete this price alert?')) return;
+    if (!await confirmDialog('Delete this price alert?', { title: 'Delete Alert', confirmText: 'Delete', danger: true })) return;
     try {
         await api(`/alerts/${id}`, { method: 'DELETE' });
         await renderAlerts();
@@ -724,7 +724,7 @@ async function updateCashSetting() {
 // Feature 5: Duplicate portfolio
 async function duplicatePortfolio() {
     if (!token || !portfolioId) { showToast('No portfolio selected', 'error'); return; }
-    if (!confirm('Duplicate the current portfolio with all positions?')) return;
+    if (!await confirmDialog('Duplicate the current portfolio with all positions?', { title: 'Duplicate Portfolio', confirmText: 'Duplicate' })) return;
     try {
         const result = await api(`/portfolios/${portfolioId}/duplicate`, { method: 'POST' });
         showToast(`Portfolio duplicated as "${result.name}"`, 'success');

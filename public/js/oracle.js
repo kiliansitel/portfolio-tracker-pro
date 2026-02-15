@@ -1447,7 +1447,7 @@ async function testAiProvider(providerId) {
 }
 
 async function removeAiProvider(providerId) {
-    if (!confirm(`Remove API key for ${providerId}?`)) return;
+    if (!await confirmDialog(`Remove API key for ${providerId}?`, { title: 'Remove API Key', confirmText: 'Remove', danger: true })) return;
     try {
         await api(`/ai/providers/${providerId}/key`, { method: 'DELETE' });
         showToast(`${providerId} key removed`, 'info');
@@ -1725,7 +1725,7 @@ function exportFullConversationAsPdf() {
 }
 
 async function deleteAiConversation(convId) {
-    if (!confirm('Delete this conversation?')) return;
+    if (!await confirmDialog('Delete this conversation?', { title: 'Delete Conversation', confirmText: 'Delete', danger: true })) return;
     try {
         await api(`/ai/conversations/${convId}`, { method: 'DELETE' });
         if (aiCurrentConversationId === convId) {

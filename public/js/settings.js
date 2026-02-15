@@ -109,7 +109,7 @@ async function restoreBackup(input) {
     // Reset file input so same file can be selected again
     input.value = '';
 
-    if (!confirm('⚠️ This will replace ALL data in the database. Are you sure you want to restore from this backup?')) {
+    if (!await confirmDialog('This will replace ALL data in the database. Are you sure you want to restore from this backup?', { title: '⚠️ Restore Backup', confirmText: 'Restore', danger: true })) {
         return;
     }
 
@@ -336,7 +336,7 @@ async function applyUpdate() {
     const btn = document.getElementById('applyUpdateBtn');
     const channel = document.getElementById('updateChannel').value;
     
-    if (!confirm(`Apply update from the "${channel}" channel? The app will restart.`)) return;
+    if (!await confirmDialog(`Apply update from the "${channel}" channel? The app will restart.`, { title: 'Apply Update', confirmText: 'Update' })) return;
     
     btn.disabled = true;
     btn.textContent = '⏳ Updating...';
