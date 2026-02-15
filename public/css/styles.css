@@ -1085,9 +1085,9 @@
             .swipe-container:hover .swipe-content {
                 transform: translateX(-70px);
             }
-            /* Two actions (edit + delete): 140px */
+            /* Two actions (edit + delete): 140px, three actions: 210px */
             .swipe-container:has(.swipe-action.edit):hover .swipe-content {
-                transform: translateX(-140px);
+                transform: translateX(-210px);
             }
             .swipe-container:hover .swipe-actions {
                 pointer-events: auto;

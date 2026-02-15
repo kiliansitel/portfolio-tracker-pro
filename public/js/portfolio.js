@@ -72,8 +72,13 @@ function renderPositions() {
         return;
     }
     
+    // Filter closed positions
+    const closedCount = positions.filter(p => p.status === 'closed').length;
+    const showClosed = window._showClosedPositions || false;
+    const visiblePositions = showClosed ? positions : positions.filter(p => p.status !== 'closed');
+    
     // Pre-compute values for all positions
-    const enriched = positions.map(pos => {
+    const enriched = visiblePositions.map(pos => {
         let currentPrice; // in USD (market price)
         if (pos.type === 'option') {
             const optSym = buildOptionSymbol(pos.symbol, pos.expiry_date, pos.strike_price);
@@ -106,15 +111,21 @@ function renderPositions() {
     else if (posSort === 'change-desc') enriched.sort((a, b) => b.changePct - a.changePct);
     
     // Summary calculations — exclude positions with no cost basis from P&L
-    const totalValue = enriched.reduce((s, p) => s + p.value, 0);
-    const totalPnl = enriched.filter(p => p.hasValidCost).reduce((s, p) => s + p.pnl, 0);
-    const totalCost = enriched.filter(p => p.hasValidCost).reduce((s, p) => s + p.cost, 0);
+    const openPositions = enriched.filter(p => p.status !== 'closed');
+    const totalValue = openPositions.reduce((s, p) => s + p.value, 0);
+    const totalPnl = openPositions.filter(p => p.hasValidCost).reduce((s, p) => s + p.pnl, 0);
+    const totalCost = openPositions.filter(p => p.hasValidCost).reduce((s, p) => s + p.cost, 0);
     const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
-    const todaysChange = enriched.reduce((s, p) => {
+    // Realized P&L from closed positions
+    const closedPositions = positions.filter(p => p.status === 'closed' && p.realized_pnl != null);
+    const realizedPnl = closedPositions.reduce((sum, p) => sum + (p.realized_pnl || 0), 0);
+    const todaysChange = openPositions.reduce((s, p) => {
         const prevVal = p.value / (1 + (p.changePct / 100));
         return s + (p.value - prevVal);
     }, 0);
-    const cash = currentPortfolio?.cash || 0;
+    const rawCash = currentPortfolio?.cash || 0;
+    const cashCurr = currentPortfolio?.cash_currency || 'USD';
+    const cash = convertToUsd(rawCash, cashCurr);
     
     let html = '';
     
@@ -127,6 +138,7 @@ function renderPositions() {
         <div class="pos-summary-item">
             <div class="pos-summary-label">Total P&L</div>
             <div class="pos-summary-value ${totalPnl >= 0 ? 'positive' : 'negative'}">${totalPnl >= 0 ? '+' : ''}${fc(totalPnl)} (${totalPnlPct >= 0 ? '+' : ''}${totalPnlPct.toFixed(1)}%)</div>
+            ${realizedPnl !== 0 ? `<div style="font-size:0.7rem;color:${realizedPnl >= 0 ? 'var(--color-positive,#4caf50)' : 'var(--color-negative,#f44336)'};margin-top:2px;">Realized: ${realizedPnl >= 0 ? '+' : ''}${fc(realizedPnl)}</div>` : ''}
         </div>
         <div class="pos-summary-item">
             <div class="pos-summary-label">Today's Change</div>
@@ -137,6 +149,15 @@ function renderPositions() {
             <div class="pos-summary-value">${fc(cash)}</div>
         </div>
     </div>`;
+    
+    // Closed positions toggle
+    if (closedCount > 0) {
+        html += `<div style="text-align:center;margin-bottom:8px;">
+            <a href="#" onclick="event.preventDefault();window._showClosedPositions=!window._showClosedPositions;renderPositions();" style="font-size:0.8rem;color:var(--text-secondary);text-decoration:none;">
+                ${showClosed ? '🔽 Hide' : '▶️ Show'} closed positions (${closedCount})
+            </a>
+        </div>`;
+    }
     
     // Dividend summary (computed from priceCache data)
     const divPositions = enriched.filter(p => p.type !== 'option' && priceCache[p.symbol]?.dividendRate);
@@ -179,6 +200,8 @@ function renderPositions() {
     
     // Helper to render a single position card
     function renderPosCard(pos) {
+            const isClosed = pos.status === 'closed';
+            const closedStyle = isClosed ? 'opacity:0.6;' : '';
             const typeClass = pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock';
             const optionInfo = pos.type === 'option' && pos.strike_price ? ` $${pos.strike_price}C ${pos.expiry_date ? pos.expiry_date.substring(0,7) : ''}` : '';
             const isWalletSynced = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
@@ -213,9 +236,10 @@ function renderPositions() {
             const notesText = pos.notes && !pos.notes.includes('wallet-synced') ? pos.notes : '';
             const notesHtml = notesText ? `<div style="font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:2px;" title="${notesText.replace(/"/g, '&quot;')}">${notesText.length > 50 ? notesText.substring(0, 50) + '…' : notesText}</div>` : '';
             
-            return `<div class="swipe-container" data-id="${pos.id}" data-type="position" data-symbol="${pos.symbol}">
+            return `<div class="swipe-container" data-id="${pos.id}" data-type="position" data-symbol="${pos.symbol}" style="${closedStyle}">
                 <div class="swipe-actions">
                     <div class="swipe-action edit" onclick="editPosition(${pos.id})">✏️</div>
+                    ${!isClosed ? `<div class="swipe-action" style="background:var(--accent-orange);" onclick="closePosition(${pos.id})">📤</div>` : ''}
                     <div class="swipe-action delete" onclick="deletePosition(${pos.id})">🗑️</div>
                 </div>
                 <div class="swipe-content position-card" onclick="showPositionDetail(${pos.id})">
@@ -223,7 +247,7 @@ function renderPositions() {
                         <div class="pos-left">
                             ${logoHtml(pos.symbol, 32)}
                             <div class="pos-left-info">
-                                <span class="pos-symbol">${pos.symbol}${optionInfo}</span>
+                                <span class="pos-symbol" ${isClosed ? 'style="text-decoration:line-through;"' : ''}>${pos.symbol}${optionInfo}</span>
                                 <span class="type-badge ${typeClass}">${pos.type}</span>${walletBadge}${divBadgeHtml}${costBasisHint}
                             </div>
                         </div>
@@ -439,6 +463,10 @@ function showPositionDetail(posId) {
         closeModal('positionDetailModal');
         deletePosition(currentDetailId);
     };
+    document.getElementById('posDetailCloseBtn').onclick = function() {
+        closeModal('positionDetailModal');
+        closePosition(currentDetailId);
+    };
     
     showModal('positionDetailModal');
 }
@@ -473,6 +501,9 @@ function editPosition(id) {
     document.getElementById('optionFields').style.display = pos.type === 'option' ? 'block' : 'none';
     const title = document.getElementById('addPositionTitle');
     if (title) title.textContent = 'Edit Position';
+    // Hide cash toggle when editing
+    const cashToggle = document.getElementById('addPositionCashToggle');
+    if (cashToggle) cashToggle.style.display = 'none';
     showModal('addPositionModal');
 }
 
@@ -673,7 +704,8 @@ function setupSwipeHandlers() {
             content.style.transition = 'transform 0.2s ease';
             const diff = startX - currentX;
             if (diff > 60) { // Threshold to keep open
-                content.style.transform = 'translateX(-140px)';
+                const actionCount = container.querySelectorAll('.swipe-action').length;
+                content.style.transform = `translateX(-${actionCount * 70}px)`;
                 activeSwipe = container;
             } else {
                 content.style.transform = '';
@@ -803,7 +835,10 @@ function updateSummary() {
         }
     }
     
-    const cashUsd = currentPortfolio?.cash || 0; // Raw USD from server, fc() will convert
+    // Cash is stored in its own currency (cash_currency), convert to USD for portfolio math
+    const rawCash = currentPortfolio?.cash || 0;
+    const cashCurrency = currentPortfolio?.cash_currency || 'USD';
+    const cashUsd = convertToUsd(rawCash, cashCurrency); // Convert to USD for summing with positions
     const hasAnyCost = totalCost > 0;
     const pnl = hasAnyCost ? totalValue - totalCost : 0;
     const pnlPct = hasAnyCost ? (pnl / totalCost) * 100 : 0;
@@ -1494,6 +1529,134 @@ async function showDividendCalendar() {
     } catch (e) {
         console.error('Failed to load dividends:', e);
         document.getElementById('dividendCalendarBody').innerHTML = '<div style="color:var(--accent-red);padding:16px;">Failed to load dividend data.</div>';
+    }
+}
+
+// ============ CLOSE POSITION ============
+let closingPositionId = null;
+
+function closePosition(id) {
+    const pos = positions.find(p => p.id === id);
+    if (!pos) { showToast('Position not found', 'error'); return; }
+    closingPositionId = id;
+    
+    const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+    const posCurrency = pos.currency || 'USD';
+    const q = priceCache[pos.symbol] || {};
+    const livePrice = q.price || pos.entry_price;
+    const entryPriceDisplay = pos.entry_price.toFixed(2);
+    const value = livePrice * pos.quantity * mult;
+    
+    // Fill info section
+    document.getElementById('closePositionInfo').innerHTML = `
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span style="font-weight:600;font-size:1rem;">${pos.symbol}</span>
+            <span class="type-badge ${pos.type === 'option' ? 'type-option' : pos.type === 'crypto' ? 'type-crypto' : 'type-stock'}">${pos.type}</span>
+        </div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);">
+            ${pos.quantity}${pos.type === 'option' ? ' contracts' : ' shares'} @ ${CURRENCY_SYMBOLS[posCurrency] || posCurrency + ' '}${entryPriceDisplay}
+            ${mult > 1 ? ' · ' + mult + 'x multiplier' : ''}
+        </div>
+        <div style="font-size:0.85rem;color:var(--text-secondary);margin-top:2px;">Current value: ${fc(value)}</div>
+    `;
+    
+    // Set defaults
+    const form = document.getElementById('closePositionForm');
+    form.close_price.value = livePrice.toFixed(2);
+    form.quantity.value = pos.quantity;
+    form.fees.value = 0;
+    form.date.value = new Date().toISOString().split('T')[0];
+    
+    // Hint
+    document.getElementById('closeQtyHint').textContent = `(max: ${pos.quantity})`;
+    
+    // Default affects_cash based on source
+    const isWallet = pos.source === 'wallet' || (pos.notes && pos.notes.includes('wallet-synced'));
+    form.affects_cash.checked = !isWallet;
+    
+    // Setup live preview
+    const inputs = form.querySelectorAll('input[type="number"], input[type="date"], input[name="affects_cash"]');
+    inputs.forEach(inp => {
+        inp.removeEventListener('input', updateClosePreview);
+        inp.addEventListener('input', updateClosePreview);
+        inp.removeEventListener('change', updateClosePreview);
+        inp.addEventListener('change', updateClosePreview);
+    });
+    
+    updateClosePreview();
+    showModal('closePositionModal');
+}
+
+function updateClosePreview() {
+    const pos = positions.find(p => p.id === closingPositionId);
+    if (!pos) return;
+    
+    const form = document.getElementById('closePositionForm');
+    const closePrice = parseFloat(form.close_price.value) || 0;
+    const quantity = parseFloat(form.quantity.value) || 0;
+    const fees = parseFloat(form.fees.value) || 0;
+    const affectsCash = form.affects_cash.checked;
+    const mult = pos.multiplier || (pos.type === 'option' ? 100 : 1);
+    const posCurrency = pos.currency || 'USD';
+    
+    const proceeds = closePrice * quantity * mult;
+    const pnl = (closePrice - pos.entry_price) * quantity * mult;
+    const netProceeds = proceeds - fees;
+    
+    // Convert from position currency to USD for display via fc()
+    const proceedsUsd = convertToUsd(proceeds, posCurrency);
+    const pnlUsd = convertToUsd(pnl, posCurrency);
+    const netProceedsUsd = convertToUsd(netProceeds, posCurrency);
+    
+    const pnlColor = pnlUsd >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+    const pnlSign = pnlUsd >= 0 ? '+' : '';
+    
+    document.getElementById('closeCashPreview').innerHTML = `
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span>Proceeds:</span><span style="font-weight:600;">${fc(proceedsUsd)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span>P&L:</span><span style="font-weight:600;color:${pnlColor};">${pnlSign}${fc(pnlUsd)}</span>
+        </div>
+        ${fees > 0 ? `<div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+            <span>Fees:</span><span>-${fc(convertToUsd(fees, posCurrency))}</span>
+        </div>` : ''}
+        <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border-color);padding-top:4px;">
+            <span>Cash impact:</span><span style="font-weight:600;color:${affectsCash ? pnlColor : 'var(--text-secondary)'};">${affectsCash ? pnlSign + fc(netProceedsUsd) : 'None'}</span>
+        </div>
+    `;
+}
+
+async function submitClosePosition(event) {
+    event.preventDefault();
+    if (!closingPositionId || !token || !portfolioId) return;
+    
+    const form = document.getElementById('closePositionForm');
+    const closePrice = parseFloat(form.close_price.value);
+    const quantity = parseFloat(form.quantity.value);
+    const fees = parseFloat(form.fees.value) || 0;
+    const date = form.date.value || null;
+    const affectsCash = form.affects_cash.checked;
+    
+    try {
+        const result = await api(`/portfolios/${portfolioId}/positions/${closingPositionId}/close`, {
+            method: 'POST',
+            body: JSON.stringify({ close_price: closePrice, quantity, fees, date, affects_cash: affectsCash })
+        });
+        
+        const pos = positions.find(p => p.id === closingPositionId);
+        const mult = pos ? (pos.multiplier || (pos.type === 'option' ? 100 : 1)) : 1;
+        const pnl = pos ? (closePrice - pos.entry_price) * quantity * mult : 0;
+        const posCurrency = pos?.currency || 'USD';
+        const pnlUsd = convertToUsd(pnl, posCurrency);
+        const pnlSign = pnlUsd >= 0 ? '+' : '';
+        
+        showToast(`Position closed! P&L: ${pnlSign}${fc(pnlUsd)}`, pnlUsd >= 0 ? 'success' : 'error');
+        closeModal('closePositionModal');
+        closingPositionId = null;
+        await loadPortfolio();
+    } catch (e) {
+        showToast('Failed to close position: ' + e.message, 'error');
     }
 }
 

@@ -598,8 +598,18 @@ async function renderTransactions() {
             } else if (tx.notes && !tx.notes.startsWith('wallet-tx:')) {
                 html += '<div style="font-size:0.75rem;color:var(--text-secondary);font-style:italic;">' + tx.notes + '</div>';
             }
+            // Badges row
+            const badges = [];
             if (tx.source === 'wallet') {
-                html += '<div style="font-size:0.65rem;color:var(--accent-color);">🔗 On-Chain</div>';
+                badges.push('<span style="font-size:0.65rem;color:var(--accent-color);background:rgba(var(--accent-rgb,100,149,237),0.15);padding:1px 5px;border-radius:3px;">🔗 On-Chain</span>');
+            }
+            if (tx.affects_cash === 1) {
+                badges.push('<span style="font-size:0.65rem;color:#4caf50;background:rgba(76,175,80,0.12);padding:1px 5px;border-radius:3px;">💰 Cash</span>');
+            } else if (tx.affects_cash === 0) {
+                badges.push('<span style="font-size:0.65rem;color:var(--text-secondary);opacity:0.6;padding:1px 5px;">No cash impact</span>');
+            }
+            if (badges.length > 0) {
+                html += '<div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:2px;">' + badges.join('') + '</div>';
             }
             html += '</div>';
             html += '</div>';
@@ -702,11 +712,10 @@ async function deleteAlert(id) {
 async function updateCashSetting() {
     if (!token || !portfolioId) return;
     let cash = parseFloat(document.getElementById('settingsCash').value) || 0;
-    // Convert from user's display currency to USD for storage
-    cash = convertToUsd(cash, userCurrency);
+    // Store cash in user's currency (no conversion) with currency tag
     try {
-        await api(`/portfolios/${portfolioId}`, { method: 'PUT', body: JSON.stringify({ cash }) });
-        showToast('Cash updated: ' + fc(cash), 'success');
+        await api(`/portfolios/${portfolioId}`, { method: 'PUT', body: JSON.stringify({ cash, cash_currency: userCurrency }) });
+        showToast('Cash updated: ' + formatCurrency(cash, userCurrency), 'success');
     } catch (e) {
         console.error(e);
     }

@@ -1,4 +1,34 @@
 # Portfolio Tracker Pro — Version History
+## v0.29.0 — Cash Management & Close Positions (2026-02-15)
+
+### Cash Tracking
+- Buy positions now auto-deduct from portfolio cash balance
+- Multi-currency cash support — cash stored in native currency, auto-converted
+- "Deduct from cash" toggle on Add Position modal with available balance display
+- Cash adjustments on position edit (quantity/price changes)
+- Cash reversal on position delete (refunds deducted amount)
+
+### Close Position Flow
+- New "Close Position" modal with sell price, quantity, fees, and date
+- Partial close support — sell part of a position
+- Proceeds auto-added to cash balance (with currency conversion)
+- Realized P&L calculation and tracking
+- Closed positions tracked with status, close price, and close date
+
+### Position Status
+- Positions now have open/closed status
+- Closed positions hidden by default, toggleable in UI
+- Closed positions excluded from portfolio value calculations
+
+### Transaction Recording
+- Buy/sell transactions auto-created with cash impact tracking
+- Transaction source tracking (manual vs wallet)
+- Fees tracked per transaction
+
+### Fixes
+- Performance chart summary currency conversion (USD→user currency)
+- Desktop hover delete buttons — 3-action swipe support (edit+close+delete)
+
 ## v0.28.1 — Chart Density Fix (2026-02-13)
 
 ### Chart Improvements

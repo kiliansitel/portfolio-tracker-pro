@@ -220,8 +220,16 @@ async function initDatabase() {
   // Don't re-override positions that were intentionally converted back to manual
   try { db.exec("UPDATE positions SET source = 'wallet' WHERE notes LIKE 'wallet-synced |%' AND source = 'manual'"); } catch (e) { /* ignore */ }
 
+  // Cashflow & Close Position system
+  try { db.run(`ALTER TABLE positions ADD COLUMN status TEXT DEFAULT 'open'`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN closed_at TEXT`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN close_price REAL`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN realized_pnl REAL`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE transactions ADD COLUMN affects_cash INTEGER DEFAULT 0`); } catch (e) { /* exists */ }
+
   // Portfolio enhancements
   try { db.run(`ALTER TABLE portfolios ADD COLUMN is_default INTEGER DEFAULT 0`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE portfolios ADD COLUMN cash_currency TEXT DEFAULT 'USD'`); } catch (e) { /* exists */ }
 
   // Watchlist item enhancements
   try { db.run(`ALTER TABLE watchlist_items ADD COLUMN name TEXT`); } catch (e) { /* exists */ }

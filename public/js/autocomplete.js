@@ -293,8 +293,12 @@ async function savePosition(e) {
         expiry_date: form.expiry_date.value || null,
         current_price: form.current_price?.value ? parseFloat(form.current_price.value) : null,
         multiplier: form.multiplier.value ? parseFloat(form.multiplier.value) : 1,
-        location: form.location.value.trim() || null
+        location: form.location.value.trim() || null,
+        affects_cash: editingPositionId ? undefined : document.getElementById('addPositionAffectsCash')?.checked
     };
+    
+    // Remove undefined keys
+    Object.keys(data).forEach(k => data[k] === undefined && delete data[k]);
     
     try {
         if (editingPositionId) {

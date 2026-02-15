@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.28.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.29.0-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -47,6 +47,7 @@ Open **http://localhost:8080** → create an account → start tracking.
 - ⚡ **Real-Time Pricing (SSE)** — Server-Sent Events live price streaming (crypto 3s, stocks 8s), micro-tick animations, green/red flash on changes, pulsing live indicator, after-hours/pre-market ticking, index futures on dashboard
 - 📊 **Interactive Charts** — TradingView-powered area/candlestick charts with MA overlays, allocation donut, performance tracking
 - 💼 **Full Portfolio Tracking** — Stocks, options, crypto, cash. P&L, cost basis, transaction history, source/location tracking. Smart P&L handling shows "—" when cost basis is unknown (e.g. wallet-synced positions)
+- 💰 **Cash Management** — Auto-deduct on buy, auto-credit on sell/close. Multi-currency cash with live FX conversion. Close position flow with partial sells, realized P&L tracking, and fee support
 - 🔗 **13-Chain Wallet Sync** — BTC, ETH, SOL, BNB + 9 more. Chain-specific address validation, auto-sync on add, wallet delete, ERC-20/SPL token and DeFi position detection
 - 📥 **CSV Import** — Auto-detect format for Interactive Brokers, Keytrade Bank, CoinMarketCap portfolio export, and generic CSV
 - 💱 **Multi-Currency Support** — Positions store original purchase currency (EUR, GBP, etc.). Dashboard aggregates using live exchange rates. Entry prices display in original currency
@@ -135,6 +136,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.29.0** | Cash Management & Close Positions — auto cash tracking, close position flow, realized P&L, multi-currency cash |
 | **v0.28.1** | Chart Density Fix — higher-resolution candle intervals (hourly/daily), smart barSpacing cap |
 | **v0.28.0** | Live Charts & Real-Time Pricing — candlestick charts with RSI/MA, SSE live streaming, after-hours pricing, index futures |
 | **v0.27.0** | Security hardening — DOMPurify XSS protection, rate limiting, input validation, error sanitization |

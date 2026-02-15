@@ -13,7 +13,7 @@
     <meta name="theme-color" content="#0a0e17">
     <meta name="description" content="TradingView-inspired portfolio tracker with real-time prices, charts, and alerts">
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
-    <link rel="stylesheet" href="/css/styles.css?v=20260213b">
+    <link rel="stylesheet" href="/css/styles.css?v=20260214a">
 </head>
 <body>
     <!-- Auth Overlay -->
@@ -845,9 +845,58 @@
                         </datalist>
                     </div>
                 </div>
+                <div id="addPositionCashToggle" style="margin:12px 16px;">
+                    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                        <input type="checkbox" id="addPositionAffectsCash" checked style="width:18px;height:18px;">
+                        Deduct from cash
+                    </label>
+                    <div id="addPositionCashInfo" style="font-size:0.8rem;color:var(--text-secondary);margin-top:4px;"></div>
+                </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" onclick="closeModal('addPositionModal')">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Position</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Close Position Modal -->
+    <div class="modal-overlay" id="closePositionModal">
+        <div class="modal" style="max-width:500px;">
+            <div class="modal-header">
+                <h3 id="closePositionTitle">Close Position</h3>
+                <button class="modal-close" onclick="closeModal('closePositionModal')">&times;</button>
+            </div>
+            <form id="closePositionForm" onsubmit="submitClosePosition(event)">
+                <div class="modal-body">
+                    <div id="closePositionInfo" style="background:var(--bg-tertiary);padding:12px;border-radius:8px;margin-bottom:16px;"></div>
+                    <div class="form-group">
+                        <label>Sell Price</label>
+                        <input type="number" name="close_price" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Quantity <span id="closeQtyHint" style="font-size:0.8rem;color:var(--text-secondary);"></span></label>
+                        <input type="number" name="quantity" step="any" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fees</label>
+                        <input type="number" name="fees" step="any" value="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Date</label>
+                        <input type="date" name="date">
+                    </div>
+                    <div style="margin:12px 0;">
+                        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+                            <input type="checkbox" name="affects_cash" checked style="width:18px;height:18px;">
+                            Add proceeds to cash
+                        </label>
+                    </div>
+                    <div id="closeCashPreview" style="background:var(--bg-tertiary);padding:12px;border-radius:8px;margin:12px 0;font-size:0.9rem;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('closePositionModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Close Position</button>
                 </div>
             </form>
         </div>
@@ -1165,6 +1214,7 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" id="posDetailChartBtn">📊 Chart</button>
                 <button class="btn btn-secondary" id="posDetailEditBtn">✏️ Edit</button>
+                <button class="btn btn-secondary" id="posDetailCloseBtn" style="background:var(--accent-orange);color:#fff;">📤 Close</button>
                 <button class="btn btn-danger" id="posDetailDeleteBtn">🗑️ Delete</button>
             </div>
         </div>
@@ -1197,17 +1247,17 @@
     </div>
 
 
-    <script src="/js/utils.js?v=20260213a"></script>
+    <script src="/js/utils.js?v=20260214a"></script>
     <script src="/js/auth.js"></script>
     <script src="/js/autocomplete.js"></script>
-    <script src="/js/charts.js?v=20260213a"></script>
-    <script src="/js/markets.js?v=20260213a"></script>
-    <script src="/js/wallets.js"></script>
-    <script src="/js/portfolio.js?v=20260213b"></script>
+    <script src="/js/charts.js?v=20260214a"></script>
+    <script src="/js/markets.js?v=20260214a"></script>
+    <script src="/js/wallets.js?v=20260214a"></script>
+    <script src="/js/portfolio.js?v=20260214a"></script>
     <script src="/js/transactions.js"></script>
     <script src="/js/settings.js"></script>
     <script src="/js/vendor/purify.min.js"></script>
     <script src="/js/oracle.js"></script>
-    <script src="/js/app.js"></script>
+    <script src="/js/app.js?v=20260214a"></script>
 </body>
 </html>

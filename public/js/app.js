@@ -72,6 +72,13 @@ function showAddPositionModal() {
     if (curSel) curSel.value = userCurrency;
     const title = document.getElementById('addPositionTitle');
     if (title) title.textContent = 'Add Position';
+    // Show cash toggle for new positions
+    const cashToggle = document.getElementById('addPositionCashToggle');
+    if (cashToggle) cashToggle.style.display = '';
+    const cashInfo = document.getElementById('addPositionCashInfo');
+    if (cashInfo && typeof currentPortfolio !== 'undefined') {
+        cashInfo.textContent = 'Available cash: ' + fc(convertToUsd(currentPortfolio?.cash || 0, currentPortfolio?.cash_currency || 'USD'));
+    }
     showModal('addPositionModal');
 }
 
@@ -150,7 +157,11 @@ async function loadPortfolio() {
             currentPortfolio = portfolios[0];
             portfolioId = currentPortfolio.id;
             // Display cash in user's currency
-            document.getElementById('settingsCash').value = Math.round(convertPrice(currentPortfolio.cash || 0, userCurrency));
+            // Cash stored in cash_currency — convert to display currency if different
+            const cashCurr = currentPortfolio.cash_currency || 'USD';
+            const rawCash = currentPortfolio.cash || 0;
+            const displayCash = cashCurr === userCurrency ? rawCash : convertPrice(convertToUsd(rawCash, cashCurr), userCurrency);
+            document.getElementById('settingsCash').value = Math.round(displayCash);
             positions = await api(`/portfolios/${portfolioId}/positions`);
             renderPositions();
         }

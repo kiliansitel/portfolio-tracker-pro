@@ -5,6 +5,7 @@
 
 const { dbRun, dbGet, dbAll } = require('../db');
 const { fetchYahooPrice } = require('./yahoo');
+const { fetchExchangeRates, convertCurrency } = require('./currency');
 
 /**
  * Collect a daily snapshot for a portfolio
@@ -66,7 +67,18 @@ async function collectDailySnapshot(portfolioId) {
     }
   }
 
-  const cash = portfolio.cash || 0;
+  // Convert cash from its stored currency to USD for snapshot consistency
+  const rawCash = portfolio.cash || 0;
+  const cashCurrency = portfolio.cash_currency || 'USD';
+  let cash = rawCash;
+  if (cashCurrency !== 'USD' && rawCash > 0) {
+    try {
+      const rates = await fetchExchangeRates();
+      cash = convertCurrency(rawCash, cashCurrency, 'USD', rates);
+    } catch (e) {
+      console.warn(`Failed to convert cash from ${cashCurrency} to USD, using raw value`);
+    }
+  }
   const totalValue = cash + positionsValue;
   const today = new Date().toISOString().split('T')[0];
 
