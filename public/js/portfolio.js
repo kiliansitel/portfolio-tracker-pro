@@ -260,7 +260,7 @@ function renderPositions() {
                         <div class="pos-sub-left">
                             <span data-price-symbol="${pos.symbol}">${fp(pos.currentPrice)}</span>
                             <span class="${pos.changePct >= 0 ? 'positive' : 'negative'}" data-change-symbol="${pos.symbol}">${pos.changePct >= 0 ? '+' : ''}${pos.changePct.toFixed(2)}%</span>
-                            ${extendedHoursHtml(priceCache[pos.symbol])}
+                            ${extendedHoursHtml(priceCache[pos.symbol])}${futuresHtml(pos.symbol)}
                             ${qtyInfo}
                             ${locBadge}
                         </div>
@@ -370,7 +370,7 @@ function showPositionDetail(posId) {
     // Section 1: Price info
     bodyHtml += `<div class="detail-row">
         <span class="detail-label">Current Price</span>
-        <span class="detail-value">${fp(currentPrice)} <span class="${changeClass}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>${extendedHoursHtml(q)}</span>
+        <span class="detail-value">${fp(currentPrice)} <span class="${changeClass}">${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%</span>${extendedHoursHtml(q)}${futuresHtml(pos.symbol)}</span>
     </div>`;
     
     // Section 2: Position info
@@ -580,7 +580,7 @@ function renderWatchlist() {
                     <div class="watch-price" style="text-align:right;min-width:70px;">
                         <div data-price-symbol="${item.symbol}">${price > 0 ? fp(price) : '--'}</div>
                         <div class="${change >= 0 ? 'positive' : 'negative'}" data-change-symbol="${item.symbol}">${price > 0 ? (change >= 0 ? '+' : '') + change.toFixed(2) + '%' : ''}</div>
-                        <div class="ext-hours-block">${extendedHoursHtml(priceCache[item.symbol])}</div>
+                        <div class="ext-hours-block">${extendedHoursHtml(priceCache[item.symbol])}${futuresHtml(item.symbol)}</div>
                     </div>
                     <button onclick="event.stopPropagation();quickAddFromWatchlist('${item.symbol}')" title="Add to portfolio" style="margin-left:12px;flex-shrink:0;background:#3b82f6;border:none;color:#fff;font-size:0.7rem;cursor:pointer;padding:5px 10px;border-radius:6px;font-weight:700;letter-spacing:0.3px;">+ ADD</button>
                 </div>
@@ -756,36 +756,20 @@ async function renderMarkets() {
     const allSymbols = [...new Set([...defaultSymbols, ...pinnedMarkets])];
     const names = { '^GSPC': 'S&P 500', '^IXIC': 'Nasdaq', '^DJI': 'Dow', '^VIX': 'VIX', 'BTC-USD': 'Bitcoin' };
     
-    // Futures mapping for after-hours index tracking
-    const futuresMap = { '^GSPC': 'ES=F', '^IXIC': 'NQ=F', '^DJI': 'YM=F' };
-    const futuresNames = { 'ES=F': 'Futures', 'NQ=F': 'Futures', 'YM=F': 'Futures' };
-    
     // Fetch index + futures quotes in parallel
-    const futuresSymbols = Object.values(futuresMap);
+    const futuresSymbols = [...new Set(Object.values(futuresMap))];
     const quotes = await Promise.all([...allSymbols, ...futuresSymbols].map(fetchQuote));
     quotes.forEach(q => { if (q) priceCache[q.symbol] = q; });
     
     const el = document.getElementById('marketsGrid');
     el.innerHTML = quotes.filter(Boolean).map(q => {
+        // Skip raw futures symbols from rendering as their own cards
+        if (['ES=F', 'NQ=F', 'YM=F'].includes(q.symbol)) return '';
         const sel = q.symbol === selectedSymbol ? 'selected' : '';
-        const price = q.symbol.includes('BTC') ? fp(q.price) : fp(q.price);
+        const price = fp(q.price);
         const isPinned = pinnedMarkets.includes(q.symbol);
         const pinBadge = isPinned && !defaultSymbols.includes(q.symbol) ? '<span style="font-size:0.6rem;">📌</span>' : '';
-        // Futures line for indices when market is closed
-        let futuresHtml = '';
-        const futSym = futuresMap[q.symbol];
-        if (futSym && q.marketState !== 'REGULAR') {
-            const fq = priceCache[futSym];
-            if (fq && fq.price) {
-                const fChange = fq.changePercent || 0;
-                const fColor = fChange >= 0 ? '#26a69a' : '#ef5350';
-                futuresHtml = `<div style="margin-top:3px;font-size:0.7rem;">
-                    <span style="background:#ff9800;color:#000;padding:1px 4px;border-radius:3px;font-size:0.6rem;font-weight:600;">FUT</span>
-                    <span style="color:${fColor};" data-price-symbol="${futSym}">${fp(fq.price)}</span>
-                    <span style="color:${fColor};" data-change-symbol="${futSym}">${fChange >= 0 ? '+' : ''}${fChange.toFixed(2)}%</span>
-                </div>`;
-            }
-        }
+        const futHtml = futuresHtml(q.symbol);
         const ahHtml = extendedHoursHtml(q);
         
         return `<div class="market-item ${sel}" data-symbol="${q.symbol}" onclick="selectTickerSmall('${q.symbol}')">
@@ -793,9 +777,9 @@ async function renderMarkets() {
             <div class="market-price" data-price-symbol="${q.symbol}">${price}</div>
             <div class="market-change ${q.changePercent >= 0 ? 'positive' : 'negative'}" data-change-symbol="${q.symbol}">${q.changePercent >= 0 ? '+' : ''}${q.changePercent.toFixed(2)}%</div>
             ${ahHtml ? `<div style="margin-top:2px;">${ahHtml}</div>` : ''}
-            ${futuresHtml}
+            ${futHtml ? `<div style="margin-top:3px;">${futHtml}</div>` : ''}
         </div>`;
-    }).join('');
+    }).filter(Boolean).join('');
     
     // Update VIX
     const vix = priceCache['^VIX'];

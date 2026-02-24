@@ -110,6 +110,13 @@ async function initDatabase() {
     // Column already exists, ignore
   }
 
+  // Add token_version for JWT invalidation on logout
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   db.run(`
     CREATE TABLE IF NOT EXISTS portfolios (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

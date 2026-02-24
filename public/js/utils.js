@@ -152,6 +152,31 @@ function logoHtml(symbol, size = 24) {
     return `<img src="${logo}" alt="" class="ticker-logo" style="width:${size}px;height:${size}px;" ${errorHandler}>`;
 }
 
+// ============ FUTURES MAPPING ============
+const futuresMap = {
+    '^GSPC': 'ES=F', '^IXIC': 'NQ=F', '^DJI': 'YM=F',
+    'SPY': 'ES=F', 'QQQ': 'NQ=F', 'DIA': 'YM=F',
+    'VOO': 'ES=F', 'IVV': 'ES=F'  // S&P 500 ETFs
+};
+
+function futuresHtml(symbol) {
+    const futSym = futuresMap[symbol];
+    if (!futSym) return '';
+    const quote = priceCache[symbol];
+    if (!quote) return '';
+    // Only show when cash market is NOT in regular session
+    if (quote.marketState === 'REGULAR') return '';
+    const fq = priceCache[futSym];
+    if (!fq || !fq.price) return '';
+    const fChange = fq.changePercent || 0;
+    const fColor = fChange >= 0 ? '#26a69a' : '#ef5350';
+    return `<span class="ext-hours" style="font-size:0.7rem;">
+        <span style="background:#ff9800;color:#000;padding:1px 4px;border-radius:3px;font-size:0.6rem;font-weight:600;">FUT</span>
+        <span style="color:${fColor};" data-price-symbol="${futSym}">${fp(fq.price)}</span>
+        <span style="color:${fColor};" data-change-symbol="${futSym}">${fChange >= 0 ? '+' : ''}${fChange.toFixed(2)}%</span>
+    </span>`;
+}
+
 // ============ EXTENDED HOURS HELPERS ============
 function extendedHoursHtml(quote) {
     if (!quote || !quote.marketState) return '';
@@ -178,6 +203,46 @@ function extendedHoursHtml(quote) {
     const colorClass = changePct >= 0 ? 'positive' : 'negative';
     const sym = quote.symbol || '';
     return `<span class="ext-hours"><span class="${badgeClass}">${label}</span> <span class="ext-price" data-price-symbol="${sym}-ah">${fp(price)}</span> <span class="${colorClass}">${sign}${changePct.toFixed(2)}%</span></span>`;
+}
+
+// ============ CONFIRM DIALOG ============
+function confirmDialog(message, { title = 'Confirm', confirmText = 'Confirm', cancelText = 'Cancel', danger = false } = {}) {
+    return new Promise((resolve) => {
+        // Remove existing confirm dialog if any
+        document.getElementById('confirmDialogOverlay')?.remove();
+        
+        const overlay = document.createElement('div');
+        overlay.id = 'confirmDialogOverlay';
+        overlay.className = 'modal-overlay show';
+        overlay.style.zIndex = '10000';
+        overlay.innerHTML = `
+            <div class="modal" style="max-width:380px;animation:modalSlideIn 0.2s ease;">
+                <div class="modal-header">
+                    <h3>${title}</h3>
+                </div>
+                <div class="modal-body" style="padding:16px 20px;">
+                    <p style="margin:0;color:var(--text-secondary);font-size:0.95rem;line-height:1.5;">${message}</p>
+                </div>
+                <div class="modal-footer" style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button class="btn btn-secondary" id="confirmDialogCancel">${cancelText}</button>
+                    <button class="btn ${danger ? 'btn-danger' : 'btn-primary'}" id="confirmDialogOk">${confirmText}</button>
+                </div>
+            </div>`;
+        
+        document.body.appendChild(overlay);
+        
+        const cleanup = (result) => {
+            overlay.remove();
+            resolve(result);
+        };
+        
+        overlay.querySelector('#confirmDialogCancel').onclick = () => cleanup(false);
+        overlay.querySelector('#confirmDialogOk').onclick = () => cleanup(true);
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) cleanup(false); });
+        
+        // Focus confirm button
+        overlay.querySelector('#confirmDialogOk').focus();
+    });
 }
 
 // ============ PRICE SOURCES ============

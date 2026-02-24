@@ -32,8 +32,15 @@ router.put('/settings', (req, res) => {
     if (daily.time && !/^\d{2}:\d{2}$/.test(daily.time)) {
       return res.status(400).json({ error: 'Invalid time format (expected HH:MM)' });
     }
-    if (daily.timezone && typeof daily.timezone !== 'string') {
-      return res.status(400).json({ error: 'Invalid timezone' });
+    if (daily.timezone) {
+      if (typeof daily.timezone !== 'string') {
+        return res.status(400).json({ error: 'Invalid timezone' });
+      }
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: daily.timezone });
+      } catch (e) {
+        return res.status(400).json({ error: `Invalid timezone: ${daily.timezone}` });
+      }
     }
   }
   if (weekly) {
@@ -43,6 +50,16 @@ router.put('/settings', (req, res) => {
     const validDays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     if (weekly.day && !validDays.includes(weekly.day.toLowerCase())) {
       return res.status(400).json({ error: 'Invalid day of week' });
+    }
+    if (weekly.timezone) {
+      if (typeof weekly.timezone !== 'string') {
+        return res.status(400).json({ error: 'Invalid timezone' });
+      }
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: weekly.timezone });
+      } catch (e) {
+        return res.status(400).json({ error: `Invalid timezone: ${weekly.timezone}` });
+      }
     }
   }
 

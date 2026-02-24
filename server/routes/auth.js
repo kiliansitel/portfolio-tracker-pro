@@ -51,6 +51,11 @@ function authenticateToken(req, res, next) {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
+    // Validate token version to support logout invalidation
+    const dbUser = dbGet('SELECT token_version FROM users WHERE id = ?', [user.id]);
+    if (!dbUser || (user.tv !== undefined && user.tv !== (dbUser.token_version || 0))) {
+      return res.status(403).json({ error: 'Token has been invalidated' });
+    }
     req.user = user;
     next();
   });
@@ -143,16 +148,17 @@ router.post('/login', strictLimiter, loginValidation, async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '30d' });
-    
+    const tokenVersion = user.token_version || 0;
+    const token = jwt.sign({ id: user.id, username: user.username, tv: tokenVersion }, JWT_SECRET, { expiresIn: '30d' });
+
     // Set httpOnly cookie
-    res.cookie('auth_token', token, { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production', 
+    res.cookie('auth_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
     });
-    
+
     res.json({
       token, // Keep for API clients
       user: { id: user.id, username: user.username, email: user.email, settings: JSON.parse(user.settings || '{}') }
@@ -306,6 +312,16 @@ router.put('/email', authenticateToken, (req, res) => {
 
 // Logout
 router.post('/logout', (req, res) => {
+  // Invalidate token by incrementing token_version
+  const token = req.cookies?.auth_token || (req.headers['authorization']?.split(' ')[1]);
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      dbRun('UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = ?', [decoded.id]);
+    } catch (e) {
+      // Token already invalid, no action needed
+    }
+  }
   res.clearCookie('auth_token');
   res.json({ message: 'Logged out successfully' });
 });

@@ -1106,6 +1106,10 @@ async function fetchAndStoreTransactions(wallet) {
         const portfolioId = getUserPortfolioId(wallet.user_id);
         if (portfolioId) {
           const ticker = CHAIN_TICKERS[wallet.chain];
+          if (!ticker) {
+            logger.warn(`No ticker found for chain ${wallet.chain}, skipping transaction ${tx.tx_hash}`);
+            continue;
+          }
           const action = tx.direction === 'in' ? 'buy' : 'sell';
           // Try to get current price as fallback
           let price = 0;

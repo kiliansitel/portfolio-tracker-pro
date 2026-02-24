@@ -111,9 +111,9 @@ function convertCurrency(amount, fromCurrency, toCurrency, rates) {
     return amount;
   }
   
-  if (!rates[fromCurrency] || !rates[fromCurrency][toCurrency]) {
-    console.warn(`Exchange rate not found: ${fromCurrency} -> ${toCurrency}`);
-    return amount; // Return original amount if conversion not available
+  if (!rates || !rates[fromCurrency] || !rates[fromCurrency][toCurrency]) {
+    console.warn(`Exchange rate not found: ${fromCurrency} -> ${toCurrency}, skipping cash adjustment`);
+    return null; // Return null so caller can skip the cash update safely
   }
   
   return amount * rates[fromCurrency][toCurrency];
