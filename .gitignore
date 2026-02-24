@@ -10,6 +10,13 @@ node_modules/
 .env
 .env.local
 
+# Secrets
+**/.jwt_secret
+
+# Temp scripts
+server/reset-demo.js
+server/list-users.js
+
 # Update settings (local per-install)
 server/update-settings.json
 

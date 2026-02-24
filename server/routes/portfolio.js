@@ -152,16 +152,18 @@ router.post('/:id/positions', positionValidation, async (req, res) => {
       } else {
         cashImpact = cost;
       }
-      
-      dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashImpact, id]);
-      
+
+      if (cashImpact !== null) {
+        dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashImpact, id]);
+      }
+
       // Create buy transaction
       dbRun(
         'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, source, affects_cash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [id, symbol.toUpperCase(), type || 'stock', 'buy', quantity, price, fees, entry_date || new Date().toISOString().split('T')[0], posSource, 1]
       );
     }
-    
+
     const updated = dbGet('SELECT * FROM positions WHERE id = ?', [existingPosition.id]);
     const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [id]);
     res.json({ ...updated, cash: updatedPortfolio.cash, cash_impact: cashImpact });
@@ -184,16 +186,18 @@ router.post('/:id/positions', positionValidation, async (req, res) => {
       } else {
         cashImpact = cost;
       }
-      
-      dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashImpact, id]);
-      
+
+      if (cashImpact !== null) {
+        dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashImpact, id]);
+      }
+
       // Create buy transaction
       dbRun(
         'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, source, affects_cash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         [id, symbol.toUpperCase(), type || 'stock', 'buy', quantity, price, fees, entry_date || new Date().toISOString().split('T')[0], posSource, 1]
       );
     }
-    
+
     const newPosition = dbGet('SELECT * FROM positions WHERE id = ?', [result.lastInsertRowid]);
     const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [id]);
     res.json({ ...newPosition, cash: updatedPortfolio.cash, cash_impact: cashImpact });
@@ -244,8 +248,10 @@ router.put('/positions/:id', idParamValidation, async (req, res) => {
     } else {
       cashAdjustment = costDiff;
     }
-    
-    dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashAdjustment, position.portfolio_id]);
+
+    if (cashAdjustment !== null) {
+      dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashAdjustment, position.portfolio_id]);
+    }
   }
   
   dbRun(`UPDATE positions SET symbol = ?, quantity = ?, entry_price = ?, location = ?, 
@@ -310,8 +316,10 @@ router.delete('/positions/:id', idParamValidation, async (req, res) => {
     } else {
       cashReversed = totalCostInPosCurrency;
     }
-    
-    dbRun('UPDATE portfolios SET cash = cash + ? WHERE id = ?', [cashReversed, position.portfolio_id]);
+
+    if (cashReversed !== null) {
+      dbRun('UPDATE portfolios SET cash = cash + ? WHERE id = ?', [cashReversed, position.portfolio_id]);
+    }
   }
   
   // Delete associated transactions
@@ -368,8 +376,10 @@ router.post('/:id/positions/:posId/close', async (req, res) => {
     } else {
       cashImpact = proceedsMinusFees;
     }
-    
-    dbRun('UPDATE portfolios SET cash = cash + ? WHERE id = ?', [cashImpact, id]);
+
+    if (cashImpact !== null) {
+      dbRun('UPDATE portfolios SET cash = cash + ? WHERE id = ?', [cashImpact, id]);
+    }
   }
   
   if (isPartial) {
@@ -430,10 +440,10 @@ router.get('/:id/dividends', async (req, res) => {
     return res.status(404).json({ error: 'Portfolio not found' });
   }
   
-  const positions = dbAll('SELECT * FROM positions WHERE portfolio_id = ? ORDER BY symbol', [id]);
-  
+  const positions = dbAll('SELECT * FROM positions WHERE portfolio_id = ? AND type != ? ORDER BY symbol', [id, 'option']);
+
   // Fetch prices (which include dividend data) for all unique symbols
-  const symbols = [...new Set(positions.filter(p => p.type !== 'option').map(p => p.symbol))];
+  const symbols = [...new Set(positions.map(p => p.symbol))];
   const priceData = {};
   
   // Fetch in parallel batches

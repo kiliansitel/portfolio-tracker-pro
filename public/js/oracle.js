@@ -176,8 +176,10 @@ function updateAiProviderBadge() {
             localStorage.setItem('aiModel', aiSelectedModel);
         }
     }
-    const modelName = aiSelectedModel ?
-        (p?.models?.find(m => m.id === aiSelectedModel)?.name || aiSelectedModel.split('/').pop()) :
+    // For Ollama, prefer modelPreference from server (reflects what was actually saved)
+    const effectiveModel = (p?.id === 'ollama' && p?.modelPreference) ? p.modelPreference : aiSelectedModel;
+    const modelName = effectiveModel ?
+        (p?.models?.find(m => m.id === effectiveModel)?.name || effectiveModel.split('/').pop()) :
         'default';
     badge.textContent = `${p?.name || aiSelectedProvider} · ${modelName}`;
     badge.style.color = '';
@@ -1370,7 +1372,7 @@ async function renderAiProviderSettings() {
         }
 
         if (p.models && p.models.length > 0) {
-            html += `<select class="ai-provider-input" id="ai-model-${p.id}">`;
+            html += `<select class="ai-provider-input" id="ai-model-${p.id}" data-selected-model="${p.modelPreference || ''}">`;
             for (const m of p.models) {
                 const sel = m.id === p.modelPreference ? 'selected' : '';
                 html += `<option value="${m.id}" ${sel}>${m.name}</option>`;
@@ -1408,12 +1410,22 @@ async function saveAiProvider(providerId) {
     const modelSelect = document.getElementById(`ai-model-${providerId}`);
     const customModelInput = document.getElementById('ai-model-custom');
 
+    // For Ollama: if models are still loading (disabled), wait for them first
+    if (providerId === 'ollama' && modelSelect && modelSelect.disabled) {
+        await new Promise(resolve => {
+            const check = setInterval(() => {
+                if (!modelSelect.disabled) { clearInterval(check); resolve(); }
+            }, 100);
+            setTimeout(() => { clearInterval(check); resolve(); }, 5000); // max 5s wait
+        });
+    }
+
     const body = {};
     if (keyInput && keyInput.value && !keyInput.value.startsWith('••')) {
         body.apiKey = keyInput.value;
     }
     if (urlInput) body.baseUrl = urlInput.value;
-    if (modelSelect) body.model = modelSelect.value;
+    if (modelSelect && modelSelect.value) body.model = modelSelect.value;
     if (providerId === 'custom' && customModelInput) body.model = customModelInput.value;
     const ctxInput = document.getElementById(`ai-ctx-${providerId}`);
     if (ctxInput && ctxInput.value) body.contextLength = parseInt(ctxInput.value);
@@ -1424,6 +1436,11 @@ async function saveAiProvider(providerId) {
             body: JSON.stringify(body)
         });
         showToast(`${providerId} provider saved!`, 'success');
+        // Update selected model in state if this is the active provider
+        if (body.model && aiSelectedProvider === providerId) {
+            aiSelectedModel = body.model;
+            localStorage.setItem('aiModel', aiSelectedModel);
+        }
         aiProviders = await api('/ai/providers');
         await renderAiProviderSettings();
         updateAiProviderBadge();
@@ -1526,12 +1543,15 @@ function updateOllamaModelDropdown(modelSelect, models) {
         modelSelect.appendChild(option);
     }
     
-    // Select saved modelPreference if available, otherwise first model
+    // Select saved modelPreference if available, otherwise keep current selection, otherwise first model
     const ollamaProvider = aiProviders && aiProviders.find(p => p.id === 'ollama');
     const preferred = ollamaProvider && ollamaProvider.modelPreference;
+    const currentValue = modelSelect.dataset.selectedModel || modelSelect.value;
     if (preferred && models.some(m => m.id === preferred)) {
         modelSelect.value = preferred;
-    } else if (models.length > 0 && !modelSelect.value) {
+    } else if (currentValue && models.some(m => m.id === currentValue)) {
+        modelSelect.value = currentValue;
+    } else if (models.length > 0) {
         modelSelect.value = models[0].id;
     }
 }
