@@ -9,6 +9,7 @@ import {
   Link2,
   Newspaper,
   Sparkles,
+  ClipboardList,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
@@ -22,6 +23,7 @@ const sidebarItems = [
   { id: 'oracle', icon: Sparkles, label: 'Oracle', path: '/oracle' },
   { id: 'alerts', icon: Bell, label: 'Alerts', path: '/alerts' },
   { id: 'wallet', icon: Wallet, label: 'Wallet', path: '/wallet' },
+  { id: 'transactions', icon: ClipboardList, label: 'Transactions', path: '/transactions' },
   { id: 'connections', icon: Link2, label: 'Connections', path: '/connections' },
   { id: 'settings', icon: Settings, label: 'Settings', path: '/settings' },
 ];

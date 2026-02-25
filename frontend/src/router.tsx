@@ -12,6 +12,7 @@ import { Alerts } from './pages/Alerts';
 import { Connections } from './pages/Connections';
 import { Settings } from './pages/Settings';
 import { Wallet } from './pages/Wallet';
+import { Transactions } from './pages/Transactions';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, loading } = useAuth();
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: 'connections', element: <Connections /> },
       { path: 'settings', element: <Settings /> },
       { path: 'wallet', element: <Wallet /> },
+      { path: 'transactions', element: <Transactions /> },
     ],
   },
 ]);

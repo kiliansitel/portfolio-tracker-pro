@@ -1,0 +1,166 @@
+import { ClipboardList, Trash2, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
+import { api } from '../lib/api';
+import { Modal, ActionBtn } from '../components/Modal';
+
+function fmt(v: number) {
+  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
+  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
+  return `$${v.toFixed(2)}`;
+}
+
+function dateLabel(d: string) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+const TYPE_COLORS: Record<string, string> = {
+  buy: 'text-emerald-400 bg-emerald-400/10',
+  sell: 'text-red-400 bg-red-400/10',
+  deposit: 'text-blue-400 bg-blue-400/10',
+  withdrawal: 'text-orange-400 bg-orange-400/10',
+  dividend: 'text-yellow-400 bg-yellow-400/10',
+  fee: 'text-gray-400 bg-gray-400/10',
+};
+
+export function Transactions() {
+  const navigate = useNavigate();
+  const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('all');
+  const [showDelete, setShowDelete] = useState<number | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+
+  const load = async () => {
+    const list = await api.portfolio.all().catch(() => []);
+    setPortfolios(list || []);
+    if (!selectedId && list?.length) setSelectedId(list[0].id);
+    setLoading(false);
+  };
+
+  const loadTx = async (pid: number) => {
+    setLoading(true);
+    try {
+      const data = await api.portfolio.transactions(pid);
+      setTransactions(Array.isArray(data) ? data : []);
+    } catch { setTransactions([]); }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { load(); }, []);
+  useEffect(() => { if (selectedId) loadTx(selectedId); }, [selectedId]);
+
+  const doDelete = async () => {
+    await api.portfolio.deleteTransaction(showDelete!).catch(console.error);
+    setShowDelete(null);
+    if (selectedId) loadTx(selectedId);
+    showToast('Transaction deleted');
+  };
+
+  const filtered = filter === 'all' ? transactions : transactions.filter(t => t.type === filter);
+  const types = ['all', ...Array.from(new Set(transactions.map((t: any) => String(t.type))))];
+
+  return (
+    <div className="p-8 max-w-[1440px] mx-auto">
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white bg-blue-500">{toast}</div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-3">
+          <ClipboardList className="w-6 h-6 text-blue-500" />
+          <h2 className="text-2xl font-bold text-white">Transaction History</h2>
+          <span className="text-gray-500 text-sm">({filtered.length} transactions)</span>
+        </div>
+        <button
+          onClick={() => navigate('/wallet')}
+          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm"
+        >
+          <Plus className="w-4 h-4" /> Add Transaction
+        </button>
+      </div>
+
+      {/* Portfolio Tabs */}
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        {portfolios.map(p => (
+          <button key={p.id} onClick={() => setSelectedId(p.id)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${selectedId === p.id ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'}`}>
+            {p.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Type Filters */}
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        {types.map(t => (
+          <button key={t} onClick={() => setFilter(t)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${filter === t ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {/* Table */}
+      <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 overflow-hidden">
+        <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-white/5 border-b border-white/5">
+          <div className="col-span-2 text-gray-400 text-xs font-medium uppercase">Date</div>
+          <div className="col-span-2 text-gray-400 text-xs font-medium uppercase">Type</div>
+          <div className="col-span-2 text-gray-400 text-xs font-medium uppercase">Symbol</div>
+          <div className="col-span-1 text-gray-400 text-xs font-medium uppercase">Qty</div>
+          <div className="col-span-2 text-gray-400 text-xs font-medium uppercase text-right">Price</div>
+          <div className="col-span-2 text-gray-400 text-xs font-medium uppercase text-right">Total</div>
+          <div className="col-span-1" />
+        </div>
+
+        {loading ? (
+          <div className="px-6 py-8 text-center text-gray-500 text-sm">Loading...</div>
+        ) : filtered.length === 0 ? (
+          <div className="px-6 py-16 text-center">
+            <ClipboardList className="w-12 h-12 text-gray-600 mx-auto mb-3" />
+            <p className="text-gray-400">No transactions found</p>
+          </div>
+        ) : (
+          filtered.slice().reverse().map((tx: any) => {
+            const color = TYPE_COLORS[tx.type] || 'text-gray-400 bg-gray-400/10';
+            const total = tx.quantity && tx.price ? tx.quantity * tx.price : tx.amount || 0;
+            return (
+              <div key={tx.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors items-center">
+                <div className="col-span-2 text-gray-400 text-sm">{dateLabel(tx.date || tx.created_at)}</div>
+                <div className="col-span-2">
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize ${color}`}>{tx.type}</span>
+                </div>
+                <div className="col-span-2 text-white font-medium">{tx.symbol || '—'}</div>
+                <div className="col-span-1 text-gray-400 text-sm">{tx.quantity || '—'}</div>
+                <div className="col-span-2 text-right text-gray-400 text-sm">
+                  {tx.price ? `$${Number(tx.price).toFixed(2)}` : tx.amount ? fmt(tx.amount) : '—'}
+                </div>
+                <div className="col-span-2 text-right font-bold text-white">{total > 0 ? fmt(total) : '—'}</div>
+                <div className="col-span-1 text-right">
+                  <button onClick={() => setShowDelete(tx.id)} className="p-1.5 text-gray-600 hover:text-red-400 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <Modal open={showDelete !== null} onClose={() => setShowDelete(null)} title="Delete Transaction" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-400">Delete this transaction? This cannot be undone.</p>
+          <div className="flex gap-3 pt-2">
+            <ActionBtn onClick={() => setShowDelete(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
+            <ActionBtn onClick={doDelete} variant="danger" className="flex-1">Delete</ActionBtn>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
