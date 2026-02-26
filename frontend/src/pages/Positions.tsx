@@ -11,6 +11,11 @@ import { useLivePrices, usePriceFlash } from '../lib/useLivePrices';
 import { MarketStateBadge } from '../components/MarketStateBadge';
 import { SwipeableCard } from '../components/SwipeableCard';
 
+function PriceText({ price }: { price: number }) {
+  const flash = usePriceFlash(price);
+  return <span className={`text-white font-bold text-sm ${flash}`}>${price.toFixed(2)}</span>;
+}
+
 const POSITION_TYPES = [
   { value: 'stock', label: 'Stock' },
   { value: 'crypto', label: 'Crypto' },
@@ -388,7 +393,7 @@ export function Positions() {
                       <div>
                         <div className="flex items-center gap-1 justify-end">
                           {(position as any).marketState && (position as any).marketState !== 'REGULAR' && <MarketStateBadge marketState={(position as any).marketState} />}
-                          <span className="text-white font-bold text-sm">${position.currentPrice.toFixed(2)}</span>
+                          <PriceText price={position.currentPrice} />
                         </div>
                         <div className={`text-xs ${isDayPos ? 'text-emerald-400' : 'text-red-400'}`}>{isDayPos ? '+' : ''}{position.dayChangePct.toFixed(2)}%</div>
                       </div>
