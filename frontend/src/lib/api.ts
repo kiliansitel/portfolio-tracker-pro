@@ -20,6 +20,7 @@ async function request(method: string, path: string, body?: any) {
 }
 
 export const api = {
+  dividends: (portfolioId: number) => request('GET', `/portfolios/${portfolioId}/dividends`),
   login: (username: string, password: string) => request('POST', '/auth/login', { login: username, password }),
   me: () => request('GET', '/auth/me'),
   updateSettings: (data: { settings?: any; currency?: string }) => request('PUT', '/auth/settings', data),

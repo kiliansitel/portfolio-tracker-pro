@@ -13,6 +13,31 @@ interface OHLCV {
   ma20: number | undefined;
   ma50: number | undefined;
   ma200: number | undefined;
+  rsi?: number;
+}
+
+function calcRSI(data: OHLCV[], period = 14): OHLCV[] {
+  if (data.length < period + 1) return data;
+  let avgGain = 0, avgLoss = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = data[i].close - data[i - 1].close;
+    if (diff > 0) avgGain += diff; else avgLoss += Math.abs(diff);
+  }
+  avgGain /= period; avgLoss /= period;
+  return data.map((d, i) => {
+    if (i < period) return d;
+    if (i === period) {
+      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+      return { ...d, rsi: Number((100 - 100 / (1 + rs)).toFixed(2)) };
+    }
+    const diff = data[i].close - data[i - 1].close;
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? Math.abs(diff) : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+    return { ...d, rsi: Number((100 - 100 / (1 + rs)).toFixed(2)) };
+  });
 }
 
 const TF_MAP: Record<string, { range: string; interval: string }> = {
@@ -75,6 +100,7 @@ export function CandlestickChart({ initialSymbol, compact }: Props) {
   const [showMA20, setShowMA20] = useState(false);
   const [showMA50, setShowMA50] = useState(false);
   const [showMA200, setShowMA200] = useState(false);
+  const [showRSI, setShowRSI] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -100,15 +126,16 @@ export function CandlestickChart({ initialSymbol, compact }: Props) {
     return () => { alive = false; };
   }, [symbol, tf]);
 
-  // Recalculate MAs when toggles change
+  // Recalculate MAs + RSI when toggles change
   useEffect(() => {
     if (!data.length) return;
-    let d = data.map(r => ({ ...r, ma20: undefined, ma50: undefined, ma200: undefined }));
+    let d: OHLCV[] = data.map(r => ({ ...r, ma20: undefined, ma50: undefined, ma200: undefined, rsi: undefined }));
     if (showMA20) d = calcMA(d, 20, 'ma20');
     if (showMA50) d = calcMA(d, 50, 'ma50');
     if (showMA200) d = calcMA(d, 200, 'ma200');
+    if (showRSI) d = calcRSI(d);
     setData(d);
-  }, [showMA20, showMA50, showMA200]);
+  }, [showMA20, showMA50, showMA200, showRSI]);
 
   const handleSearch = useCallback((q: string) => {
     setSearchQ(q);
@@ -162,6 +189,7 @@ export function CandlestickChart({ initialSymbol, compact }: Props) {
               { key: 'ma20', label: 'MA20', color: '#3b82f6', show: showMA20, toggle: () => setShowMA20(v => !v) },
               { key: 'ma50', label: 'MA50', color: '#f59e0b', show: showMA50, toggle: () => setShowMA50(v => !v) },
               { key: 'ma200', label: 'MA200', color: '#ef4444', show: showMA200, toggle: () => setShowMA200(v => !v) },
+            { key: 'rsi', label: 'RSI(14)', color: '#a855f7', show: showRSI, toggle: () => setShowRSI(v => !v) },
             ].map(ma => (
               <button key={ma.key} onClick={ma.toggle}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors border ${ma.show ? 'border-transparent text-white' : 'bg-transparent border-white/10 text-gray-600 hover:text-gray-400'}`}
@@ -265,6 +293,52 @@ export function CandlestickChart({ initialSymbol, compact }: Props) {
               <Bar dataKey="volume" fill="#8b5cf6" opacity={0.35} radius={[2, 2, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* RSI Panel */}
+      {showRSI && !loading && chartData.length > 0 && !compact && (
+        <div className="mt-2 border-t border-white/5 pt-2">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-purple-400 text-xs font-medium">RSI(14)</span>
+            <span className="text-gray-500 text-xs">
+              {chartData[chartData.length - 1]?.rsi != null
+                ? (() => {
+                    const v = chartData[chartData.length - 1].rsi!;
+                    return <span style={{ color: v >= 70 ? '#ef4444' : v <= 30 ? '#22c55e' : '#a855f7' }}>{v.toFixed(1)}</span>;
+                  })()
+                : '—'}
+            </span>
+          </div>
+          <div className="h-24">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
+                <XAxis dataKey="date" hide />
+                <YAxis domain={[0, 100]} ticks={[30, 50, 70]} tick={{ fill: '#4b5563', fontSize: 10 }} width={28} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+                <Tooltip
+                  contentStyle={{ background: '#1a1d29', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
+                  formatter={(v: any) => [Number(v).toFixed(1), 'RSI']}
+                  labelStyle={{ color: '#9ca3af', fontSize: 12 }}
+                />
+                {/* Overbought/Oversold reference zones */}
+                <Line type="monotone" dataKey={() => 70} stroke="#ef4444" strokeWidth={1} dot={false} strokeDasharray="3 2" opacity={0.5} />
+                <Line type="monotone" dataKey={() => 30} stroke="#22c55e" strokeWidth={1} dot={false} strokeDasharray="3 2" opacity={0.5} />
+                <Area type="monotone" dataKey="rsi" stroke="#a855f7" strokeWidth={1.5} fill="url(#rsiGradient)" connectNulls />
+                <defs>
+                  <linearGradient id="rsiGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
+                  </linearGradient>
+                </defs>
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex gap-3 mt-1">
+            <span className="text-red-400 text-xs">Overbought ≥ 70</span>
+            <span className="text-gray-600 text-xs">•</span>
+            <span className="text-emerald-400 text-xs">Oversold ≤ 30</span>
+          </div>
         </div>
       )}
     </div>

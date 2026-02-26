@@ -107,9 +107,21 @@ export function Alerts() {
 
   const getProgress = (a: Alert) => {
     if (!a.targetPrice || !a.currentPrice) return 0;
-    return Math.min(a.condition === 'above'
+    const pct = a.condition === 'above'
       ? (a.currentPrice / a.targetPrice) * 100
-      : (a.targetPrice / a.currentPrice) * 100, 100);
+      : (a.targetPrice / a.currentPrice) * 100;
+    return Math.min(Math.max(pct, 0), 100);
+  };
+  const getDistance = (a: Alert) => {
+    if (!a.targetPrice || !a.currentPrice) return null;
+    const diff = ((a.targetPrice - a.currentPrice) / a.currentPrice) * 100;
+    return diff;
+  };
+  const getProgressColor = (pct: number, triggered: boolean) => {
+    if (triggered) return 'bg-gradient-to-r from-emerald-500 to-emerald-400';
+    if (pct >= 80) return 'bg-gradient-to-r from-orange-500 to-yellow-400';
+    if (pct >= 50) return 'bg-gradient-to-r from-blue-500 to-purple-600';
+    return 'bg-gradient-to-r from-blue-600 to-blue-500';
   };
   const isTriggered = (a: Alert) => a.currentPrice > 0 && (
     a.condition === 'above' ? a.currentPrice >= a.targetPrice : a.currentPrice <= a.targetPrice
@@ -195,9 +207,20 @@ export function Alerts() {
                       </button>
                     </div>
                   </div>
-                  <div className="h-1.5 bg-[#0d0f14] rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full transition-all duration-500 ${triggered ? 'bg-gradient-to-r from-emerald-500 to-emerald-400' : 'bg-gradient-to-r from-blue-500 to-purple-600'}`}
-                      style={{ width: `${getProgress(alert)}%` }} />
+                  {/* Progress bar + distance label */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 h-1.5 bg-[#0d0f14] rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all duration-500 ${getProgressColor(getProgress(alert), triggered)}`}
+                        style={{ width: `${getProgress(alert)}%` }} />
+                    </div>
+                    {!triggered && (() => {
+                      const dist = getDistance(alert);
+                      if (dist === null) return null;
+                      const pct = getProgress(alert);
+                      const color = pct >= 80 ? 'text-orange-400' : pct >= 50 ? 'text-blue-400' : 'text-gray-500';
+                      return <span className={`text-xs shrink-0 tabular-nums ${color}`}>{Math.abs(dist).toFixed(1)}% away</span>;
+                    })()}
+                    {triggered && <span className="text-emerald-400 text-xs shrink-0 font-medium">✓ Hit</span>}
                   </div>
                 </div>
                 </SwipeableCard>

@@ -1,6 +1,6 @@
 import {
   Settings as SettingsIcon, User, Lock, Globe, Bell, Download, Trash2, Eye, EyeOff, Check,
-  Upload, Sparkles, SunMoon, MessageCircle, Info
+  Upload, Sparkles, SunMoon, MessageCircle, Info, RefreshCw
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
@@ -233,7 +233,7 @@ export function Settings() {
   };
 
   const [importMode, setImportMode] = useState<'positions' | 'watchlist'>('positions');
-  const [importFormat, setImportFormat] = useState<'auto' | 'degiro' | 'trading212' | 'generic'>('auto');
+  const [importFormat, setImportFormat] = useState<'auto' | 'degiro' | 'trading212' | 'ibkr' | 'keytrade' | 'coinmarketcap' | 'generic'>('auto');
 
   function parseCsvRow(row: string): string[] {
     const result: string[] = [];
@@ -252,10 +252,15 @@ export function Settings() {
     return result;
   }
 
-  function detectFormat(cols: string[]): 'degiro' | 'trading212' | 'generic' {
+  type ImportFormat = 'degiro' | 'trading212' | 'ibkr' | 'keytrade' | 'coinmarketcap' | 'generic';
+
+  function detectFormat(cols: string[]): ImportFormat {
     const s = cols.join(',').toLowerCase();
     if (s.includes('isin') && s.includes('aantal')) return 'degiro';
     if (s.includes('ticker') && s.includes('no. of shares')) return 'trading212';
+    if (s.includes('financialinstrument') || (s.includes('symbol') && s.includes('quantity') && s.includes('tradedate'))) return 'ibkr';
+    if (s.includes('mnemo') || s.includes('keytrade')) return 'keytrade';
+    if (s.includes('coinmarketcap') || (s.includes('coin') && s.includes('holdings'))) return 'coinmarketcap';
     return 'generic';
   }
 
@@ -273,10 +278,10 @@ export function Settings() {
       let symIdx: number, qtyIdx: number, priceIdx: number, nameIdx: number, dateIdx: number;
 
       if (fmt === 'degiro') {
-        // DeGiro: Product, Symbol/ISIN, Aantal, Slotkoers
+        // DeGiro export: Product, Symbol/ISIN, Aantal, Koers
         symIdx = getIdx('symbol', 'isin', 'product');
         qtyIdx = getIdx('aantal', 'quantity', 'shares');
-        priceIdx = getIdx('slotkoers', 'price', 'koers');
+        priceIdx = getIdx('slotkoers', 'koers', 'price');
         nameIdx = getIdx('product', 'name');
         dateIdx = getIdx('datum', 'date');
       } else if (fmt === 'trading212') {
@@ -286,13 +291,35 @@ export function Settings() {
         priceIdx = getIdx('average price', 'price', 'avg');
         nameIdx = getIdx('name', 'instrument');
         dateIdx = getIdx('date', 'time');
+      } else if (fmt === 'ibkr') {
+        // Interactive Brokers Activity Statement
+        // IBKR CSV has: "Trades,Header,DataDiscriminator,Asset Category,Currency,Symbol,Date/Time,Quantity,T. Price,..."
+        symIdx = getIdx('symbol', 'financialinstrument');
+        qtyIdx = getIdx('quantity', 'qty', 'shares');
+        priceIdx = getIdx('t. price', 'price', 'tradeprice', 'cost');
+        nameIdx = getIdx('description', 'name', 'company');
+        dateIdx = getIdx('date/time', 'tradedate', 'date');
+      } else if (fmt === 'keytrade') {
+        // Keytrade Bank: Mnemo, Quantité/Hoeveelheid, Cours/Koers
+        symIdx = getIdx('mnemo', 'ticker', 'symbol', 'isin');
+        qtyIdx = getIdx('quantité', 'hoeveelheid', 'quantity', 'shares');
+        priceIdx = getIdx('cours', 'koers', 'price', 'entry');
+        nameIdx = getIdx('libellé', 'omschrijving', 'name');
+        dateIdx = getIdx('date', 'datum');
+      } else if (fmt === 'coinmarketcap') {
+        // CoinMarketCap portfolio export: coin, holdings, avg buy price
+        symIdx = getIdx('coin', 'symbol', 'ticker');
+        qtyIdx = getIdx('holdings', 'quantity', 'amount', 'balance');
+        priceIdx = getIdx('avg buy price', 'price', 'avg', 'cost');
+        nameIdx = getIdx('name', 'coin');
+        dateIdx = getIdx('date', 'time');
       } else {
         // Generic: symbol/ticker, quantity/shares/qty, price/entry/avg
         symIdx = getIdx('symbol', 'ticker', 'asset', 'stock');
-        qtyIdx = getIdx('quantity', 'shares', 'qty', 'amount');
-        priceIdx = getIdx('entry', 'price', 'avg', 'average', 'cost');
+        qtyIdx = getIdx('quantity', 'shares', 'qty', 'amount', 'holdings');
+        priceIdx = getIdx('entry', 'price', 'avg', 'average', 'cost', 'avg buy');
         nameIdx = getIdx('name', 'description', 'company');
-        dateIdx = getIdx('date', 'purchase', 'open');
+        dateIdx = getIdx('date', 'purchase', 'open', 'time');
       }
 
       if (symIdx < 0) throw new Error(`CSV format not recognized. Expected columns: symbol, quantity, price.\nDetected format: ${fmt}`);
@@ -421,8 +448,8 @@ export function Settings() {
       </div>
 
       {/* Quick nav — horizontal scroll on mobile */}
-      <div className="relative mb-6">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pr-6">
+      <div className="mb-6">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pr-6 pl-1">
         {[
           { id: 'profile', label: '👤 Profile' },
           { id: 'ai', label: '🧠 AI' },
@@ -438,8 +465,7 @@ export function Settings() {
           </button>
         ))}
         </div>
-        {/* Scroll affordance */}
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-[#0d0f14] to-transparent z-10" />
+
       </div>
 
       <div className="space-y-6">
@@ -615,6 +641,21 @@ export function Settings() {
           <p className="text-gray-500 text-xs mt-3">Enter your Telegram Chat ID. Start a chat with the bot first, then paste your Chat ID here.</p>
         </Section>
 
+        {/* Wallet Auto-Sync */}
+        <Section title="Wallet Auto-Sync" icon={RefreshCw} id="section-wallet-sync">
+          <p className="text-gray-400 text-sm mb-4">Choose how often wallets are synced automatically. Syncing fetches live balance and transaction data.</p>
+          <div className="flex gap-3 flex-wrap">
+            {[{ label: 'Off', value: '0' }, { label: '5 min', value: '5' }, { label: '15 min', value: '15' }, { label: '30 min', value: '30' }, { label: '1 hour', value: '60' }].map(opt => (
+              <button key={opt.value}
+                onClick={() => saveSettingsPatch({ walletSyncInterval: opt.value })}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-300 text-sm transition-colors min-h-[40px]">
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-gray-600 text-xs mt-2">Wallet sync interval is saved to your preferences. The server processes the actual syncing via cron.</p>
+        </Section>
+
         {/* Export / Import */}
         <Section title="Export / Import" icon={Download} id="section-export">
           <div className="flex gap-3 flex-wrap">
@@ -642,6 +683,9 @@ export function Settings() {
                 <option value="generic">Generic (symbol, qty, price)</option>
                 <option value="degiro">DeGiro</option>
                 <option value="trading212">Trading 212</option>
+                <option value="ibkr">Interactive Brokers (IBKR)</option>
+                <option value="keytrade">Keytrade Bank</option>
+                <option value="coinmarketcap">CoinMarketCap</option>
               </select>
               <button onClick={() => importRef.current?.click()}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-blue-300 text-sm font-medium min-h-[40px]">

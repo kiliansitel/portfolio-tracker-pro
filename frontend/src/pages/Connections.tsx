@@ -18,16 +18,18 @@ const CHAINS = [
   { value: 'doge', label: 'Dogecoin (DOGE)' },
   { value: 'xrp', label: 'XRP' },
   { value: 'ada', label: 'Cardano (ADA)' },
+  { value: 'dot', label: 'Polkadot (DOT)' },
+  { value: 'ksm', label: 'Kusama (KSM)' },
 ];
 
 const CHAIN_COLORS: Record<string, string> = {
   btc: '#F7931A', eth: '#627EEA', sol: '#9945FF', bnb: '#F3BA2F',
   avax: '#E84142', matic: '#8247E5', arb: '#28A0F0', op: '#FF0420',
-  ltc: '#345D9D', doge: '#C2A633', xrp: '#23292F', ada: '#0033AD',
+  ltc: '#345D9D', doge: '#C2A633', xrp: '#23292F', ada: '#0033AD', dot: '#E6007A', ksm: '#000000',
 };
 const CHAIN_ICONS: Record<string, string> = {
   btc: '₿', eth: '⟠', sol: '◎', bnb: '⬡', avax: '▲', matic: '⬡',
-  arb: '◆', op: '●', ltc: 'Ł', doge: 'Ð', xrp: '✕', ada: '₳',
+  arb: '◆', op: '●', ltc: 'Ł', doge: 'Ð', xrp: '✕', ada: '₳', dot: '●', ksm: '◉',
 };
 
 function validateAddress(addr: string, chain: string): string | null {
@@ -347,7 +349,7 @@ export function Connections() {
   const totalUsd = wallets.reduce((s, w) => s + (w.usd_value || 0), 0);
 
   return (
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 pb-40 md:pb-8 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">

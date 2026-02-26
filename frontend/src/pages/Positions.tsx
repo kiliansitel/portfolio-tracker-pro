@@ -67,6 +67,8 @@ export function Positions() {
   const [fExpiry, setFExpiry] = useState('');
   const [fMultiplier, setFMultiplier] = useState('100');
   const [fClosePrice, setFClosePrice] = useState('');
+  const [fCloseQty, setFCloseQty] = useState('');
+  const [fFees, setFFees] = useState('0');
   const [fErr, setFErr] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -225,8 +227,13 @@ export function Positions() {
     setFErr(''); setSaving(true);
     try {
       if (!fClosePrice || Number(fClosePrice) <= 0) throw new Error('Close price required');
+      const closeQty = fCloseQty ? Number(fCloseQty) : undefined;
+      if (closeQty && (closeQty <= 0 || closeQty > closePos!.quantity)) throw new Error(`Quantity must be between 0 and ${closePos!.quantity}`);
       await api.portfolio.closePosition(portfolioId!, closePos!.id, {
-        close_price: Number(fClosePrice), close_date: fDate,
+        close_price: Number(fClosePrice),
+        quantity: closeQty,
+        fees: Number(fFees) || 0,
+        date: fDate,
       });
       setClosePos(null);
       await loadPositions(true);
@@ -414,7 +421,7 @@ export function Positions() {
                   </div>
                   <div className="col-span-2 flex items-center justify-end gap-1">
                     <button onClick={() => openEdit(position)} className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
-                    <button onClick={() => { setFClosePrice(String(position.currentPrice || '')); setFDate(new Date().toISOString().split('T')[0]); setFErr(''); setClosePos(position); }}
+                    <button onClick={() => { setFClosePrice(String(position.currentPrice || '')); setFCloseQty(''); setFFees('0'); setFDate(new Date().toISOString().split('T')[0]); setFErr(''); setClosePos(position); }}
                       className="p-1.5 text-gray-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors text-xs font-medium" title="Close position">Close</button>
                     <button onClick={() => { setFErr(''); setDeletePos(position); }} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
@@ -459,7 +466,7 @@ export function Positions() {
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => openEdit(position)} className="p-2 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={() => { setFClosePrice(String(position.currentPrice || '')); setFDate(new Date().toISOString().split('T')[0]); setFErr(''); setClosePos(position); }}
+                      <button onClick={() => { setFClosePrice(String(position.currentPrice || '')); setFCloseQty(''); setFFees('0'); setFDate(new Date().toISOString().split('T')[0]); setFErr(''); setClosePos(position); }}
                         className="px-2 py-1 text-gray-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg text-xs font-medium min-h-[36px]">Close</button>
                       <button onClick={() => { setFErr(''); setDeletePos(position); }} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
                     </div>
@@ -534,15 +541,36 @@ export function Positions() {
       </Modal>
 
       {/* Close Modal */}
-      <Modal open={!!closePos} onClose={() => setClosePos(null)} title={`Close ${closePos?.symbol}`} size="sm">
+      <Modal open={!!closePos} onClose={() => setClosePos(null)} title={`Close ${closePos?.symbol}`} size="md">
         <div className="space-y-4">
-          <p className="text-gray-400 text-sm">Record a sell / close of this position at the given price.</p>
-          <FormInput label="Close Price ($)" type="number" value={fClosePrice} onChange={e => setFClosePrice(e.target.value)} placeholder={String(closePos?.currentPrice || '')} />
+          {closePos && (() => {
+            const cp = Number(fClosePrice) || 0;
+            const qty = Number(fCloseQty) || closePos.quantity;
+            const fees = Number(fFees) || 0;
+            const entryVal = closePos.entryPrice * qty;
+            const exitVal = cp * qty - fees;
+            const realizedPL = exitVal - entryVal;
+            const realizedPct = entryVal > 0 ? (realizedPL / entryVal) * 100 : 0;
+            return (
+              <div className="bg-white/3 rounded-xl p-3 border border-white/5 text-sm">
+                <div className="flex justify-between text-gray-400"><span>Position:</span><span className="text-white">{closePos.symbol} · {closePos.quantity} shares @ ${closePos.entryPrice.toFixed(2)}</span></div>
+                {cp > 0 && <div className={`flex justify-between mt-1 font-bold ${realizedPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <span>Realized P&L:</span>
+                  <span>{realizedPL >= 0 ? '+' : ''}{fmtPrice(realizedPL)} ({realizedPct >= 0 ? '+' : ''}{realizedPct.toFixed(1)}%)</span>
+                </div>}
+              </div>
+            );
+          })()}
+          <FormInput label="Close Price ($)" type="number" value={fClosePrice} onChange={e => setFClosePrice(e.target.value)} placeholder={String(closePos?.currentPrice || 'Market price')} />
+          <FormInput label={`Quantity (max ${closePos?.quantity})`} type="number" value={fCloseQty} onChange={e => setFCloseQty(e.target.value)} placeholder={String(closePos?.quantity || 'All')} />
+          <FormInput label="Fees/Commission ($)" type="number" value={fFees} onChange={e => setFFees(e.target.value)} placeholder="0" />
           <FormInput label="Close Date" type="date" value={fDate} onChange={e => setFDate(e.target.value)} />
           {fErr && <p className="text-red-400 text-sm">{fErr}</p>}
           <div className="flex gap-3 pt-2">
             <ActionBtn onClick={() => setClosePos(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
-            <ActionBtn onClick={doClose} disabled={saving} variant="danger" className="flex-1">Close Position</ActionBtn>
+            <ActionBtn onClick={doClose} disabled={saving || !fClosePrice} variant="danger" className="flex-1">
+              {fCloseQty && Number(fCloseQty) < (closePos?.quantity || 0) ? 'Partial Close' : 'Close Position'}
+            </ActionBtn>
           </div>
         </div>
       </Modal>

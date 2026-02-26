@@ -100,6 +100,7 @@ export function Watchlist() {
   const [editTarget, setEditTarget] = useState('');
   const [editTargetDir, setEditTargetDir] = useState<'above' | 'below'>('above');
   const [editSaving, setEditSaving] = useState(false);
+  const [alertsBySymbol, setAlertsBySymbol] = useState<Record<string, any[]>>({});
 
   // ── BATCH price fetch (P1-1) ──
   const fetchPrices = getPrices;
@@ -129,7 +130,18 @@ export function Watchlist() {
     finally { setLoading(false); setRefreshing(false); }
   };
 
-  useEffect(() => { loadWatchlists(); }, []);
+  useEffect(() => {
+    loadWatchlists();
+    // Load alerts for BUY/SELL badges
+    api.alerts.list().then((list: any[]) => {
+      const bySymbol: Record<string, any[]> = {};
+      (list || []).forEach((a: any) => {
+        if (!bySymbol[a.symbol]) bySymbol[a.symbol] = [];
+        bySymbol[a.symbol].push(a);
+      });
+      setAlertsBySymbol(bySymbol);
+    }).catch(() => {});
+  }, []);
 
   // Autocomplete
   const onAcChange = (val: string) => {
@@ -299,6 +311,16 @@ export function Watchlist() {
                                 {item.price > 0
                                   ? <PriceCell price={item.price} changePercent={item.changePercent} marketState={item.marketState} />
                                   : <div className="text-gray-600 text-sm text-right">—</div>}
+                                {/* BUY/SELL badge from alerts */}
+                                {alertsBySymbol[item.symbol] && item.price > 0 && (() => {
+                                  const aboveAlert = alertsBySymbol[item.symbol].find((a:any) => a.condition === 'above' && a.is_active);
+                                  const belowAlert = alertsBySymbol[item.symbol].find((a:any) => a.condition === 'below' && a.is_active);
+                                  const hitAbove = aboveAlert && item.price >= aboveAlert.target_price;
+                                  const hitBelow = belowAlert && item.price <= belowAlert.target_price;
+                                  if (hitAbove) return <div className="text-center"><span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 text-xs rounded font-bold">SELL</span></div>;
+                                  if (hitBelow) return <div className="text-center"><span className="px-1.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded font-bold">BUY</span></div>;
+                                  return null;
+                                })()}
                               </div>
                             </div>
                             <div className="flex items-center gap-1">

@@ -15,6 +15,7 @@ import { Settings } from './pages/Settings';
 import { Wallet } from './pages/Wallet';
 import { Transactions } from './pages/Transactions';
 import { NotFound } from './pages/NotFound';
+import { Dividends } from './pages/Dividends';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, loading } = useAuth();
@@ -57,6 +58,7 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <Settings /> },
       { path: 'wallet', element: <Wallet /> },
       { path: 'transactions', element: <Transactions /> },
+      { path: 'dividends', element: <Dividends /> },
       { path: '*', element: <NotFound /> },
     ],
   },

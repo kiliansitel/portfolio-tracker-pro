@@ -83,7 +83,7 @@ export function Dashboard() {
           const snaps = perf?.snapshots || [];
           if (Array.isArray(snaps) && snaps.length) {
             setPerformance(
-              snaps.slice(-12).map((s: any) => ({
+              snaps.map((s: any) => ({
                 date: s.date?.slice(5) || s.date,
                 value: Number(s.total_value || 0),
               }))

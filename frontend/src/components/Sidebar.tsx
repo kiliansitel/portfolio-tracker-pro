@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, TrendingUp, Target, PieChart, Wallet, Bell,
-  Settings, Link2, Newspaper, Sparkles, ClipboardList,
+  Settings, Link2, Newspaper, Sparkles, ClipboardList, DollarSign,
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from './ui/tooltip';
@@ -15,6 +15,7 @@ const sidebarItems = [
   { id: 'alerts',       icon: Bell,              label: 'Alerts',       path: '/alerts' },
   { id: 'wallet',       icon: Wallet,            label: 'Wallet',       path: '/wallet' },
   { id: 'transactions', icon: ClipboardList,     label: 'Transactions', path: '/transactions' },
+  { id: 'dividends',    icon: DollarSign,        label: 'Dividends',    path: '/dividends' },
   { id: 'connections',  icon: Link2,             label: 'Connections',  path: '/connections' },
   { id: 'settings',     icon: Settings,          label: 'Settings',     path: '/settings' },
 ];
