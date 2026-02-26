@@ -95,6 +95,11 @@ export function Watchlist() {
   const [alertErr, setAlertErr] = useState('');
 
   const [removeItem, setRemoveItem] = useState<WatchItem | null>(null);
+  const [editItem, setEditItem] = useState<WatchItem | null>(null);
+  const [editNote, setEditNote] = useState('');
+  const [editTarget, setEditTarget] = useState('');
+  const [editTargetDir, setEditTargetDir] = useState<'above' | 'below'>('above');
+  const [editSaving, setEditSaving] = useState(false);
 
   // ── BATCH price fetch (P1-1) ──
   const fetchPrices = getPrices;
@@ -156,6 +161,33 @@ export function Watchlist() {
     setRemoveItem(null);
     await loadWatchlists(true);
     toast.success(`${removeItem.symbol} removed`);
+  };
+
+  const openEditItem = (item: WatchItem) => {
+    setEditItem(item);
+    setEditNote('');
+    setEditTarget('');
+    setEditTargetDir('above');
+  };
+
+  const doSaveEdit = async () => {
+    if (!editItem) return;
+    setEditSaving(true);
+    try {
+      // Set a price alert if target is provided
+      if (editTarget && Number(editTarget) > 0) {
+        await api.alerts.create({
+          symbol: editItem.symbol,
+          condition: editTargetDir === 'above' ? 'above' : 'below',
+          value: Number(editTarget),
+        });
+        toast.success(`Alert set: ${editItem.symbol} ${editTargetDir} $${editTarget}`);
+      } else {
+        toast.success('Saved');
+      }
+      setEditItem(null);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setEditSaving(false); }
   };
 
   const doCreateList = async () => {
@@ -246,7 +278,7 @@ export function Watchlist() {
                 : allItems.map(item => {
                     return (
                       <SwipeableCard key={item.id}
-                        onEdit={() => toast.info('Edit via long-press or desktop')}
+                        onEdit={() => openEditItem(item)}
                         onDelete={() => setRemoveItem(item)}
                       >
                       <div className="group px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
@@ -393,6 +425,22 @@ export function Watchlist() {
           <div className="flex gap-3 pt-2">
             <ActionBtn onClick={() => setRemoveItem(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
             <ActionBtn onClick={doRemove} variant="danger" className="flex-1">Remove</ActionBtn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit item modal — set price alert target */}
+      <Modal open={!!editItem} onClose={() => setEditItem(null)} title={`${editItem?.symbol} — Set Alert`} size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-400 text-sm">Set a price alert for <span className="text-white font-bold">{editItem?.symbol}</span>. Current: <span className="text-white">${(editItem?.price || 0).toFixed(2)}</span></p>
+          <div className="flex gap-2">
+            <button onClick={() => setEditTargetDir('above')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${editTargetDir === 'above' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/5 text-gray-400 border border-white/10'}`}>▲ Above</button>
+            <button onClick={() => setEditTargetDir('below')} className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors min-h-[44px] ${editTargetDir === 'below' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-white/5 text-gray-400 border border-white/10'}`}>▼ Below</button>
+          </div>
+          <FormInput label="Target Price ($)" value={editTarget} onChange={e => setEditTarget(e.target.value)} placeholder="e.g. 200.00" type="number" />
+          <div className="flex gap-3 pt-2">
+            <ActionBtn onClick={() => setEditItem(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
+            <ActionBtn onClick={doSaveEdit} disabled={editSaving || !editTarget} className="flex-1">Set Alert</ActionBtn>
           </div>
         </div>
       </Modal>

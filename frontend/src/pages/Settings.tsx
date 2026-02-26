@@ -232,46 +232,167 @@ export function Settings() {
     } catch (e: any) { toast.error(e.message); }
   };
 
+  const [importMode, setImportMode] = useState<'positions' | 'watchlist'>('positions');
+  const [importFormat, setImportFormat] = useState<'auto' | 'degiro' | 'trading212' | 'generic'>('auto');
+
+  function parseCsvRow(row: string): string[] {
+    const result: string[] = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (c === '"') {
+        if (inQuotes && row[i + 1] === '"') { current += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (c === ',' && !inQuotes) {
+        result.push(current.trim()); current = '';
+      } else { current += c; }
+    }
+    result.push(current.trim());
+    return result;
+  }
+
+  function detectFormat(cols: string[]): 'degiro' | 'trading212' | 'generic' {
+    const s = cols.join(',').toLowerCase();
+    if (s.includes('isin') && s.includes('aantal')) return 'degiro';
+    if (s.includes('ticker') && s.includes('no. of shares')) return 'trading212';
+    return 'generic';
+  }
+
   const onImportCsv = async (file: File) => {
-    // Minimal: parse a very simple CSV with headers symbol,quantity,entryPrice
     try {
       const text = await file.text();
-      const [hdr, ...lines] = text.split(/\r?\n/).filter(Boolean);
-      const cols = hdr.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-      const symIdx = cols.findIndex(c => c.toLowerCase().includes('symbol') || c.toLowerCase() === 'ticker');
-      const qtyIdx = cols.findIndex(c => c.toLowerCase().includes('quantity'));
-      const epIdx = cols.findIndex(c => c.toLowerCase().includes('entry') || c.toLowerCase().includes('price'));
-      if (symIdx < 0) throw new Error('CSV must include a symbol/ticker column');
+      const allLines = text.split(/\r?\n/).filter(Boolean);
+      if (allLines.length < 2) throw new Error('CSV appears to be empty or has only headers');
+
+      const cols = parseCsvRow(allLines[0]).map(c => c.toLowerCase());
+      const fmt = importFormat === 'auto' ? detectFormat(cols) : importFormat;
+
+      const getIdx = (...keys: string[]) => cols.findIndex(c => keys.some(k => c.includes(k)));
+
+      let symIdx: number, qtyIdx: number, priceIdx: number, nameIdx: number, dateIdx: number;
+
+      if (fmt === 'degiro') {
+        // DeGiro: Product, Symbol/ISIN, Aantal, Slotkoers
+        symIdx = getIdx('symbol', 'isin', 'product');
+        qtyIdx = getIdx('aantal', 'quantity', 'shares');
+        priceIdx = getIdx('slotkoers', 'price', 'koers');
+        nameIdx = getIdx('product', 'name');
+        dateIdx = getIdx('datum', 'date');
+      } else if (fmt === 'trading212') {
+        // Trading 212: Ticker, No. of shares, Average price
+        symIdx = getIdx('ticker', 'symbol');
+        qtyIdx = getIdx('no. of shares', 'quantity', 'shares');
+        priceIdx = getIdx('average price', 'price', 'avg');
+        nameIdx = getIdx('name', 'instrument');
+        dateIdx = getIdx('date', 'time');
+      } else {
+        // Generic: symbol/ticker, quantity/shares/qty, price/entry/avg
+        symIdx = getIdx('symbol', 'ticker', 'asset', 'stock');
+        qtyIdx = getIdx('quantity', 'shares', 'qty', 'amount');
+        priceIdx = getIdx('entry', 'price', 'avg', 'average', 'cost');
+        nameIdx = getIdx('name', 'description', 'company');
+        dateIdx = getIdx('date', 'purchase', 'open');
+      }
+
+      if (symIdx < 0) throw new Error(`CSV format not recognized. Expected columns: symbol, quantity, price.\nDetected format: ${fmt}`);
+
+      if (importMode === 'watchlist') {
+        const wls = await api.watchlists();
+        const wlId = wls?.[0]?.id;
+        if (!wlId) throw new Error('No watchlist found');
+        let ok = 0, bad = 0;
+        for (const ln of allLines.slice(1)) {
+          const parts = parseCsvRow(ln);
+          const sym = (parts[symIdx] || '').toUpperCase().replace(/[^A-Z0-9.-]/g, '');
+          if (!sym || sym.length < 1) { bad++; continue; }
+          try { await api.addToWatchlist(wlId, sym); ok++; }
+          catch { bad++; }
+        }
+        toast.success(`Watchlist import: ${ok} added, ${bad} skipped`);
+        return;
+      }
+
+      // Positions import
       const ps = await api.portfolio.all();
       if (!ps?.length) throw new Error('No portfolio found');
       const portfolioId = ps[0].id;
       let ok = 0, bad = 0;
-      for (const ln of lines) {
-        const parts = ln.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
-        const symbol = (parts[symIdx] || '').toUpperCase();
-        if (!symbol) { bad++; continue; }
-        const quantity = qtyIdx >= 0 ? Number(parts[qtyIdx]) : 1;
-        const entryPrice = epIdx >= 0 ? Number(parts[epIdx]) : 0;
+      for (const ln of allLines.slice(1)) {
+        const parts = parseCsvRow(ln);
+        const sym = (parts[symIdx] || '').toUpperCase().replace(/[^A-Z0-9.-]/g, '');
+        if (!sym || sym.length < 1) { bad++; continue; }
+        const quantity = qtyIdx >= 0 ? parseFloat(parts[qtyIdx]?.replace(',', '.') || '0') : 1;
+        const entryPrice = priceIdx >= 0 ? parseFloat(parts[priceIdx]?.replace(',', '.') || '0') : 0;
+        const name = nameIdx >= 0 ? parts[nameIdx] : undefined;
+        const purchaseDate = dateIdx >= 0 ? parts[dateIdx] : undefined;
+        if (!quantity || quantity <= 0) { bad++; continue; }
         try {
-          await api.portfolio.createPosition(portfolioId, { symbol, quantity, entryPrice });
+          await api.portfolio.createPosition(portfolioId, { symbol: sym, quantity, entryPrice, name, purchaseDate });
           ok++;
         } catch { bad++; }
       }
-      toast.success(`Imported: ${ok} ok, ${bad} failed`);
+      toast.success(`Positions import: ${ok} imported, ${bad} skipped`);
     } catch (e: any) {
       toast.error(e.message || 'Import failed');
     }
   };
 
-  const pushSupported = window.isSecureContext && 'Notification' in window;
+  const pushSupported = 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  // Check if already subscribed on mount
+  useEffect(() => {
+    if (!pushSupported) return;
+    navigator.serviceWorker.ready.then(reg => reg.pushManager.getSubscription()).then(sub => setPushEnabled(!!sub)).catch(() => {});
+  }, [pushSupported]);
 
   const enablePush = async () => {
-    // Backend requires a PushSubscription; without VAPID key exposure we can only best-effort.
-    toast.error('Push subscription requires HTTPS + VAPID public key; backend currently has no public-key endpoint.');
+    if (!pushSupported) { toast.error('Push notifications not supported on this device/browser'); return; }
+    setPushLoading(true);
+    try {
+      const permResult = await Notification.requestPermission();
+      if (permResult !== 'granted') { toast.error('Permission denied'); return; }
+
+      // Fetch VAPID public key from backend
+      const keyRes = await fetch('/api/push/vapid-public-key');
+      const { publicKey } = await keyRes.json();
+      if (!publicKey) { toast.error('VAPID key not configured on server'); return; }
+
+      // Convert VAPID key to Uint8Array
+      const urlBase64ToUint8Array = (b64: string) => {
+        const pad = b64.replace(/-/g, '+').replace(/_/g, '/');
+        const raw = atob(pad);
+        return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+      };
+
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(publicKey),
+      });
+
+      await api.push.subscribe(subscription.toJSON());
+      setPushEnabled(true);
+      toast.success('Push notifications enabled!');
+    } catch (e: any) { toast.error(e.message || 'Failed to enable push'); }
+    finally { setPushLoading(false); }
   };
 
   const disablePush = async () => {
-    toast.error('Push unsubscribe needs endpoint; not available without a subscription');
+    setPushLoading(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await api.push.unsubscribe({ endpoint: sub.endpoint });
+        await sub.unsubscribe();
+      }
+      setPushEnabled(false);
+      toast.success('Push notifications disabled');
+    } catch (e: any) { toast.error(e.message || 'Failed to disable push'); }
+    finally { setPushLoading(false); }
   };
 
   const testPush = async () => {
@@ -465,15 +586,24 @@ export function Settings() {
 
         {/* Push */}
         <Section title="Push Notifications" icon={Bell}>
-          {!window.isSecureContext && (
-            <div className="text-yellow-400 text-sm">Requires HTTPS connection</div>
+          {!pushSupported ? (
+            <div className="text-yellow-400 text-sm">Push notifications require a modern browser with service worker support (HTTPS).</div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 mb-4">
+                <div className={`w-2.5 h-2.5 rounded-full ${pushEnabled ? 'bg-emerald-400' : 'bg-gray-600'}`} />
+                <span className="text-gray-300 text-sm">{pushEnabled ? 'Push notifications enabled' : 'Push notifications disabled'}</span>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                {!pushEnabled
+                  ? <ActionBtn onClick={enablePush} disabled={pushLoading}>{pushLoading ? 'Enabling…' : 'Enable Push'}</ActionBtn>
+                  : <ActionBtn onClick={disablePush} variant="ghost" disabled={pushLoading}>{pushLoading ? 'Disabling…' : 'Disable Push'}</ActionBtn>
+                }
+                {pushEnabled && <ActionBtn onClick={testPush} variant="ghost">Send Test</ActionBtn>}
+              </div>
+              <p className="text-gray-600 text-xs mt-3">You'll be prompted to allow browser notifications. Alerts are sent server-side when price targets are hit.</p>
+            </>
           )}
-          <div className="flex gap-3 flex-wrap mt-3">
-            <ActionBtn onClick={enablePush} disabled={!pushSupported}>Enable</ActionBtn>
-            <ActionBtn onClick={disablePush} variant="ghost" disabled={!pushSupported}>Disable</ActionBtn>
-            <ActionBtn onClick={testPush} variant="ghost">Test</ActionBtn>
-          </div>
-          <p className="text-gray-500 text-xs mt-3">Note: subscribing requires a service worker + VAPID public key. Server must expose the public key.</p>
         </Section>
 
         {/* Telegram */}
@@ -497,16 +627,34 @@ export function Settings() {
             <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
               🖨️ Portfolio PDF
             </button>
-            <button onClick={() => importRef.current?.click()} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
-              <Upload className="w-4 h-4" /> Import Positions CSV
-            </button>
+          </div>
+          <div className="mt-4 p-4 bg-white/3 rounded-xl border border-white/5">
+            <div className="text-gray-300 text-sm font-medium mb-3">Import CSV</div>
+            <div className="flex flex-col sm:flex-row gap-3 mb-3">
+              <select value={importMode} onChange={e => setImportMode(e.target.value as any)}
+                className="flex-1 px-3 py-2 bg-[#0d0f14] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/50">
+                <option value="positions">Positions</option>
+                <option value="watchlist">Watchlist</option>
+              </select>
+              <select value={importFormat} onChange={e => setImportFormat(e.target.value as any)}
+                className="flex-1 px-3 py-2 bg-[#0d0f14] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/50">
+                <option value="auto">Auto-detect format</option>
+                <option value="generic">Generic (symbol, qty, price)</option>
+                <option value="degiro">DeGiro</option>
+                <option value="trading212">Trading 212</option>
+              </select>
+              <button onClick={() => importRef.current?.click()}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 rounded-lg text-blue-300 text-sm font-medium min-h-[40px]">
+                <Upload className="w-4 h-4" /> Choose File
+              </button>
+            </div>
+            <p className="text-gray-600 text-xs">Supports Generic, DeGiro, and Trading 212 CSV exports. Auto-detect works for most broker formats.</p>
             <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) onImportCsv(f);
               e.currentTarget.value = '';
             }} />
           </div>
-          <p className="text-gray-500 text-xs mt-3">Import is a basic CSV importer (symbol/quantity/entryPrice). Advanced broker formats can be added later.</p>
         </Section>
 
         {/* Backup */}

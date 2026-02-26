@@ -1,4 +1,4 @@
-import { Link2, Plus, Trash2, RefreshCw, Wifi } from 'lucide-react';
+import { Link2, Plus, Trash2, RefreshCw, Wifi, ChevronDown, ChevronUp, ExternalLink, Coins } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
@@ -30,7 +30,6 @@ const CHAIN_ICONS: Record<string, string> = {
   arb: '◆', op: '●', ltc: 'Ł', doge: 'Ð', xrp: '✕', ada: '₳',
 };
 
-// Chain-specific address validation
 function validateAddress(addr: string, chain: string): string | null {
   if (!addr) return 'Address is required';
   const a = addr.trim();
@@ -75,6 +74,220 @@ function trunc(addr: string) {
   return addr.slice(0, 8) + '...' + addr.slice(-6);
 }
 
+function TxTypeChip({ type }: { type: string }) {
+  const styles: Record<string, string> = {
+    send: 'bg-red-500/10 text-red-400', receive: 'bg-emerald-500/10 text-emerald-400',
+    swap: 'bg-blue-500/10 text-blue-400', contract: 'bg-purple-500/10 text-purple-400',
+  };
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${styles[type] || 'bg-white/10 text-gray-400'}`}>
+      {type}
+    </span>
+  );
+}
+
+function WalletCard({ w, onDelete, onSync, syncing }: { w: any; onDelete: () => void; onSync: () => void; syncing: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const [showTx, setShowTx] = useState(false);
+  const [tokens, setTokens] = useState<any[]>([]);
+  const [txs, setTxs] = useState<any[]>([]);
+  const [txTotal, setTxTotal] = useState(0);
+  const [txPage, setTxPage] = useState(0);
+  const [loadingTokens, setLoadingTokens] = useState(false);
+  const [loadingTx, setLoadingTx] = useState(false);
+  const [tokensLoaded, setTokensLoaded] = useState(false);
+
+  const color = CHAIN_COLORS[w.chain] || '#6b7280';
+  const icon = CHAIN_ICONS[w.chain] || '?';
+  const balance = w.balance !== null ? Number(w.balance).toFixed(w.chain === 'btc' ? 8 : 4) : '0';
+  const TX_PAGE = 25;
+
+  const loadTokens = async () => {
+    if (tokensLoaded) { setExpanded(true); return; }
+    setLoadingTokens(true);
+    try {
+      const res = await fetch(`/api/wallets/${w.id}/tokens`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('pt_gui_token')}` }
+      });
+      const data = await res.json();
+      setTokens(data.tokens || []);
+      setTokensLoaded(true);
+      setExpanded(true);
+    } catch { toast.error('Failed to load tokens'); }
+    finally { setLoadingTokens(false); }
+  };
+
+  const toggleTokens = () => {
+    if (!expanded) loadTokens();
+    else setExpanded(false);
+  };
+
+  const loadTxs = async (page = 0) => {
+    setLoadingTx(true);
+    try {
+      const res = await fetch(`/api/wallets/${w.id}/transactions?limit=${TX_PAGE}&offset=${page * TX_PAGE}`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem('pt_gui_token')}` }
+      });
+      const data = await res.json();
+      setTxs(data.transactions || []);
+      setTxTotal(data.total || 0);
+      setTxPage(page);
+      setShowTx(true);
+    } catch { toast.error('Failed to load transactions'); }
+    finally { setLoadingTx(false); }
+  };
+
+  return (
+    <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 hover:border-blue-500/20 transition-all">
+      {/* Main row */}
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-xl sm:text-2xl flex-shrink-0"
+            style={{ background: `${color}20`, color }}>
+            {icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-white font-bold text-sm sm:text-base">{w.label || w.chain?.toUpperCase()}</span>
+              <span className="px-1.5 py-0.5 bg-white/5 rounded-full text-gray-400 text-xs">{w.chain?.toUpperCase()}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs">
+              <span className="text-gray-500 font-mono">{trunc(w.address)}</span>
+              <span className="text-gray-600 hidden sm:inline">•</span>
+              <span className="text-gray-400">{balance} {w.chain?.toUpperCase()}</span>
+            </div>
+            <div className="text-gray-600 text-xs mt-0.5 flex items-center gap-1">
+              <Wifi className="w-3 h-3" /> {timeSince(w.last_synced)}
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <div className="text-right hidden sm:block">
+              <div className="text-white font-bold text-base sm:text-lg">{fmt(w.usd_value || 0)}</div>
+            </div>
+            <button onClick={onSync} disabled={syncing}
+              className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50 min-w-[36px] min-h-[36px] flex items-center justify-center">
+              <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
+            </button>
+            <button onClick={onDelete}
+              className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        {/* Mobile value row */}
+        <div className="sm:hidden mt-2 flex items-center justify-between">
+          <span className="text-white font-bold text-base">{fmt(w.usd_value || 0)}</span>
+          <div className="flex gap-2">
+            {w.token_count > 0 && (
+              <button onClick={toggleTokens} disabled={loadingTokens}
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors min-h-[36px]">
+                <Coins className="w-3 h-3" />
+                {loadingTokens ? '…' : `${w.token_count} tokens`}
+                {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+              </button>
+            )}
+            <button onClick={() => loadTxs(0)} disabled={loadingTx}
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors min-h-[36px]">
+              {loadingTx ? 'Loading…' : 'Txns'}
+            </button>
+          </div>
+        </div>
+        {/* Desktop action buttons */}
+        <div className="hidden sm:flex items-center gap-2 mt-3">
+          {w.token_count > 0 && (
+            <button onClick={toggleTokens} disabled={loadingTokens}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors">
+              <Coins className="w-3 h-3" />
+              {loadingTokens ? 'Loading…' : `${w.token_count} Token${w.token_count !== 1 ? 's' : ''}`}
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          )}
+          <button onClick={() => loadTxs(0)} disabled={loadingTx}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors">
+            {loadingTx ? 'Loading…' : 'Transactions'}
+          </button>
+          <button onClick={() => { navigator.clipboard.writeText(w.address); toast.success('Address copied'); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors">
+            Copy Address
+          </button>
+        </div>
+      </div>
+
+      {/* Token list (expandable) */}
+      {expanded && tokens.length > 0 && (
+        <div className="border-t border-white/5 px-4 sm:px-5 py-3">
+          <div className="text-gray-500 text-xs font-medium mb-2">Tokens</div>
+          <div className="space-y-2">
+            {tokens.map((t: any, i: number) => (
+              <div key={i} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-xs font-bold text-white">
+                    {t.symbol?.slice(0, 2)}
+                  </div>
+                  <div>
+                    <div className="text-white text-xs font-medium">{t.symbol}</div>
+                    <div className="text-gray-500 text-xs">{Number(t.balance || 0).toFixed(4)}</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-white text-xs font-medium">{fmt(t.usd_value || 0)}</div>
+                  {t.price_usd && <div className="text-gray-500 text-xs">${Number(t.price_usd).toFixed(4)}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {expanded && tokens.length === 0 && tokensLoaded && (
+        <div className="border-t border-white/5 px-5 py-3 text-gray-600 text-xs">No tokens found for this wallet.</div>
+      )}
+
+      {/* Transactions modal */}
+      <Modal open={showTx} onClose={() => setShowTx(false)} title={`Transactions — ${w.label || w.chain?.toUpperCase()}`} size="lg">
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {txs.length === 0 ? (
+            <div className="text-center py-10 text-gray-500">No transactions found</div>
+          ) : txs.map((tx: any, i: number) => (
+            <div key={i} className="flex items-center justify-between gap-3 py-3 border-b border-white/5 last:border-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <TxTypeChip type={tx.tx_type || 'transfer'} />
+                <div className="min-w-0">
+                  <div className="text-white text-sm font-mono truncate">{trunc(tx.tx_hash)}</div>
+                  <div className="text-gray-500 text-xs">{tx.block_time ? new Date(tx.block_time * 1000).toLocaleDateString() : '—'}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <div className="text-right">
+                  <div className="text-white text-sm font-medium">
+                    {tx.value ? `${Number(tx.value).toFixed(4)} ${w.chain?.toUpperCase()}` : '—'}
+                  </div>
+                  {tx.usd_value > 0 && <div className="text-gray-400 text-xs">{fmt(tx.usd_value)}</div>}
+                </div>
+                {tx.tx_hash && (
+                  <a href={getExplorerUrl(w.chain, tx.tx_hash)} target="_blank" rel="noopener noreferrer"
+                    className="p-1.5 text-gray-500 hover:text-blue-400 transition-colors">
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Pagination */}
+        {txTotal > TX_PAGE && (
+          <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-3">
+            <span className="text-gray-500 text-sm">{txTotal} total</span>
+            <div className="flex gap-2">
+              <ActionBtn onClick={() => loadTxs(txPage - 1)} disabled={txPage === 0 || loadingTx} variant="ghost" className="px-3 py-1.5 text-sm">Prev</ActionBtn>
+              <span className="text-gray-400 text-sm self-center">Page {txPage + 1} / {Math.ceil(txTotal / TX_PAGE)}</span>
+              <ActionBtn onClick={() => loadTxs(txPage + 1)} disabled={(txPage + 1) * TX_PAGE >= txTotal || loadingTx} variant="ghost" className="px-3 py-1.5 text-sm">Next</ActionBtn>
+            </div>
+          </div>
+        )}
+      </Modal>
+    </div>
+  );
+}
 
 export function Connections() {
   const [wallets, setWallets] = useState<any[]>([]);
@@ -87,6 +300,7 @@ export function Connections() {
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
+  const TX_PAGE = 25;
 
   const load = async () => {
     setLoading(true);
@@ -119,11 +333,8 @@ export function Connections() {
 
   const doSync = async (id: number) => {
     setSyncing(p => ({ ...p, [id]: true }));
-    try {
-      await api.wallets.sync(id);
-      await load();
-      toast.success('Synced');
-    } catch (e: any) { toast.error(e.message); }
+    try { await api.wallets.sync(id); await load(); toast.success('Synced'); }
+    catch (e: any) { toast.error(e.message); }
     finally { setSyncing(p => ({ ...p, [id]: false })); }
   };
 
@@ -137,9 +348,8 @@ export function Connections() {
 
   return (
     <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
-
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
           <Link2 className="w-6 h-6 text-blue-500" />
           <h2 className="text-2xl font-bold text-white">Connections</h2>
@@ -147,11 +357,13 @@ export function Connections() {
         </div>
         <div className="flex items-center gap-3">
           {wallets.length > 0 && (
-            <button onClick={doSyncAll} disabled={saving} className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50">
+            <button onClick={doSyncAll} disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-400 hover:text-white text-sm transition-colors disabled:opacity-50 min-h-[40px]">
               <RefreshCw className={`w-4 h-4 ${saving ? 'animate-spin' : ''}`} /> Sync All
             </button>
           )}
-          <button onClick={() => { setErr(''); setShowAdd(true); }} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm">
+          <button onClick={() => { setErr(''); setShowAdd(true); }}
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm min-h-[40px]">
             <Plus className="w-4 h-4" /> Add Wallet
           </button>
         </div>
@@ -159,80 +371,46 @@ export function Connections() {
 
       {/* Summary */}
       {wallets.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
-            <div className="text-gray-400 text-sm mb-2">Total On-Chain Value</div>
-            <div className="text-3xl font-bold text-white">{fmt(totalUsd)}</div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
+            <div className="text-gray-400 text-sm mb-1">Total On-Chain Value</div>
+            <div className="text-2xl sm:text-3xl font-bold text-white">{fmt(totalUsd)}</div>
           </div>
-          <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
-            <div className="text-gray-400 text-sm mb-2">Connected Wallets</div>
-            <div className="text-3xl font-bold text-white">{wallets.length}</div>
+          <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
+            <div className="text-gray-400 text-sm mb-1">Wallets</div>
+            <div className="text-2xl sm:text-3xl font-bold text-white">{wallets.length}</div>
           </div>
-          <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
-            <div className="text-gray-400 text-sm mb-2">Networks</div>
-            <div className="text-3xl font-bold text-white">{new Set(wallets.map(w => w.chain)).size}</div>
+          <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
+            <div className="text-gray-400 text-sm mb-1">Networks</div>
+            <div className="text-2xl sm:text-3xl font-bold text-white">{new Set(wallets.map(w => w.chain)).size}</div>
           </div>
         </div>
       )}
 
       {/* Wallets List */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading wallets...</div>
+        <div className="text-center py-12 text-gray-500">Loading wallets…</div>
       ) : wallets.length === 0 ? (
-        <div className="text-center py-24 bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5">
+        <div className="text-center py-20 bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5">
           <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto mb-4">
             <Link2 className="w-8 h-8 text-gray-500" />
           </div>
           <h3 className="text-xl font-semibold text-gray-400 mb-2">No wallets connected</h3>
           <p className="text-gray-500 mb-6">Add a blockchain wallet to track on-chain balances</p>
-          <button onClick={() => setShowAdd(true)} className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl text-white font-medium shadow-lg shadow-blue-500/30">
+          <button onClick={() => setShowAdd(true)}
+            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl text-white font-medium shadow-lg shadow-blue-500/30">
             Add Your First Wallet
           </button>
         </div>
       ) : (
         <div className="space-y-4">
-          {wallets.map(w => {
-            const color = CHAIN_COLORS[w.chain] || '#6b7280';
-            const icon = CHAIN_ICONS[w.chain] || '?';
-            const balance = w.balance !== null ? Number(w.balance).toFixed(w.chain === 'btc' ? 8 : 4) : '0';
-            return (
-              <div key={w.id} className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 p-5 hover:border-blue-500/20 transition-all">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full flex items-center justify-center text-2xl flex-shrink-0" style={{ background: `${color}20`, color }}>
-                    {icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white font-bold">{w.label || w.chain?.toUpperCase()}</span>
-                      <span className="px-2 py-0.5 bg-white/5 rounded-full text-gray-400 text-xs">{w.chain?.toUpperCase()}</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="text-gray-500 font-mono">{trunc(w.address)}</span>
-                      <span className="text-gray-600">•</span>
-                      <span className="text-gray-400">{balance} {w.chain?.toUpperCase()}</span>
-                      {w.token_count > 0 && <span className="text-gray-600">+ {w.token_count} {w.token_count === 1 ? 'token' : 'tokens'}</span>}
-                    </div>
-                    <div className="text-gray-600 text-xs mt-1 flex items-center gap-1">
-                      <Wifi className="w-3 h-3" /> Synced {timeSince(w.last_synced)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <div className="text-white font-bold text-lg">{fmt(w.usd_value || 0)}</div>
-                    </div>
-                    <button onClick={() => doSync(w.id)} disabled={syncing[w.id]}
-                      className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50">
-                      <RefreshCw className={`w-4 h-4 ${syncing[w.id] ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button onClick={() => setDeleteTarget({ id: w.id, name: w.label || w.chain })}
-                      className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-colors">
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {wallets.map(w => (
+            <WalletCard key={w.id} w={w}
+              onDelete={() => setDeleteTarget({ id: w.id, name: w.label || w.chain })}
+              onSync={() => doSync(w.id)}
+              syncing={!!syncing[w.id]}
+            />
+          ))}
         </div>
       )}
 
@@ -245,7 +423,7 @@ export function Connections() {
             value={address}
             onChange={e => { setAddress(e.target.value); if (err) setErr(''); }}
             onBlur={() => { const e = validateAddress(address, chain); if (e) setErr(e); }}
-            placeholder="0x... or bc1..."
+            placeholder="0x… or bc1…"
             error={address.length > 8 ? (validateAddress(address, chain) || undefined) : undefined}
           />
           <FormInput label="Label (optional)" value={label} onChange={e => setLabel(e.target.value)} placeholder="My cold wallet" />

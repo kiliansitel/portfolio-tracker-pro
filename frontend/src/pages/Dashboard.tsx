@@ -9,6 +9,7 @@ import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
 import { useLivePrices } from '../lib/useLivePrices';
 import { MarketStateBadge } from '../components/MarketStateBadge';
+import { useRef } from 'react';
 import { fmt, pct } from '../lib/format';
 
 const MARKET_SYMBOLS = ['BTC-USD', 'ETH-USD', 'NVDA', 'AAPL', 'TSLA'];
@@ -39,6 +40,7 @@ export function Dashboard() {
   const [regionDonut, setRegionDonut] = useState<{ name: string; value: number; color: string }[]>([]);
   const [donutTab, setDonutTab] = useState<'allocation'|'sectors'|'regions'>('allocation');
   const [loading, setLoading] = useState(true);
+  const portfolioIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -46,6 +48,7 @@ export function Dashboard() {
         const portfolios = await api.portfolio.all().catch(() => []);
         if (portfolios && portfolios[0]?.id) {
           const portfolioId = portfolios[0].id;
+          portfolioIdRef.current = portfolioId;
           const portfolioCash = Number(portfolios[0].cash || 0);
 
           const rawPositions = await api.portfolio.positions(portfolioId).catch(() => []);
@@ -148,6 +151,17 @@ export function Dashboard() {
     loadData();
   }, []);
 
+  const TF_DAYS: Record<string, number | undefined> = { '1D': 1, '1W': 7, '1M': 30, '3M': 90, '1Y': 365, 'All': undefined };
+  const loadPerformance = async (tf: string) => {
+    if (!portfolioIdRef.current) return;
+    const days = TF_DAYS[tf];
+    const perf = await api.portfolio.performance(portfolioIdRef.current, days ? { days } : undefined).catch(() => null);
+    const snaps = perf?.snapshots || [];
+    if (Array.isArray(snaps) && snaps.length) {
+      setPerformance(snaps.map((s: any) => ({ date: s.date?.slice(5) || s.date, value: Number(s.total_value || 0) })));
+    }
+  };
+
   const { totalValue, totalPL, totalInvested, assetCount, dailyPL } = stats;
   const plPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0; // total return %
   const prevValue = totalValue - dailyPL;
@@ -208,6 +222,7 @@ export function Dashboard() {
                 : undefined
             }
             yTickFormatter={(v) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}K` : `$${v.toFixed(0)}`)}
+            onTimeframeChange={loadPerformance}
           />
         </div>
         <div>

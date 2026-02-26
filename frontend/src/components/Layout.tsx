@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from 'sonner';
 import { useEffect } from 'react';
 import { auth } from '../lib/auth';
+import { GlobalSearch } from './GlobalSearch';
 
 export function Layout() {
   const { logout, user } = useAuth();
@@ -63,9 +64,10 @@ export function Layout() {
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <GlobalSearch />
             {user && (
-              <span className="text-gray-400 text-sm font-medium">
+              <span className="text-gray-400 text-sm font-medium hidden sm:inline">
                 {user.username || user.name}
               </span>
             )}

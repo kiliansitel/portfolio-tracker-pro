@@ -37,7 +37,10 @@ export const api = {
     updatePosition: (posId: number, data: any) => request('PUT', `/portfolios/positions/${posId}`, data),
     deletePosition: (posId: number) => request('DELETE', `/portfolios/positions/${posId}`),
     closePosition: (portfolioId: number, posId: number, data: any) => request('POST', `/portfolios/${portfolioId}/positions/${posId}/close`, data),
-    performance: (id: number) => request('GET', `/portfolios/${id}/performance`),
+    performance: (id: number, params?: { days?: number }) => {
+      const qs = params?.days ? `?days=${params.days}` : '';
+      return request('GET', `/portfolios/${id}/performance${qs}`);
+    },
     exposure: (id: number) => request('GET', `/portfolios/${id}/exposure`),
     dividends: (id: number) => request('GET', `/portfolios/${id}/dividends`),
     transactions: (id: number) => request('GET', `/portfolios/${id}/transactions`),
@@ -103,7 +106,7 @@ export const api = {
 
   push: {
     subscribe: (sub: any) => request('POST', '/push/subscribe', sub),
-    unsubscribe: () => request('POST', '/push/unsubscribe', {}),
+    unsubscribe: (body?: any) => request('POST', '/push/unsubscribe', body || {}),
     test: () => request('POST', '/push/test', {}),
   },
 

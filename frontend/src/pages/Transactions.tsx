@@ -1,4 +1,4 @@
-import { ClipboardList, Trash2, Plus } from 'lucide-react';
+import { ClipboardList, Trash2, Plus, Calendar } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
@@ -54,6 +54,21 @@ export function Transactions() {
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.type === filter);
   const types = ['all', ...Array.from(new Set(transactions.map((t: any) => String(t.type))))];
 
+  // Dividend calendar: group dividends by month
+  const dividends = transactions.filter((t: any) => t.type === 'dividend');
+  const dividendsByMonth = dividends.reduce((acc: Record<string, any[]>, tx: any) => {
+    const date = tx.date || tx.created_at;
+    const month = date ? date.slice(0, 7) : 'Unknown';
+    if (!acc[month]) acc[month] = [];
+    acc[month].push(tx);
+    return acc;
+  }, {});
+  const dividendMonths = Object.keys(dividendsByMonth).sort().reverse();
+  const totalDividends = dividends.reduce((s: number, tx: any) => {
+    const val = tx.quantity && tx.price ? tx.quantity * tx.price : (tx.amount || 0);
+    return s + val;
+  }, 0);
+
   return (
     <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
       {/* Header */}
@@ -90,6 +105,39 @@ export function Transactions() {
           </button>
         ))}
       </div>
+
+      {/* Dividend Calendar */}
+      {dividends.length > 0 && (
+        <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 p-4 sm:p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <Calendar className="w-5 h-5 text-emerald-400" />
+            <h3 className="text-white font-semibold">Dividend Calendar</h3>
+            <span className="ml-auto text-emerald-400 font-bold">{fmt(totalDividends)} total</span>
+          </div>
+          <div className="space-y-3">
+            {dividendMonths.slice(0, 12).map(month => {
+              const txs = dividendsByMonth[month];
+              const monthTotal = txs.reduce((s: number, tx: any) => {
+                return s + (tx.quantity && tx.price ? tx.quantity * tx.price : (tx.amount || 0));
+              }, 0);
+              const label = new Date(month + '-01').toLocaleDateString('default', { month: 'short', year: 'numeric' });
+              return (
+                <div key={month} className="flex items-center gap-3">
+                  <div className="w-20 text-gray-400 text-xs font-medium">{label}</div>
+                  <div className="flex-1 flex flex-wrap gap-2">
+                    {txs.map((tx: any, i: number) => (
+                      <span key={i} className="px-2 py-0.5 bg-emerald-400/10 text-emerald-300 text-xs rounded-full">
+                        {tx.symbol || '—'} {tx.amount ? fmt(tx.amount) : tx.quantity && tx.price ? fmt(tx.quantity * tx.price) : ''}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="text-emerald-400 text-sm font-bold shrink-0">{fmt(monthTotal)}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Table */}
       <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 overflow-hidden">
