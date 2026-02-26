@@ -1,5 +1,6 @@
-import { Settings as SettingsIcon, User, Lock, Globe, Bell, Download, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Settings as SettingsIcon, User, Lock, Globe, Bell, Download, Trash2, Eye, EyeOff, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { FormInput, FormSelect, ActionBtn } from '../components/Modal';
@@ -46,7 +47,6 @@ export function Settings() {
   const { user, logout } = useAuth();
   const [currency, setCurrency] = useState('USD');
   const [autoSettings, setAutoSettings] = useState<any>({});
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Password form
@@ -63,8 +63,7 @@ export function Settings() {
   const [emailErr, setEmailErr] = useState('');
 
   const showToast = (msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
+    ok ? toast.success(msg) : toast.error(msg);
   };
 
   useEffect(() => {
@@ -143,13 +142,6 @@ export function Settings() {
         <h2 className="text-2xl font-bold text-white">Settings</h2>
       </div>
 
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white ${toast.ok ? 'bg-emerald-500' : 'bg-red-500'}`}>
-          {toast.msg}
-        </div>
-      )}
-
       <div className="space-y-6">
         {/* Profile */}
         <Section title="Profile" icon={User}>
@@ -201,6 +193,22 @@ export function Settings() {
                 </div>
               </div>
             ))}
+            {/* Password requirements */}
+            {newPw.length > 0 && (
+              <div className="p-3 bg-[#0d0f14] rounded-xl space-y-1.5">
+                {[
+                  { ok: newPw.length >= 8, label: 'At least 8 characters' },
+                  { ok: /[A-Z]/.test(newPw), label: 'One uppercase letter' },
+                  { ok: /[a-z]/.test(newPw), label: 'One lowercase letter' },
+                  { ok: /[0-9]/.test(newPw), label: 'One number' },
+                ].map(r => (
+                  <div key={r.label} className={`flex items-center gap-2 text-xs ${r.ok ? 'text-emerald-400' : 'text-gray-500'}`}>
+                    <Check className={`w-3 h-3 ${r.ok ? 'opacity-100' : 'opacity-30'}`} />
+                    {r.label}
+                  </div>
+                ))}
+              </div>
+            )}
             {pwErr && <p className="text-red-400 text-sm">{pwErr}</p>}
             <div className="pt-1">
               <ActionBtn onClick={changePassword} disabled={saving}>Change Password</ActionBtn>

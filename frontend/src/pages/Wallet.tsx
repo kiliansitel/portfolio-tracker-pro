@@ -1,5 +1,6 @@
-import { Wallet as WalletIcon, Plus, Trash2, ArrowUpRight, ArrowDownLeft, ChevronDown, DollarSign } from 'lucide-react';
+import { Wallet as WalletIcon, Plus, Trash2, ArrowUpRight, ArrowDownLeft, DollarSign } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { fmt, dateLabel } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
@@ -22,7 +23,7 @@ export function Wallet() {
   const [showDelete, setShowDelete] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
+  
 
   // Form
   const [txType, setTxType] = useState('deposit');
@@ -32,7 +33,7 @@ export function Wallet() {
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [txNotes, setTxNotes] = useState('');
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  
 
   const load = async () => {
     setLoading(true);
@@ -77,15 +78,15 @@ export function Wallet() {
       setTxSymbol(''); setTxQty(''); setTxPrice(''); setTxNotes(''); setTxType('deposit');
       await loadTx(selectedId);
       await load();
-      showToast('Transaction added');
+      toast.success('Transaction added');
     } catch (e: any) { setErr(e.message); } finally { setSaving(false); }
   };
 
   const doDelete = async (id: number) => {
-    await api.portfolio.deleteTransaction(id).catch(e => showToast(e.message));
+    await api.portfolio.deleteTransaction(id).catch(e => toast.error(e.message));
     setShowDelete(null);
     if (selectedId) { await loadTx(selectedId); await load(); }
-    showToast('Transaction deleted');
+    toast.success('Transaction deleted');
   };
 
   // Summary
@@ -95,10 +96,6 @@ export function Wallet() {
 
   return (
     <div className="p-8 max-w-[1440px] mx-auto">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white bg-blue-500">{toast}</div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -123,7 +120,7 @@ export function Wallet() {
 
       {/* Cash Balance Card */}
       {selected && (
-        <div className="grid grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-blue-500/20">
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="w-4 h-4 text-blue-400" />
@@ -133,8 +130,9 @@ export function Wallet() {
             <div className="text-gray-500 text-xs mt-1">{selected.cash_currency || 'USD'}</div>
           </div>
           <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-emerald-500/20">
-            <div className="text-gray-400 text-sm mb-2">Total Deposits</div>
+            <div className="text-gray-400 text-sm mb-1">Total Deposits</div>
             <div className="text-2xl font-bold text-emerald-400">{fmt(deposits)}</div>
+            <div className="text-gray-600 text-xs mt-1">From recorded transactions</div>
           </div>
           <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-red-500/20">
             <div className="text-gray-400 text-sm mb-2">Total Withdrawals</div>
@@ -148,7 +146,7 @@ export function Wallet() {
       )}
 
       {/* Transactions Table */}
-      <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 overflow-hidden">
+      <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 overflow-x-auto">
         <div className="px-6 py-4 border-b border-white/5">
           <h3 className="text-white font-semibold">Transaction History</h3>
         </div>
@@ -170,8 +168,11 @@ export function Wallet() {
             <div>
               {transactions.slice().reverse().map((tx: any) => {
                 const typeColors: Record<string, string> = {
-                  buy: 'text-emerald-400', sell: 'text-red-400', deposit: 'text-blue-400',
-                  withdrawal: 'text-orange-400', dividend: 'text-yellow-400', fee: 'text-gray-400',
+                  buy: 'text-blue-400', sell: 'text-purple-400',
+                  deposit: 'text-emerald-400',    // green = income/inflow ✅
+                  withdrawal: 'text-red-400',       // red = outflow ✅
+                  dividend: 'text-emerald-300',    // green-ish = income ✅
+                  fee: 'text-gray-400',
                 };
                 const typeIcons: Record<string, React.ReactNode> = {
                   buy: <ArrowDownLeft className="w-3 h-3" />, sell: <ArrowUpRight className="w-3 h-3" />,

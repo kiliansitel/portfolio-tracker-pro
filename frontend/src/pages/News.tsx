@@ -53,11 +53,19 @@ export function News() {
       .then((data: any) => {
         // API returns { query, items: [...] }
         const items = Array.isArray(data) ? data : (data?.items || []);
-        setArticles(items.map((a: any, i: number) => ({
+        // Deduplicate by URL, then by normalized title
+        const seen = new Set<string>();
+        const deduped = items.filter((a: any) => {
+          const key = (a.link || a.url || '') || (a.title || a.headline || '').toLowerCase().trim().slice(0, 60);
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setArticles(deduped.map((a: any, i: number) => ({
           id: String(a.id || i),
           title: decodeHtmlEntities(a.title || a.headline || '—'),
           source: a.source || a.publisher || '—',
-          timeAgo: a.timeAgo || '—',
+          timeAgo: a.timeAgo || a.pubDate || '—',
           iconGradient: GRADIENTS[i % GRADIENTS.length],
           iconLetter: (a.source || a.publisher || 'N')[0]?.toUpperCase() || 'N',
           url: a.link || a.url,

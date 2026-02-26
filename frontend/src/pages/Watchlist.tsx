@@ -1,10 +1,30 @@
 import { ChevronDown, Plus, ChevronRight, RefreshCw, Trash2, Bell } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
+
+/** Tiny sparkline from synthetic 5-point data derived from day change */
+function MiniSparkline({ price, changePercent }: { price: number; changePercent: number }) {
+  const isPos = changePercent >= 0;
+  // Generate a plausible 5-point path using changePercent as total movement
+  const pctPerStep = changePercent / 4;
+  const data = Array.from({ length: 5 }, (_, i) => ({
+    v: Number((price / (1 + changePercent / 100) * (1 + (pctPerStep * i) / 100)).toFixed(4)),
+  }));
+  return (
+    <div className="w-16 h-8">
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data}>
+          <Line dataKey="v" stroke={isPos ? '#10b981' : '#ef4444'} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 const LOGO_GRADIENTS: Record<string, string> = {
   BTC: 'from-orange-500 to-orange-600', ETH: 'from-blue-500 to-purple-600',
@@ -203,13 +223,16 @@ export function Watchlist() {
                             </div>
                           </div>
                           <div className="flex items-center gap-6">
-                            <div className="text-right">
-                              {item.price > 0 ? (
-                                <>
-                                  <div className="text-white font-bold">${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                                  <div className={`text-sm font-semibold ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPos ? '+' : ''}{item.changePercent.toFixed(2)}%</div>
-                                </>
-                              ) : <div className="text-gray-600 text-sm">—</div>}
+                            <div className="flex items-center gap-3">
+                              {item.price > 0 && <MiniSparkline price={item.price} changePercent={item.changePercent} />}
+                              <div className="text-right">
+                                {item.price > 0 ? (
+                                  <>
+                                    <div className="text-white font-bold">${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    <div className={`text-sm font-semibold ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPos ? '+' : ''}{item.changePercent.toFixed(2)}%</div>
+                                  </>
+                                ) : <div className="text-gray-600 text-sm">—</div>}
+                              </div>
                             </div>
                             <div className="flex items-center gap-1 opacity-100 transition-opacity">
                               <button onClick={() => { setAlertItem(item); setAlertCondition('above'); setAlertValue(item.price ? item.price.toFixed(2) : ''); setAlertErr(''); }}

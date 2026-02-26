@@ -1,5 +1,6 @@
 import { Outlet, useNavigate } from 'react-router';
 import { Sidebar } from './Sidebar';
+import { BottomNav } from './BottomNav';
 import { Bell, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Toaster } from 'sonner';
@@ -35,7 +36,7 @@ export function Layout() {
   };
 
   return (
-    <div className="flex h-screen w-screen bg-[#0d0f14] overflow-hidden">
+    <div className="flex h-screen w-screen bg-[#0d0f14] overflow-hidden relative">
       <Toaster
         theme="dark"
         position="bottom-right"
@@ -47,7 +48,11 @@ export function Layout() {
           },
         }}
       />
-      <Sidebar />
+      {/* Desktop sidebar — hidden on mobile */}
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
+      <BottomNav />
 
       <div className="flex-1 overflow-auto">
         {/* Header */}
@@ -78,8 +83,10 @@ export function Layout() {
           </div>
         </div>
 
-        {/* Page Content */}
-        <Outlet />
+        {/* Page Content — extra bottom padding on mobile for the bottom nav */}
+        <div className="pb-20 md:pb-0">
+          <Outlet />
+        </div>
       </div>
     </div>
   );

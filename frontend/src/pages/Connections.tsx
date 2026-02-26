@@ -126,7 +126,7 @@ export function Connections() {
 
       {/* Summary */}
       {wallets.length > 0 && (
-        <div className="grid grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
           <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
             <div className="text-gray-400 text-sm mb-2">Total On-Chain Value</div>
             <div className="text-3xl font-bold text-white">{fmt(totalUsd)}</div>
