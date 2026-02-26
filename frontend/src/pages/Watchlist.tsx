@@ -8,6 +8,22 @@ import { Modal, FormInput, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
 import { ChartModal } from '../components/ChartModal';
 import { MarketStateBadge } from '../components/MarketStateBadge';
+import { useLivePrices, usePriceFlash } from '../lib/useLivePrices';
+import { SwipeableCard } from '../components/SwipeableCard';
+
+function PriceCell({ price, changePercent, marketState }: { price: number; changePercent: number; marketState?: string }) {
+  const flashClass = usePriceFlash(price);
+  const isPos = changePercent >= 0;
+  return (
+    <div className={`text-right transition-colors rounded ${flashClass}`}>
+      <div className="flex items-center gap-1 justify-end">
+        <MarketStateBadge marketState={marketState} />
+        <span className="text-white font-bold">${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+      </div>
+      <div className={`text-sm font-semibold ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPos ? '+' : ''}{changePercent.toFixed(2)}%</div>
+    </div>
+  );
+}
 
 /** Sparkline from synthetic 8-point data derived from day change */
 function MiniSparkline({ price, changePercent }: { price: number; changePercent: number }) {
@@ -166,7 +182,14 @@ export function Watchlist() {
   };
 
   const selectedList = watchlists.find(wl => wl.id === selectedId) || watchlists[0];
-  const allItems = selectedList?.items || [];
+  const rawItems = selectedList?.items || [];
+  // Live price overlay — merges real-time prices on top of cached data
+  const { prices: livePrices, isLive: pricesLive } = useLivePrices(rawItems.map(i => i.symbol));
+  const allItems: WatchItem[] = rawItems.map(item => {
+    const lp = livePrices[item.symbol];
+    if (!lp) return item;
+    return { ...item, price: lp.price || item.price, change: lp.change ?? item.change, changePercent: lp.changePercent ?? item.changePercent, marketState: (lp as any).marketState };
+  });
   const topGainer = allItems.length ? allItems.reduce((b, c) => c.changePercent > b.changePercent ? c : b, allItems[0]) : null;
   const topLoser = allItems.length ? allItems.reduce((b, c) => c.changePercent < b.changePercent ? c : b, allItems[0]) : null;
 
@@ -178,6 +201,7 @@ export function Watchlist() {
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600" />
           <h2 className="text-2xl font-bold text-white">Watchlist</h2>
+          {pricesLive && <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span className="text-emerald-400 text-xs">Live</span></span>}
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => loadWatchlists(true)} disabled={refreshing} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px]">
@@ -219,10 +243,13 @@ export function Watchlist() {
               )
               : selectedList.items.length === 0
                 ? <div className="px-6 py-10 text-center text-gray-500 text-sm">No items. <button onClick={() => setShowAdd(true)} className="text-blue-400 hover:underline">Add a symbol</button></div>
-                : selectedList.items.map(item => {
-                    const isPos = item.changePercent >= 0;
+                : allItems.map(item => {
                     return (
-                      <div key={item.id} className="group px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
+                      <SwipeableCard key={item.id}
+                        onEdit={() => toast.info('Edit via long-press or desktop')}
+                        onDelete={() => setRemoveItem(item)}
+                      >
+                      <div className="group px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => setChartSymbol(item.symbol)}>
                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getGradient(item.symbol)} flex items-center justify-center shadow-lg flex-shrink-0`}>
@@ -236,16 +263,10 @@ export function Watchlist() {
                           <div className="flex items-center gap-6">
                             <div className="flex items-center gap-3">
                               {item.price > 0 && <MiniSparkline price={item.price} changePercent={item.changePercent} />}
-                              <div className="text-right">
-                                {item.price > 0 ? (
-                                  <>
-                                    <div className="flex items-center gap-1 justify-end">
-                                      <MarketStateBadge marketState={item.marketState} />
-                                      <span className="text-white font-bold">${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                                    </div>
-                                    <div className={`text-sm font-semibold ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPos ? '+' : ''}{item.changePercent.toFixed(2)}%</div>
-                                  </>
-                                ) : <div className="text-gray-600 text-sm">—</div>}
+                              <div>
+                                {item.price > 0
+                                  ? <PriceCell price={item.price} changePercent={item.changePercent} marketState={item.marketState} />
+                                  : <div className="text-gray-600 text-sm text-right">—</div>}
                               </div>
                             </div>
                             <div className="flex items-center gap-1">
@@ -260,6 +281,7 @@ export function Watchlist() {
                           </div>
                         </div>
                       </div>
+                      </SwipeableCard>
                     );
                   })
             )}

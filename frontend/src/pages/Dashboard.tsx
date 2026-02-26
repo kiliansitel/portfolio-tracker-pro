@@ -7,6 +7,8 @@ import { MarketCard } from '../components/MarketCard';
 import { Skeleton } from '../components/ui/skeleton';
 import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
+import { useLivePrices } from '../lib/useLivePrices';
+import { MarketStateBadge } from '../components/MarketStateBadge';
 import { fmt, pct } from '../lib/format';
 
 const MARKET_SYMBOLS = ['BTC-USD', 'ETH-USD', 'NVDA', 'AAPL', 'TSLA'];
@@ -29,6 +31,8 @@ function guessRegion(symbol: string): string {
 export function Dashboard() {
   const [stats, setStats] = useState({ totalValue: 0, totalPL: 0, totalInvested: 0, assetCount: 0, dailyPL: 0 });
   const [markets, setMarkets] = useState<any[]>([]);
+  // Live prices for market grid (30s polling or SSE)
+  const { prices: livePrices, isLive } = useLivePrices(MARKET_SYMBOLS);
   const [performance, setPerformance] = useState<{ date: string; value: number }[]>([]);
   const [donut, setDonut] = useState<{ name: string; value: number; color: string }[]>([]);
   const [sectorDonut, setSectorDonut] = useState<{ name: string; value: number; color: string }[]>([]);
@@ -234,6 +238,7 @@ export function Dashboard() {
         <div className="flex items-center gap-3 mb-6">
           <div className="w-3 h-3 rounded-full bg-gradient-to-r from-orange-500 to-red-600" />
           <h3 className="text-white font-semibold text-lg">Markets</h3>
+          {isLive && <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-500/10 border border-emerald-500/20 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /><span className="text-emerald-400 text-xs">Live</span></span>}
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -242,26 +247,32 @@ export function Dashboard() {
                 <Skeleton key={i} className="h-24 rounded-xl bg-white/5" />
               ))
             : markets.length > 0
-            ? markets.map((m: any) => (
+            ? markets.map((m: any) => {
+                const live = livePrices[m.symbol] || m;
+                const p = live.price || 0;
+                const ch = live.change || 0;
+                const chPct = live.changePercent || 0;
+                return (
+                <div key={m.symbol} className="relative cursor-pointer" onClick={() => {}}>
                 <MarketCard
-                  key={m.symbol}
                   symbol={m.symbol?.replace('-USD', '') || m.symbol}
                   name={
-                    m.symbol === 'BTC-USD'
-                      ? 'Bitcoin'
-                      : m.symbol === 'ETH-USD'
-                      ? 'Ethereum'
-                      : m.symbol
+                    m.symbol === 'BTC-USD' ? 'Bitcoin' :
+                    m.symbol === 'ETH-USD' ? 'Ethereum' : m.symbol
                   }
-                  price={`$${(m.price || 0).toLocaleString('en-US', {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`}
-                  change={`${(m.change || 0) >= 0 ? '+' : ''}${(m.change || 0).toFixed(2)}`}
-                  changePercent={`${(m.changePercent || 0) >= 0 ? '+' : ''}${(m.changePercent || 0).toFixed(2)}%`}
-                  isPositive={(m.change || 0) >= 0}
+                  price={`$${p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                  change={`${ch >= 0 ? '+' : ''}${ch.toFixed(2)}`}
+                  changePercent={`${chPct >= 0 ? '+' : ''}${chPct.toFixed(2)}%`}
+                  isPositive={ch >= 0}
                 />
-              ))
+                {(live as any).marketState && (live as any).marketState !== 'REGULAR' && (
+                  <div className="absolute top-2 right-2">
+                    <MarketStateBadge marketState={(live as any).marketState} />
+                  </div>
+                )}
+                </div>
+                );
+              })
             : MARKET_SYMBOLS.map((sym) => (
                 <MarketCard
                   key={sym}

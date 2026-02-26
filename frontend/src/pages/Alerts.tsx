@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
+import { SwipeableCard } from '../components/SwipeableCard';
 
 const GRADIENTS: Record<string, string> = {
   BTC: 'from-orange-500 to-orange-600', ETH: 'from-blue-500 to-purple-600',
@@ -159,7 +160,10 @@ export function Alerts() {
             {alertList.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(alert => {
               const triggered = isTriggered(alert);
               return (
-                <div key={alert.id} className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border p-6 transition-all ${triggered ? 'border-emerald-500/30' : 'border-white/5 hover:border-blue-500/20'}`}>
+                <SwipeableCard key={alert.id}
+                  onDelete={() => setDeleteTarget(alert)}
+                >
+                <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border p-4 sm:p-6 transition-all ${triggered ? 'border-emerald-500/30' : 'border-white/5 hover:border-blue-500/20'}`}>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getGradient(alert.symbol)} flex items-center justify-center shadow-lg flex-shrink-0`}>
@@ -196,6 +200,7 @@ export function Alerts() {
                       style={{ width: `${getProgress(alert)}%` }} />
                   </div>
                 </div>
+                </SwipeableCard>
               );
             })}
           </div>

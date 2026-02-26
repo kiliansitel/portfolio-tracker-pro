@@ -7,6 +7,9 @@ import { fmt as fmtPrice } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
 import { ChartModal } from '../components/ChartModal';
+import { useLivePrices, usePriceFlash } from '../lib/useLivePrices';
+import { MarketStateBadge } from '../components/MarketStateBadge';
+import { SwipeableCard } from '../components/SwipeableCard';
 
 const POSITION_TYPES = [
   { value: 'stock', label: 'Stock' },
@@ -122,7 +125,21 @@ export function Positions() {
 
   useEffect(() => { loadPositions(); }, []);
 
-  const filtered = positions.filter(p =>
+  // Live price overlay — updates positions with real-time prices
+  const { prices: livePrices, isLive: pricesLive } = useLivePrices(positions.map(p => p.symbol));
+  const enrichedPositions = positions.map(p => {
+    const lp = livePrices[p.symbol];
+    if (!lp || !lp.price) return p;
+    const currentPrice = lp.price;
+    const currentValue = currentPrice * p.quantity;
+    const totalPL = currentValue - p.entryPrice * p.quantity;
+    const totalPLPct = p.entryPrice > 0 ? (totalPL / (p.entryPrice * p.quantity)) * 100 : null;
+    const dayChange = (lp.change ?? p.dayChange);
+    const dayChangePct = (lp.changePercent ?? p.dayChangePct);
+    return { ...p, currentPrice, currentValue, totalPL, totalPLPct, dayChange, dayChangePct, marketState: (lp as any).marketState };
+  });
+
+  const filtered = enrichedPositions.filter(p =>
     p.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -130,10 +147,10 @@ export function Positions() {
   const [posPage, setPosPage] = useState(0);
   const displayedPositions = searchQuery ? filtered : filtered.slice(posPage * POS_PAGE_SIZE, (posPage + 1) * POS_PAGE_SIZE);
 
-  const totalValue = positions.reduce((s, p) => s + p.currentValue, 0);
-  const totalPL = positions.reduce((s, p) => s + p.totalPL, 0);
-  const todayPL = positions.reduce((s, p) => s + p.dayChange, 0);
-  const totalInvested = positions.reduce((s, p) => s + p.quantity * p.entryPrice, 0);
+  const totalValue = enrichedPositions.reduce((s, p) => s + p.currentValue, 0);
+  const totalPL = enrichedPositions.reduce((s, p) => s + p.totalPL, 0);
+  const todayPL = enrichedPositions.reduce((s, p) => s + p.dayChange, 0);
+  const totalInvested = enrichedPositions.reduce((s, p) => s + p.quantity * p.entryPrice, 0);
   const totalPLPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
 
   // Symbol autocomplete
@@ -369,7 +386,10 @@ export function Positions() {
                   <div className="col-span-2 text-right">
                     {position.currentPrice > 0 ? (
                       <div>
-                        <div className="text-white font-bold text-sm">${position.currentPrice.toFixed(2)}</div>
+                        <div className="flex items-center gap-1 justify-end">
+                          {(position as any).marketState && (position as any).marketState !== 'REGULAR' && <MarketStateBadge marketState={(position as any).marketState} />}
+                          <span className="text-white font-bold text-sm">${position.currentPrice.toFixed(2)}</span>
+                        </div>
                         <div className={`text-xs ${isDayPos ? 'text-emerald-400' : 'text-red-400'}`}>{isDayPos ? '+' : ''}{position.dayChangePct.toFixed(2)}%</div>
                       </div>
                     ) : <div className="text-gray-600 text-sm">—</div>}
@@ -395,8 +415,12 @@ export function Positions() {
                   </div>
                 </div>
 
-                {/* Mobile card */}
-                <div className="sm:hidden px-4 py-4 border-b border-white/5 active:bg-white/5">
+                {/* Mobile card — swipe left to reveal Edit + Delete */}
+                <SwipeableCard
+                  onEdit={() => openEdit(position)}
+                  onDelete={() => { setFErr(''); setDeletePos(position); }}
+                >
+                <div className="sm:hidden px-4 py-4 border-b border-white/5">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => setChartSymbol(position.symbol)}>
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
@@ -436,6 +460,7 @@ export function Positions() {
                     </div>
                   </div>
                 </div>
+                </SwipeableCard>
                 </div>
               );
             })}
