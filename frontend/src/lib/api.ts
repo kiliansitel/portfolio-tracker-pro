@@ -60,7 +60,10 @@ export const api = {
   },
 
   markets: {
-    prices: () => request('GET', '/prices'),
+    prices: (symbols?: string[]) =>
+      symbols?.length
+        ? request('GET', `/prices?symbols=${symbols.map(encodeURIComponent).join(',')}`)
+        : request('GET', '/prices'),
     price: (symbol: string) => request('GET', `/price/${encodeURIComponent(symbol)}`),
     news: () => request('GET', '/news'),
     chart: (symbol: string, range = '1mo') => request('GET', `/chart/${encodeURIComponent(symbol)}?range=${range}`),

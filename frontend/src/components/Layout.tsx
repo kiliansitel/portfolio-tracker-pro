@@ -2,10 +2,32 @@ import { Outlet, useNavigate } from 'react-router';
 import { Sidebar } from './Sidebar';
 import { Bell, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Toaster } from 'sonner';
+import { useEffect } from 'react';
+import { auth } from '../lib/auth';
 
 export function Layout() {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
+
+  // Proactive JWT expiry check — redirect 60s before token expires
+  useEffect(() => {
+    const check = () => {
+      if (!auth.isLoggedIn()) {
+        logout();
+        navigate('/login');
+        return;
+      }
+      const secs = auth.expiresInSeconds();
+      if (secs !== null && secs < 60) {
+        logout();
+        navigate('/login');
+      }
+    };
+    check();
+    const id = setInterval(check, 30_000);
+    return () => clearInterval(id);
+  }, [logout, navigate]);
 
   const handleLogout = () => {
     logout();
@@ -14,6 +36,17 @@ export function Layout() {
 
   return (
     <div className="flex h-screen w-screen bg-[#0d0f14] overflow-hidden">
+      <Toaster
+        theme="dark"
+        position="bottom-right"
+        toastOptions={{
+          style: {
+            background: '#1a1d29',
+            border: '1px solid rgba(255,255,255,0.1)',
+            color: '#fff',
+          },
+        }}
+      />
       <Sidebar />
 
       <div className="flex-1 overflow-auto">
