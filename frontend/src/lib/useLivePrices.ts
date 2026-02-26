@@ -52,8 +52,18 @@ export function useLivePrices(symbols: string[]): { prices: PriceRecord; isLive:
         es.onmessage = (e) => {
           try {
             const d = JSON.parse(e.data);
-            if (d.type === 'prices' && d.data) setPrices(prev => ({ ...prev, ...d.data }));
-            if (d.type === 'price' && d.symbol) setPrices(prev => ({ ...prev, [d.symbol]: d }));
+            // Backend sends: { SYMBOL: { price, change, ... }, ... } OR { type: 'prices', data: {...} }
+            if (d && typeof d === 'object') {
+              if (d.type === 'prices' && d.data) {
+                setPrices(prev => ({ ...prev, ...d.data }));
+              } else if (d.type === 'price' && d.symbol) {
+                setPrices(prev => ({ ...prev, [d.symbol]: d }));
+              } else {
+                // Direct map format: { AAPL: {...}, BTC-USD: {...} }
+                const isDirectMap = Object.values(d).every((v: any) => v && typeof v.price === 'number');
+                if (isDirectMap) setPrices(prev => ({ ...prev, ...d }));
+              }
+            }
           } catch {}
         };
         es.onerror = () => {
@@ -75,7 +85,7 @@ export function useLivePrices(symbols: string[]): { prices: PriceRecord; isLive:
     const startPolling = (syms: string[]) => {
       setIsLive(false);
       clearInterval(pollRef.current);
-      pollRef.current = setInterval(() => fetchOnce(syms), 30000);
+      pollRef.current = setInterval(() => fetchOnce(syms), 15000);
     };
 
     // Try first SSE endpoint

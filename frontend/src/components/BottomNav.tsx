@@ -16,7 +16,7 @@ const MORE_ITEMS = [
   { icon: Link2, label: 'Wallets', path: '/connections' },
   { icon: ClipboardList, label: 'Transactions', path: '/transactions' },
   { icon: DollarSign, label: 'Dividends', path: '/dividends' },
-  { icon: Wallet, label: 'Wallet', path: '/wallet' },
+  { icon: Wallet, label: 'Cash', path: '/wallet' },
   { icon: Settings, label: 'Settings', path: '/settings' },
 ];
 

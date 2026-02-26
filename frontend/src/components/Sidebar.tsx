@@ -13,7 +13,7 @@ const sidebarItems = [
   { id: 'news',         icon: Newspaper,         label: 'News',         path: '/news' },
   { id: 'oracle',       icon: Sparkles,          label: 'Oracle',       path: '/oracle' },
   { id: 'alerts',       icon: Bell,              label: 'Alerts',       path: '/alerts' },
-  { id: 'wallet',       icon: Wallet,            label: 'Wallet',       path: '/wallet' },
+  { id: 'wallet',       icon: Wallet,            label: 'Cash',         path: '/wallet' },
   { id: 'transactions', icon: ClipboardList,     label: 'Transactions', path: '/transactions' },
   { id: 'dividends',    icon: DollarSign,        label: 'Dividends',    path: '/dividends' },
   { id: 'connections',  icon: Link2,             label: 'Connections',  path: '/connections' },

@@ -1,61 +1,26 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip,
-  CartesianGrid, BarChart, Bar, Line, ComposedChart
-} from 'recharts';
-import { Search } from 'lucide-react';
+/**
+ * CandlestickChart — TradingView Lightweight Charts v5
+ * Exact TradingView look: dark theme, green/red candles, volume bars, RSI panel.
+ */
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Search, Maximize2, Minimize2 } from 'lucide-react';
 import { api } from '../lib/api';
-import { Skeleton } from './ui/skeleton';
 
-interface OHLCV {
-  date: string;
-  open: number; high: number; low: number; close: number; volume: number;
-  ma20: number | undefined;
-  ma50: number | undefined;
-  ma200: number | undefined;
-  rsi?: number;
-}
-
-function calcRSI(data: OHLCV[], period = 14): OHLCV[] {
-  if (data.length < period + 1) return data;
-  let avgGain = 0, avgLoss = 0;
-  for (let i = 1; i <= period; i++) {
-    const diff = data[i].close - data[i - 1].close;
-    if (diff > 0) avgGain += diff; else avgLoss += Math.abs(diff);
-  }
-  avgGain /= period; avgLoss /= period;
-  return data.map((d, i) => {
-    if (i < period) return d;
-    if (i === period) {
-      const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-      return { ...d, rsi: Number((100 - 100 / (1 + rs)).toFixed(2)) };
-    }
-    const diff = data[i].close - data[i - 1].close;
-    const gain = diff > 0 ? diff : 0;
-    const loss = diff < 0 ? Math.abs(diff) : 0;
-    avgGain = (avgGain * (period - 1) + gain) / period;
-    avgLoss = (avgLoss * (period - 1) + loss) / period;
-    const rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
-    return { ...d, rsi: Number((100 - 100 / (1 + rs)).toFixed(2)) };
-  });
-}
-
-const TF_MAP: Record<string, { range: string; interval: string }> = {
-  '1D': { range: '1d',  interval: '5m'  },
-  '1W': { range: '5d',  interval: '15m' },
-  '1M': { range: '1mo', interval: '1d'  },
-  '3M': { range: '3mo', interval: '1d'  },
-  '1Y': { range: '1y',  interval: '1wk' },
-  '5Y': { range: '5y',  interval: '1mo' },
+// ─── Timeframes ──────────────────────────────────────────────────────────────
+const TIMEFRAMES: Record<string, { range: string; interval: string; label: string }> = {
+  '1D':  { range: '1d',   interval: '5m',  label: '1D'  },
+  '5D':  { range: '5d',   interval: '15m', label: '5D'  },
+  '1M':  { range: '1mo',  interval: '1d',  label: '1M'  },
+  '3M':  { range: '3mo',  interval: '1d',  label: '3M'  },
+  'YTD': { range: 'ytd',  interval: '1d',  label: 'YTD' },
+  '1Y':  { range: '1y',   interval: '1wk', label: '1Y'  },
+  '5Y':  { range: '5y',   interval: '1mo', label: '5Y'  },
+  'All': { range: 'max',  interval: '1mo', label: 'All' },
 };
 
-function calcMA(data: OHLCV[], period: number, key: 'ma20'|'ma50'|'ma200'): OHLCV[] {
-  return data.map((d, i) => {
-    if (i < period - 1) return d;
-    const slice = data.slice(i - period + 1, i + 1);
-    const avg = slice.reduce((s, x) => s + x.close, 0) / period;
-    return { ...d, [key]: Number(avg.toFixed(2)) };
-  });
+// ─── OHLCV ───────────────────────────────────────────────────────────────────
+interface OHLCV {
+  time: number; open: number; high: number; low: number; close: number; volume: number;
 }
 
 function parseYahooChart(json: any): OHLCV[] {
@@ -65,282 +30,464 @@ function parseYahooChart(json: any): OHLCV[] {
     const ts: number[] = result.timestamp || [];
     const q = result.indicators?.quote?.[0] || {};
     return ts.map((t, i) => ({
-      date: new Date(t * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      open:   Number((q.open?.[i]  ?? 0).toFixed(2)),
-      high:   Number((q.high?.[i]  ?? 0).toFixed(2)),
-      low:    Number((q.low?.[i]   ?? 0).toFixed(2)),
-      close:  Number((q.close?.[i] ?? 0).toFixed(2)),
+      time: t,
+      open:   +((q.open?.[i]   ?? 0).toFixed(4)),
+      high:   +((q.high?.[i]   ?? 0).toFixed(4)),
+      low:    +((q.low?.[i]    ?? 0).toFixed(4)),
+      close:  +((q.close?.[i]  ?? 0).toFixed(4)),
       volume: Math.round(q.volume?.[i] ?? 0),
-      ma20: undefined,
-      ma50: undefined,
-      ma200: undefined,
-    })).filter(d => d.close > 0);
+    })).filter(d => d.close > 0 && d.time > 0);
   } catch { return []; }
 }
 
-const DEFAULT_SYMBOLS = [
-  { sym: 'SPY', label: 'S&P 500 (SPY)' },
-  { sym: 'QQQ', label: 'Nasdaq (QQQ)' },
-  { sym: 'DIA', label: 'Dow Jones (DIA)' },
-  { sym: 'BTC-USD', label: 'Bitcoin' },
-  { sym: 'ETH-USD', label: 'Ethereum' },
-];
-
-interface Props {
-  initialSymbol?: string;
-  compact?: boolean;
+// ─── Indicators ──────────────────────────────────────────────────────────────
+function calcMA(data: OHLCV[], p: number) {
+  return data.slice(p - 1).map((_, i) => ({
+    time: data[i + p - 1].time as any,
+    value: +(data.slice(i, i + p).reduce((s, d) => s + d.close, 0) / p).toFixed(4),
+  }));
 }
 
-export function CandlestickChart({ initialSymbol, compact }: Props) {
-  const [symbol, setSymbol] = useState(initialSymbol || 'SPY');
-  const [tf, setTf] = useState('1M');
-  const [chartType, setChartType] = useState<'area'|'candle'>('area');
-  const [data, setData] = useState<OHLCV[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showMA20, setShowMA20] = useState(false);
-  const [showMA50, setShowMA50] = useState(false);
+function calcRSI(data: OHLCV[], p = 14) {
+  if (data.length < p + 1) return [];
+  let ag = 0, al = 0;
+  for (let i = 1; i <= p; i++) {
+    const d = data[i].close - data[i - 1].close;
+    if (d > 0) ag += d; else al += Math.abs(d);
+  }
+  ag /= p; al /= p;
+  return data.slice(p).map((_, i) => {
+    const idx = i + p;
+    const d = data[idx].close - data[idx - 1].close;
+    ag = (ag * (p - 1) + (d > 0 ? d : 0)) / p;
+    al = (al * (p - 1) + (d < 0 ? Math.abs(d) : 0)) / p;
+    const rs = al === 0 ? 100 : ag / al;
+    return { time: data[idx].time as any, value: +(100 - 100 / (1 + rs)).toFixed(2) };
+  });
+}
+
+// ─── Dark TradingView-style chart options ─────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const baseChartOpts: any = {
+  layout: {
+    background:  { color: '#131722' },
+    textColor:   '#9598A1',
+    fontSize:    12,
+    fontFamily:  "'Inter', -apple-system, sans-serif",
+  },
+  grid: {
+    vertLines: { color: '#1e222d' },
+    horzLines: { color: '#1e222d' },
+  },
+  crosshair: {
+    vertLine: { color: '#758696', width: 1, style: 1, visible: true, labelVisible: true },
+    horzLine: { color: '#758696', width: 1, style: 1, visible: true, labelVisible: true },
+  },
+  rightPriceScale: { borderColor: '#2a2e39' },
+  timeScale: {
+    borderColor:    '#2a2e39',
+    timeVisible:    true,
+    secondsVisible: false,
+  },
+};
+
+// ─── Defaults ─────────────────────────────────────────────────────────────────
+const DEFAULT_SYMBOLS = ['SPY', 'QQQ', 'AAPL', 'TSLA', 'BTC-USD', 'ETH-USD'];
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+interface Props { initialSymbol?: string; compact?: boolean; }
+
+export function CandlestickChart({ initialSymbol, compact = false }: Props) {
+  const [symbol, setSymbol]       = useState(initialSymbol || 'SPY');
+  const [tf, setTf]               = useState('3M');
+  const [chartType, setChartType] = useState<'candle' | 'area'>('candle');
+  const [showMA20,  setShowMA20]  = useState(false);
+  const [showMA50,  setShowMA50]  = useState(false);
   const [showMA200, setShowMA200] = useState(false);
-  const [showRSI, setShowRSI] = useState(false);
-  const [searchQ, setSearchQ] = useState('');
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [showRSI,   setShowRSI]   = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const [loading, setLoading]     = useState(false);
+  const [searchQ, setSearchQ]     = useState('');
+  const [searchRes, setSearchRes] = useState<any[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [searchTimer, setSearchTimer] = useState<any>(null);
+  const [info, setInfo]           = useState<{ price?: number; change?: number; changePct?: number; name?: string } | null>(null);
 
+  const mainRef      = useRef<HTMLDivElement>(null);
+  const volumeRef    = useRef<HTMLDivElement>(null);
+  const rsiRef       = useRef<HTMLDivElement>(null);
+  const chartObj     = useRef<any>(null);
+  const volChart     = useRef<any>(null);
+  const rsiChart     = useRef<any>(null);
+  const mainSeries   = useRef<any>(null);
+  const volSeries    = useRef<any>(null);
+  const ma20s        = useRef<any>(null);
+  const ma50s        = useRef<any>(null);
+  const ma200s       = useRef<any>(null);
+  const rsiLine      = useRef<any>(null);
+  const rawData      = useRef<OHLCV[]>([]);
+  const searchTimer  = useRef<any>(null);
+  const roMain       = useRef<ResizeObserver | null>(null);
+  const roVol        = useRef<ResizeObserver | null>(null);
+  const roRsi        = useRef<ResizeObserver | null>(null);
+
+  // ── Init/destroy charts ───────────────────────────────────────────────────
   useEffect(() => {
-    let alive = true;
+    if (!mainRef.current) return;
+
+    import('lightweight-charts').then(lc => {
+      // Destroy old
+      if (chartObj.current) { try { chartObj.current.remove(); } catch {} }
+      if (volChart.current) { try { volChart.current.remove();  } catch {} }
+      if (rsiChart.current) { try { rsiChart.current.remove();  } catch {} }
+
+      const mainH   = compact ? 220 : 360;
+      const volH    = compact ? 0   : 72;
+      const rsiH    = showRSI && !compact ? 110 : 0;
+
+      // ── Main chart ────────────────────────────────────────────────────────
+      const mc = lc.createChart(mainRef.current!, {
+        ...baseChartOpts,
+        width:  mainRef.current!.clientWidth,
+        height: mainH,
+      });
+      chartObj.current = mc;
+
+      // ── Volume chart (below main, no time axis)
+      if (volumeRef.current && volH > 0) {
+        const vc = lc.createChart(volumeRef.current, {
+          ...baseChartOpts,
+          width:  volumeRef.current.clientWidth,
+          height: volH,
+          timeScale: { visible: false },
+          rightPriceScale: {
+            borderColor: '#2a2e39',
+            minimumWidth: 60,
+          },
+        } as any);
+        volChart.current = vc;
+      }
+
+      // ── RSI chart (below volume)
+      if (rsiRef.current && rsiH > 0) {
+        const rc = lc.createChart(rsiRef.current, {
+          ...baseChartOpts,
+          width:  rsiRef.current.clientWidth,
+          height: rsiH,
+          rightPriceScale: { ...baseChartOpts.rightPriceScale, minimumWidth: 60 },
+        });
+        rsiChart.current = rc;
+      }
+
+      // ── ResizeObservers ────────────────────────────────────────────────────
+      const observeWith = (ro: ResizeObserver | null, el: HTMLElement | null, chart: any) => {
+        if (!el || !chart) return ro;
+        const newRO = new ResizeObserver(es => chart.resize(es[0].contentRect.width, chart.options().height));
+        newRO.observe(el);
+        return newRO;
+      };
+      roMain.current = observeWith(roMain.current, mainRef.current, mc);
+      roVol.current  = observeWith(roVol.current,  volumeRef.current, volChart.current);
+      roRsi.current  = observeWith(roRsi.current,  rsiRef.current,    rsiChart.current);
+
+      // Load data after init
+      loadData(lc);
+    });
+
+    return () => {
+      roMain.current?.disconnect();
+      roVol.current?.disconnect();
+      roRsi.current?.disconnect();
+      try { chartObj.current?.remove(); } catch {}
+      try { volChart.current?.remove(); } catch {}
+      try { rsiChart.current?.remove(); } catch {}
+      chartObj.current = volChart.current = rsiChart.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compact, showRSI, fullscreen]);
+
+  // ── Load data when symbol/tf/chartType/MAs change ─────────────────────────
+  const loadData = useCallback(async (lc?: any) => {
+    if (!chartObj.current) return;
     setLoading(true);
-    const { range, interval } = TF_MAP[tf];
-    api.markets.chart(symbol, `${range}&interval=${encodeURIComponent(interval)}`)
-      .then((json: any) => {
-        if (!alive) return;
-        let d = parseYahooChart(json);
-        if (showMA20 || showMA200 || showMA50) {
-          if (showMA20) d = calcMA(d, 20, 'ma20');
-          if (showMA50) d = calcMA(d, 50, 'ma50');
-          if (showMA200) d = calcMA(d, 200, 'ma200');
+    try {
+      const { range, interval } = TIMEFRAMES[tf];
+      const json = await api.markets.chart(symbol, `${range}&interval=${encodeURIComponent(interval)}`);
+      const data = parseYahooChart(json);
+      if (!data.length) { setLoading(false); return; }
+      rawData.current = data;
+
+      const last    = data[data.length - 1];
+      const prev    = data[data.length - 2];
+      const chg     = prev ? last.close - prev.close : 0;
+      const chgPct  = prev ? (chg / prev.close) * 100 : 0;
+
+      // Try to get name from search results
+      const name = searchRes.find((r: any) => r.symbol === symbol)?.name || symbol;
+      setInfo({ price: last.close, change: chg, changePct: chgPct, name });
+
+      const lcMod = lc || await import('lightweight-charts');
+      const { CandlestickSeries, AreaSeries, HistogramSeries, LineSeries } = lcMod;
+      const mc = chartObj.current;
+      if (!mc) return;
+
+      // ── Clear old series ──────────────────────────────────────────────────
+      if (mainSeries.current) { try { mc.removeSeries(mainSeries.current); } catch {} mainSeries.current = null; }
+      if (ma20s.current)      { try { mc.removeSeries(ma20s.current);       } catch {} ma20s.current = null; }
+      if (ma50s.current)      { try { mc.removeSeries(ma50s.current);       } catch {} ma50s.current = null; }
+      if (ma200s.current)     { try { mc.removeSeries(ma200s.current);      } catch {} ma200s.current = null; }
+      if (volSeries.current && volChart.current) { try { volChart.current.removeSeries(volSeries.current); } catch {} volSeries.current = null; }
+      if (rsiLine.current && rsiChart.current)   { try { rsiChart.current.removeSeries(rsiLine.current);   } catch {} rsiLine.current = null; }
+
+      // ── Main series ───────────────────────────────────────────────────────
+      if (chartType === 'candle') {
+        const cs = mc.addSeries(CandlestickSeries, {
+          upColor:         '#26a69a',
+          downColor:       '#ef5350',
+          borderUpColor:   '#26a69a',
+          borderDownColor: '#ef5350',
+          wickUpColor:     '#26a69a',
+          wickDownColor:   '#ef5350',
+        });
+        cs.setData(data.map(d => ({ time: d.time as any, open: d.open, high: d.high, low: d.low, close: d.close })));
+        mainSeries.current = cs;
+      } else {
+        const as = mc.addSeries(AreaSeries, {
+          lineColor:   '#2962ff',
+          topColor:    'rgba(41,98,255,0.28)',
+          bottomColor: 'rgba(41,98,255,0.0)',
+          lineWidth:   2,
+        });
+        as.setData(data.map(d => ({ time: d.time as any, value: d.close })));
+        mainSeries.current = as;
+      }
+
+      // ── MA overlays ────────────────────────────────────────────────────────
+      const addMA = (period: number, color: string) => {
+        if (data.length < period) return null;
+        const s = mc.addSeries(LineSeries, {
+          color, lineWidth: 1, lastValueVisible: false, priceLineVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        s.setData(calcMA(data, period));
+        return s;
+      };
+      if (showMA20)  ma20s.current  = addMA(20,  '#2962ff');
+      if (showMA50)  ma50s.current  = addMA(50,  '#ff9800');
+      if (showMA200) ma200s.current = addMA(200, '#e040fb');
+
+      // ── Volume ─────────────────────────────────────────────────────────────
+      if (volChart.current) {
+        const vs = volChart.current.addSeries(HistogramSeries, {
+          priceFormat: { type: 'volume' },
+          priceScaleId: '',
+        });
+        vs.setData(data.map(d => ({
+          time:  d.time as any,
+          value: d.volume,
+          color: d.close >= d.open ? 'rgba(38,166,154,0.5)' : 'rgba(239,83,80,0.5)',
+        })));
+        volSeries.current = vs;
+        // Sync time scale
+        mc.timeScale().subscribeVisibleLogicalRangeChange((r: any) => {
+          if (r && volChart.current) volChart.current.timeScale().setVisibleLogicalRange(r);
+        });
+        volChart.current.timeScale().subscribeVisibleLogicalRangeChange((r: any) => {
+          if (r && mc) mc.timeScale().setVisibleLogicalRange(r);
+        });
+      }
+
+      // ── RSI ──────────────────────────────────────────────────────────────
+      if (rsiChart.current) {
+        const rsiData = calcRSI(data);
+        if (rsiData.length) {
+          const rs = rsiChart.current.addSeries(AreaSeries, {
+            lineColor:   '#7b1fa2',
+            topColor:    'rgba(123,31,162,0.3)',
+            bottomColor: 'rgba(123,31,162,0)',
+            lineWidth:   1,
+          });
+          rs.setData(rsiData);
+          rsiLine.current = rs;
+
+          // OB/OS lines
+          const ob = rsiChart.current.addSeries(lcMod.LineSeries, { color: 'rgba(239,83,80,0.6)', lineWidth: 1, lineStyle: 2, lastValueVisible: false, priceLineVisible: false });
+          ob.setData(rsiData.map((d: any) => ({ time: d.time, value: 70 })));
+          const os = rsiChart.current.addSeries(lcMod.LineSeries, { color: 'rgba(38,166,154,0.6)', lineWidth: 1, lineStyle: 2, lastValueVisible: false, priceLineVisible: false });
+          os.setData(rsiData.map((d: any) => ({ time: d.time, value: 30 })));
+
+          // Sync time
+          mc.timeScale().subscribeVisibleLogicalRangeChange((r: any) => {
+            if (r && rsiChart.current) rsiChart.current.timeScale().setVisibleLogicalRange(r);
+          });
         }
-        setData(d);
-      })
-      .catch(() => setData([]))
-      .finally(() => alive && setLoading(false));
-    return () => { alive = false; };
-  }, [symbol, tf]);
+      }
 
-  // Recalculate MAs + RSI when toggles change
+      mc.timeScale().fitContent();
+      if (volChart.current) volChart.current.timeScale().fitContent();
+      if (rsiChart.current) rsiChart.current.timeScale().fitContent();
+
+    } catch (e) {
+      console.error('chart load error', e);
+    } finally {
+      setLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, tf, chartType, showMA20, showMA50, showMA200]);
+
+  // Reload on dependency change
   useEffect(() => {
-    if (!data.length) return;
-    let d: OHLCV[] = data.map(r => ({ ...r, ma20: undefined, ma50: undefined, ma200: undefined, rsi: undefined }));
-    if (showMA20) d = calcMA(d, 20, 'ma20');
-    if (showMA50) d = calcMA(d, 50, 'ma50');
-    if (showMA200) d = calcMA(d, 200, 'ma200');
-    if (showRSI) d = calcRSI(d);
-    setData(d);
-  }, [showMA20, showMA50, showMA200, showRSI]);
+    if (chartObj.current) loadData();
+  }, [loadData]);
 
-  const handleSearch = useCallback((q: string) => {
+  // ── Symbol search ──────────────────────────────────────────────────────────
+  const handleSearch = (q: string) => {
     setSearchQ(q);
-    clearTimeout(searchTimer);
-    if (!q) { setSearchResults([]); setSearchOpen(false); return; }
-    setSearchTimer(setTimeout(async () => {
+    setSearchOpen(true);
+    clearTimeout(searchTimer.current);
+    if (!q.trim()) { setSearchRes([]); return; }
+    searchTimer.current = setTimeout(async () => {
       try {
-        const res = await api.markets.search(q);
-        setSearchResults((res || []).slice(0, 8));
-        setSearchOpen(true);
-      } catch { setSearchOpen(false); }
-    }, 250));
-  }, [searchTimer]);
+        const res = await api.tickers.search(q);
+        setSearchRes(Array.isArray(res) ? res.slice(0, 8) : []);
+      } catch { setSearchRes([]); }
+    }, 300);
+  };
 
-  const first = data[0]?.close ?? 0;
-  const last  = data[data.length - 1]?.close ?? 0;
-  const isUp  = last >= first;
-  const strokeColor = isUp ? '#10b981' : '#ef4444';
-  const priceChange = last - first;
-  const pctChange   = first > 0 ? (priceChange / first) * 100 : 0;
+  const pickSymbol = (s: string) => {
+    setSymbol(s);
+    setSearchQ('');
+    setSearchRes([]);
+    setSearchOpen(false);
+  };
 
-  const chartData = data;
+  // ── Render ─────────────────────────────────────────────────────────────────
+  const isUp = (info?.change ?? 0) >= 0;
 
-  return (
-    <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5 shadow-lg">
-      {/* Header row */}
-      <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-        <div className="flex flex-col gap-1">
-          {/* Symbol + price */}
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${isUp ? 'bg-emerald-500' : 'bg-red-500'}`} />
-            <select value={symbol} onChange={e => setSymbol(e.target.value)}
-              className="bg-transparent text-white font-semibold text-lg focus:outline-none cursor-pointer">
-              {DEFAULT_SYMBOLS.map(o => <option key={o.sym} value={o.sym} className="bg-[#1a1d29]">{o.label}</option>)}
-              {!DEFAULT_SYMBOLS.find(o => o.sym === symbol) && (
-                <option value={symbol} className="bg-[#1a1d29]">{symbol}</option>
-              )}
-            </select>
-            {!loading && last > 0 && (
-              <div className="flex items-center gap-2">
-                <span className="text-white font-bold">${last.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                <span className={`text-sm font-semibold ${isUp ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {isUp ? '+' : ''}{priceChange.toFixed(2)} ({isUp ? '+' : ''}{pctChange.toFixed(2)}%)
-                </span>
-              </div>
+  const chartWrapper = (
+    <div className={`flex flex-col bg-[#131722] ${fullscreen ? 'fixed inset-0 z-[9999] rounded-none' : 'rounded-xl'} overflow-hidden`}>
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
+      <div className="px-4 pt-4 pb-2 flex flex-col sm:flex-row sm:items-start gap-3 border-b border-[#2a2e39]">
+        {/* Ticker info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-white font-bold text-xl">{symbol}</span>
+            {info?.name && info.name !== symbol && (
+              <span className="text-[#9598a1] text-sm">{info.name}</span>
             )}
           </div>
-          {/* MA toggles */}
-          <div className="flex items-center gap-2 ml-6">
-            {[
-              { key: 'ma20', label: 'MA20', color: '#3b82f6', show: showMA20, toggle: () => setShowMA20(v => !v) },
-              { key: 'ma50', label: 'MA50', color: '#f59e0b', show: showMA50, toggle: () => setShowMA50(v => !v) },
-              { key: 'ma200', label: 'MA200', color: '#ef4444', show: showMA200, toggle: () => setShowMA200(v => !v) },
-            { key: 'rsi', label: 'RSI(14)', color: '#a855f7', show: showRSI, toggle: () => setShowRSI(v => !v) },
-            ].map(ma => (
-              <button key={ma.key} onClick={ma.toggle}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs transition-colors border ${ma.show ? 'border-transparent text-white' : 'bg-transparent border-white/10 text-gray-600 hover:text-gray-400'}`}
-                style={ma.show ? { background: `${ma.color}30`, borderColor: `${ma.color}60`, color: ma.color } : {}}>
-                {ma.label}
-              </button>
-            ))}
-          </div>
+          {info?.price && (
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-white font-bold text-2xl">{info.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
+              <span className={`text-sm font-semibold ${isUp ? 'text-[#26a69a]' : 'text-[#ef5350]'}`}>
+                {isUp ? '+' : ''}{info.change?.toFixed(2)} ({isUp ? '+' : ''}{info.changePct?.toFixed(2)}%)
+              </span>
+            </div>
+          )}
         </div>
 
+        {/* Controls */}
         <div className="flex flex-col gap-2 items-end">
-          {/* Ticker search */}
+          {/* Search */}
           <div className="relative">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded-lg">
-              <Search className="w-3.5 h-3.5 text-gray-500" />
-              <input value={searchQ} onChange={e => handleSearch(e.target.value)}
-                placeholder="Search ticker…"
-                className="bg-transparent text-white text-sm placeholder-gray-600 focus:outline-none w-28" />
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#1e222d] border border-[#2a2e39] rounded-lg">
+              <Search className="w-3.5 h-3.5 text-[#9598a1]" />
+              <input value={searchQ} onChange={e => handleSearch(e.target.value)} onFocus={() => setSearchOpen(true)}
+                placeholder="Symbol..." className="bg-transparent text-white placeholder-[#4c525e] outline-none text-sm w-24" />
             </div>
-            {searchOpen && searchResults.length > 0 && (
-              <div className="absolute right-0 top-full mt-1 w-64 bg-[#0d0f14] border border-white/10 rounded-xl overflow-hidden shadow-xl z-20">
-                {searchResults.map(r => (
-                  <button key={r.symbol} onClick={() => { setSymbol(r.symbol); setSearchQ(''); setSearchOpen(false); }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 text-left">
-                    <span className="text-white font-mono text-sm font-semibold">{r.symbol}</span>
-                    <span className="text-gray-500 text-xs truncate">{r.name}</span>
+            {searchOpen && (
+              <div className="absolute top-full right-0 mt-1 w-52 bg-[#1e222d] border border-[#2a2e39] rounded-xl shadow-2xl z-50 overflow-hidden">
+                {(searchRes.length > 0 ? searchRes : DEFAULT_SYMBOLS.map(s => ({ symbol: s, name: '' }))).map((r: any) => (
+                  <button key={r.symbol} onClick={() => pickSymbol(r.symbol)}
+                    className="w-full px-3 py-2 text-left hover:bg-[#2a2e39] transition-colors flex items-center gap-2">
+                    <span className="text-white font-bold text-sm">{r.symbol}</span>
+                    {r.name && <span className="text-[#9598a1] text-xs truncate">{r.name}</span>}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          {/* Chart type + timeframe */}
-          <div className="flex items-center gap-2 flex-wrap justify-end">
-            {/* Area/Candle toggle */}
-            <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10">
-              <button onClick={() => setChartType('area')}
-                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${chartType === 'area' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Area</button>
-              <button onClick={() => setChartType('candle')}
-                className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${chartType === 'candle' ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>Candle</button>
-            </div>
-            {Object.keys(TF_MAP).map(t => (
-              <button key={t} onClick={() => setTf(t)}
-                className={`px-3 py-2 rounded-full text-sm font-medium transition-all min-h-[40px] min-w-[40px] ${
-                  t === tf ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
-                }`}>
-                {t}
+          {/* Overlays row */}
+          <div className="flex items-center gap-1 flex-wrap justify-end">
+            {[
+              { label: 'MA20',  active: showMA20,  toggle: () => setShowMA20(v => !v),  color: '#2962ff' },
+              { label: 'MA50',  active: showMA50,  toggle: () => setShowMA50(v => !v),  color: '#ff9800' },
+              { label: 'MA200', active: showMA200, toggle: () => setShowMA200(v => !v), color: '#e040fb' },
+              { label: 'RSI',   active: showRSI,   toggle: () => setShowRSI(v => !v),   color: '#7b1fa2' },
+            ].map(({ label, active, toggle, color }) => (
+              <button key={label} onClick={toggle}
+                className="px-2 py-0.5 rounded text-xs font-medium border transition-colors"
+                style={active
+                  ? { background: `${color}25`, borderColor: `${color}80`, color }
+                  : { background: 'transparent', borderColor: '#2a2e39', color: '#4c525e' }}>
+                {label}
               </button>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Price chart */}
-      <div className={`${compact ? 'h-48' : 'h-64'} mb-4`}>
-        {loading ? (
-          <Skeleton className="h-full rounded-xl bg-white/5" />
-        ) : chartData.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-gray-600 text-sm">No chart data available</div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData}>
-              <defs>
-                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={strokeColor} stopOpacity={0.25} />
-                  <stop offset="100%" stopColor={strokeColor} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff08" vertical={false} />
-              <XAxis dataKey="date" stroke="#6b7280" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
-              <YAxis stroke="#6b7280" style={{ fontSize: '11px' }} tickLine={false} axisLine={false} domain={['auto', 'auto']}
-                tickFormatter={v => `$${v >= 1000 ? (v/1000).toFixed(1)+'K' : v.toFixed(0)}`} />
-              <Tooltip
-                contentStyle={{ backgroundColor: '#1a1d29', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
-                formatter={(v: number, name: string) => {
-                  if (name === 'close') return [`$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 'Close'];
-                  if (name.startsWith('ma')) return [`$${v?.toFixed(2) ?? ''}`, name.toUpperCase()];
-                  return [v, name];
-                }}
-              />
-              {chartType === 'area' && (
-                <Area type="monotone" dataKey="close" stroke={strokeColor} strokeWidth={2} fill="url(#chartGrad)" dot={false} />
-              )}
-              {chartType === 'candle' && (
-                <Line type="monotone" dataKey="close" stroke={strokeColor} strokeWidth={2} dot={false} />
-              )}
-              {showMA20 && <Line type="monotone" dataKey="ma20" stroke="#3b82f6" strokeWidth={1.5} dot={false} strokeDasharray="4 2" connectNulls />}
-              {showMA50 && <Line type="monotone" dataKey="ma50" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 2" connectNulls />}
-              {showMA200 && <Line type="monotone" dataKey="ma200" stroke="#ef4444" strokeWidth={1.5} dot={false} strokeDasharray="4 2" connectNulls />}
-            </ComposedChart>
-          </ResponsiveContainer>
-        )}
+      {/* ── Timeframe bar ─────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-[#1e222d] gap-2">
+        {/* TF buttons */}
+        <div className="flex items-center gap-0 overflow-x-auto no-scrollbar">
+          {Object.entries(TIMEFRAMES).map(([key]) => (
+            <button key={key} onClick={() => setTf(key)}
+              className={`px-2.5 sm:px-3 py-1 text-xs font-medium transition-colors rounded whitespace-nowrap ${
+                tf === key
+                  ? 'bg-[#2a2e39] text-white'
+                  : 'text-[#9598a1] hover:text-white hover:bg-[#1e222d]'
+              }`}>
+              {key}
+            </button>
+          ))}
+        </div>
+
+        {/* Chart type + Fullscreen */}
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button onClick={() => setChartType('candle')}
+            className={`px-2.5 py-1 rounded text-xs transition-colors ${chartType === 'candle' ? 'bg-[#2a2e39] text-white' : 'text-[#4c525e] hover:text-white'}`}>
+            🕯
+          </button>
+          <button onClick={() => setChartType('area')}
+            className={`px-2.5 py-1 rounded text-xs transition-colors ${chartType === 'area' ? 'bg-[#2a2e39] text-white' : 'text-[#4c525e] hover:text-white'}`}>
+            📈
+          </button>
+          {!compact && (
+            <button onClick={() => setFullscreen(v => !v)} className="p-1.5 rounded text-[#4c525e] hover:text-white hover:bg-[#2a2e39] transition-colors ml-1">
+              {fullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Volume */}
-      {!loading && chartData.length > 0 && !compact && (
-        <div className="h-16">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} barCategoryGap="20%">
-              <YAxis hide />
-              <Bar dataKey="volume" fill="#8b5cf6" opacity={0.35} radius={[2, 2, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
-      {/* RSI Panel */}
-      {showRSI && !loading && chartData.length > 0 && !compact && (
-        <div className="mt-2 border-t border-white/5 pt-2">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-purple-400 text-xs font-medium">RSI(14)</span>
-            <span className="text-gray-500 text-xs">
-              {chartData[chartData.length - 1]?.rsi != null
-                ? (() => {
-                    const v = chartData[chartData.length - 1].rsi!;
-                    return <span style={{ color: v >= 70 ? '#ef4444' : v <= 30 ? '#22c55e' : '#a855f7' }}>{v.toFixed(1)}</span>;
-                  })()
-                : '—'}
-            </span>
+      {/* ── Charts ─────────────────────────────────────────────────────────── */}
+      <div className="relative flex-1 overflow-hidden" onClick={() => searchOpen && setSearchOpen(false)}>
+        {loading && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#131722]/80">
+            <div className="w-6 h-6 border-2 border-[#2962ff]/30 border-t-[#2962ff] rounded-full animate-spin" />
           </div>
-          <div className="h-24">
-            <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: 0 }}>
-                <XAxis dataKey="date" hide />
-                <YAxis domain={[0, 100]} ticks={[30, 50, 70]} tick={{ fill: '#4b5563', fontSize: 10 }} width={28} />
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <Tooltip
-                  contentStyle={{ background: '#1a1d29', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8 }}
-                  formatter={(v: any) => [Number(v).toFixed(1), 'RSI']}
-                  labelStyle={{ color: '#9ca3af', fontSize: 12 }}
-                />
-                {/* Overbought/Oversold reference zones */}
-                <Line type="monotone" dataKey={() => 70} stroke="#ef4444" strokeWidth={1} dot={false} strokeDasharray="3 2" opacity={0.5} />
-                <Line type="monotone" dataKey={() => 30} stroke="#22c55e" strokeWidth={1} dot={false} strokeDasharray="3 2" opacity={0.5} />
-                <Area type="monotone" dataKey="rsi" stroke="#a855f7" strokeWidth={1.5} fill="url(#rsiGradient)" connectNulls />
-                <defs>
-                  <linearGradient id="rsiGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#a855f7" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#a855f7" stopOpacity={0.0} />
-                  </linearGradient>
-                </defs>
-              </ComposedChart>
-            </ResponsiveContainer>
+        )}
+        {/* Main candle/area */}
+        <div ref={mainRef} className="w-full" />
+        {/* Volume */}
+        {!compact && <div ref={volumeRef} className="w-full border-t border-[#1e222d]" />}
+        {/* RSI */}
+        {showRSI && !compact && (
+          <div className="border-t border-[#1e222d]">
+            <div className="flex items-center gap-2 px-3 py-1">
+              <span className="text-[#7b1fa2] text-xs font-medium">RSI(14)</span>
+              <span className="text-[#4c525e] text-xs">≥70 overbought · ≤30 oversold</span>
+            </div>
+            <div ref={rsiRef} className="w-full" />
           </div>
-          <div className="flex gap-3 mt-1">
-            <span className="text-red-400 text-xs">Overbought ≥ 70</span>
-            <span className="text-gray-600 text-xs">•</span>
-            <span className="text-emerald-400 text-xs">Oversold ≤ 30</span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
+
+  if (compact) {
+    return <div className="h-[280px] overflow-hidden rounded-xl">{chartWrapper}</div>;
+  }
+  return chartWrapper;
 }
