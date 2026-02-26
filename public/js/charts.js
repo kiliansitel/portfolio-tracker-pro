@@ -63,9 +63,9 @@ function initChart() {
 
 function createMainSeries() {
     // Remove existing series
-    if (mainSeries) { try { chart.removeSeries(mainSeries); } catch(e){} mainSeries = null; }
-    if (ma100Series) { try { chart.removeSeries(ma100Series); } catch(e){} ma100Series = null; }
-    if (ma200Series) { try { chart.removeSeries(ma200Series); } catch(e){} ma200Series = null; }
+    if (mainSeries) { try { chart.removeSeries(mainSeries); } catch(e) { /* cleanup: series may already be removed */ } mainSeries = null; }
+    if (ma100Series) { try { chart.removeSeries(ma100Series); } catch(e) { /* cleanup: series may already be removed */ } ma100Series = null; }
+    if (ma200Series) { try { chart.removeSeries(ma200Series); } catch(e) { /* cleanup: series may already be removed */ } ma200Series = null; }
     
     if (mainChartType === 'candle') {
         mainSeries = chart.addCandlestickSeries({
@@ -153,7 +153,7 @@ function renderChartData(data) {
     
     // After-hours price line on main chart
     if (window._mainAhLine && mainSeries) {
-        try { mainSeries.removePriceLine(window._mainAhLine); } catch(e) {}
+        try { mainSeries.removePriceLine(window._mainAhLine); } catch(e) { /* cleanup: price line may not exist */ }
         window._mainAhLine = null;
     }
     const mq = priceCache[selectedSymbol];
@@ -179,7 +179,7 @@ function renderMainRSI(data) {
         return;
     }
     rsiEl.style.display = 'block';
-    if (mainRSISeries) { try { mainRSIChart.removeSeries(mainRSISeries); } catch(e){} }
+    if (mainRSISeries) { try { mainRSIChart.removeSeries(mainRSISeries); } catch(e) { /* cleanup: series may already be removed */ } }
     mainRSISeries = mainRSIChart.addLineSeries({
         color: '#ab47bc', lineWidth: 1.5, 
         priceFormat: { type: 'custom', formatter: v => v.toFixed(0) }
@@ -300,7 +300,7 @@ function updateAHPriceLine(quote) {
     
     // Remove existing AH line
     if (window._ahPriceLine && detailCandleSeries) {
-        try { detailCandleSeries.removePriceLine(window._ahPriceLine); } catch(e) {}
+        try { detailCandleSeries.removePriceLine(window._ahPriceLine); } catch(e) { /* cleanup: price line may not exist */ }
         window._ahPriceLine = null;
     }
     
@@ -350,7 +350,7 @@ function openChartDetail(symbol) {
                     updateDetailPrice(detailSymbol);
                 }
             })
-            .catch(() => {});
+            .catch((e) => { console.warn("[charts] fetch error:", e.message); });
     }
     
     // Update pin button
@@ -389,7 +389,7 @@ function updateLastCandle(symbol, price) {
         if (isExtended) {
             // Move the AH price line instead of the candle
             if (window._mainAhLine && mainSeries) {
-                try { mainSeries.removePriceLine(window._mainAhLine); } catch(e) {}
+                try { mainSeries.removePriceLine(window._mainAhLine); } catch(e) { /* cleanup: price line may not exist */ }
             }
             const label = (q.marketState === 'POST' || q.marketState === 'POSTPOST' || q.marketState === 'CLOSED') ? 'AH' : 'PM';
             window._mainAhLine = mainSeries.createPriceLine({
@@ -405,11 +405,11 @@ function updateLastCandle(symbol, price) {
                 last.close = price;
                 if (price > last.high) last.high = price;
                 if (price < last.low) last.low = price;
-                try { mainSeries.update(last); } catch(e) {}
+                try { mainSeries.update(last); } catch(e) { console.warn("[charts] live update failed:", e.message); }
             } else if (lastChartRawData.length > 0) {
                 const last = { ...lastChartRawData[lastChartRawData.length - 1] };
                 last.value = price;
-                try { mainSeries.update(last); } catch(e) {}
+                try { mainSeries.update(last); } catch(e) { console.warn("[charts] live update failed:", e.message); }
             }
         }
     }
@@ -421,7 +421,7 @@ function updateLastCandle(symbol, price) {
             if (window._ahPriceLine) {
                 const series = detailChartType === 'candle' ? detailCandleSeries : detailMainSeries;
                 if (series) {
-                    try { series.removePriceLine(window._ahPriceLine); } catch(e) {}
+                    try { series.removePriceLine(window._ahPriceLine); } catch(e) { /* cleanup: price line may not exist */ }
                     const label = (q.marketState === 'POST' || q.marketState === 'POSTPOST' || q.marketState === 'CLOSED') ? 'AH' : 'PM';
                     window._ahPriceLine = series.createPriceLine({
                         price: price, color: '#ff9800', lineWidth: 1, lineStyle: 2,
@@ -438,11 +438,11 @@ function updateLastCandle(symbol, price) {
                 last.close = price;
                 if (price > last.high) last.high = price;
                 if (price < last.low) last.low = price;
-                try { detailCandleSeries.update(last); } catch(e) {}
+                try { detailCandleSeries.update(last); } catch(e) { console.warn("[charts] live update failed:", e.message); }
             } else if (detailMainSeries && cached?.data?.length > 0) {
                 const last = { ...cached.data[cached.data.length - 1] };
                 last.value = price;
-                try { detailMainSeries.update(last); } catch(e) {}
+                try { detailMainSeries.update(last); } catch(e) { console.warn("[charts] live update failed:", e.message); }
             }
         }
         // Update the detail price header (AH display)
