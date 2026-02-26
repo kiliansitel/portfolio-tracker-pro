@@ -31,6 +31,8 @@ export function Alerts() {
   const [acResults, setAcResults] = useState<any[]>([]);
   const [acOpen, setAcOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Alert | null>(null);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 10;
   const acTimer = useRef<any>(null);
 
   const load = async () => {
@@ -47,6 +49,7 @@ export function Alerts() {
         if ((d as any)?.price) prices[sym] = (d as any).price;
       }
 
+      setPage(0);
       setAlertList(data.map((a: any) => ({
         id: a.id, symbol: a.symbol, condition: a.condition,
         targetPrice: a.value || 0, currentPrice: prices[a.symbol] || 0,
@@ -142,7 +145,18 @@ export function Alerts() {
           </div>
         ) : (
           <div className="space-y-4">
-            {alertList.map(alert => {
+            {alertList.length > PAGE_SIZE && (
+              <div className="flex items-center justify-between text-sm text-gray-500 mb-2">
+                <span>Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, alertList.length)} of {alertList.length}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+                    className="px-3 py-1 bg-white/5 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-colors">←</button>
+                  <button onClick={() => setPage(p => p + 1)} disabled={(page + 1) * PAGE_SIZE >= alertList.length}
+                    className="px-3 py-1 bg-white/5 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-colors">→</button>
+                </div>
+              </div>
+            )}
+            {alertList.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(alert => {
               const triggered = isTriggered(alert);
               return (
                 <div key={alert.id} className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border p-6 transition-all ${triggered ? 'border-emerald-500/30' : 'border-white/5 hover:border-blue-500/20'}`}>

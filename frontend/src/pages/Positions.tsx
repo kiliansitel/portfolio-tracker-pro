@@ -20,7 +20,7 @@ const CURRENCIES = [
 
 interface EnrichedPosition {
   id: number; symbol: string; name: string; quantity: number; entryPrice: number;
-  currentPrice: number; currentValue: number; totalPL: number; totalPLPct: number;
+  currentPrice: number; currentValue: number; totalPL: number; totalPLPct: number | null;
   dayChange: number; dayChangePct: number; type: string; status: string;
   currency: string; notes?: string;
 }
@@ -90,16 +90,16 @@ export function Positions() {
       setPositions(openPos.map((p: any) => {
         const pd = (priceMap[p.symbol] as any) || {};
         const qty = p.quantity || 0;
-        const ep = p.entry_price || 0;
+        const ep = p.entry_price ?? null; // null means unknown/free entry
         const cp = pd.price || 0;
         const cv = qty * cp;
-        const cost = qty * ep;
-        const pl = cp > 0 ? cv - cost : 0;
-        const plPct = cost > 0 ? (pl / cost) * 100 : 0;
+        const cost = ep != null && ep > 0 ? qty * ep : 0;
+        const pl = cp > 0 && cost > 0 ? cv - cost : 0;
+        const plPct = cost > 0 ? (pl / cost) * 100 : null; // null = N/A (zero/unknown entry price)
         const dc = cp > 0 ? (pd.change || 0) * qty : 0;
         return {
           id: p.id, symbol: p.symbol, name: p.name || p.symbol,
-          quantity: qty, entryPrice: ep, currentPrice: cp,
+          quantity: qty, entryPrice: ep ?? 0, currentPrice: cp,
           currentValue: cv, totalPL: pl, totalPLPct: plPct,
           dayChange: dc, dayChangePct: pd.changePercent || 0,
           type: p.type || 'stock', status: p.status || 'open',
@@ -116,6 +116,9 @@ export function Positions() {
     p.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const POS_PAGE_SIZE = 20;
+  const [posPage, setPosPage] = useState(0);
+  const displayedPositions = searchQuery ? filtered : filtered.slice(posPage * POS_PAGE_SIZE, (posPage + 1) * POS_PAGE_SIZE);
 
   const totalValue = positions.reduce((s, p) => s + p.currentValue, 0);
   const totalPL = positions.reduce((s, p) => s + p.totalPL, 0);
@@ -266,7 +269,7 @@ export function Positions() {
         <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border ${totalPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
           <div className="text-gray-400 text-sm mb-2">Total P/L</div>
           <div className={`text-3xl font-bold ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (totalPL >= 0 ? '+' : '') + fmtPrice(Math.abs(totalPL))}</div>
-          {!loading && totalInvested > 0 && <div className={`text-sm mt-1 ${totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{totalPLPct >= 0 ? '+' : ''}{totalPLPct.toFixed(1)}%</div>}
+          {!loading && totalInvested > 0 && <div className={`text-sm mt-1 ${totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{totalPLPct >= 0 ? '+' : ''}{totalPLPct.toFixed(2)}%</div>}
         </div>
         <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
           <div className="text-gray-400 text-sm mb-2">Total Invested</div>
@@ -321,7 +324,18 @@ export function Positions() {
               </div>
             )}
 
-            {!loading && (searchQuery ? filtered : positions).map(position => {
+            {!loading && !searchQuery && filtered.length > POS_PAGE_SIZE && (
+              <div className="px-6 py-3 flex items-center justify-between text-sm text-gray-500 border-b border-white/5">
+                <span>Showing {posPage * POS_PAGE_SIZE + 1}–{Math.min((posPage + 1) * POS_PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+                <div className="flex gap-2">
+                  <button onClick={() => setPosPage(p => Math.max(0, p - 1))} disabled={posPage === 0}
+                    className="px-3 py-1 bg-white/5 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-colors">←</button>
+                  <button onClick={() => setPosPage(p => p + 1)} disabled={(posPage + 1) * POS_PAGE_SIZE >= filtered.length}
+                    className="px-3 py-1 bg-white/5 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-colors">→</button>
+                </div>
+              </div>
+            )}
+            {!loading && displayedPositions.map(position => {
               const isPlPos = position.totalPL >= 0;
               const isDayPos = position.dayChange >= 0;
               return (
@@ -352,7 +366,9 @@ export function Positions() {
                     {position.currentPrice > 0 ? (
                       <div>
                         <div className={`font-bold text-sm ${isPlPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPlPos ? '+' : ''}{fmtPrice(Math.abs(position.totalPL))}</div>
-                        <div className={`text-xs ${isPlPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPlPos ? '+' : ''}{position.totalPLPct.toFixed(1)}%</div>
+                        {position.totalPLPct !== null
+                          ? <div className={`text-xs ${isPlPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPlPos ? '+' : ''}{position.totalPLPct.toFixed(1)}%</div>
+                          : <div className="text-xs text-gray-500">N/A</div>}
                       </div>
                     ) : <div className="text-gray-600 text-sm">—</div>}
                   </div>

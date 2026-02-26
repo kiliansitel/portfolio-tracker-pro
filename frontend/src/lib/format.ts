@@ -19,5 +19,9 @@ export function pct(v: number): string {
 
 export function dateLabel(iso: string): string {
   if (!iso) return '—';
-  return iso.slice(0, 10);
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return iso.slice(0, 10);
+  }
 }

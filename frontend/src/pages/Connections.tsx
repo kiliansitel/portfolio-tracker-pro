@@ -2,6 +2,7 @@ import { Link2, Plus, Trash2, RefreshCw, Wifi } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { fmt } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
 
 const CHAINS = [
@@ -43,11 +44,6 @@ function trunc(addr: string) {
   return addr.slice(0, 8) + '...' + addr.slice(-6);
 }
 
-function fmt(v: number) {
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${v.toFixed(2)}`;
-}
 
 export function Connections() {
   const [wallets, setWallets] = useState<any[]>([]);

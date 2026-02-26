@@ -1,18 +1,8 @@
 import { Wallet as WalletIcon, Plus, Trash2, ArrowUpRight, ArrowDownLeft, ChevronDown, DollarSign } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
+import { fmt, dateLabel } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
-
-function fmt(v: number) {
-  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${v.toFixed(2)}`;
-}
-
-function dateLabel(d: string) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
-}
 
 const TX_TYPES = [
   { value: 'buy', label: 'Buy' },

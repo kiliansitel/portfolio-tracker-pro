@@ -111,6 +111,18 @@ export function Oracle() {
     setConversationId(undefined);
   };
 
+  const SUGGESTIONS = [
+    { emoji: '📊', text: 'Analyze my portfolio and give me actionable insights.' },
+    { emoji: '🏆', text: "What's my best performing position this month?" },
+    { emoji: '⚠️', text: 'Which positions are at risk right now?' },
+    { emoji: '👁', text: 'Show me signals from my watchlist.' },
+    { emoji: '📰', text: "What's moving the market today?" },
+    { emoji: '💡', text: 'Suggest how I can diversify better.' },
+  ];
+
+  // Only show suggestions when there's just the welcome message and not loading
+  const showSuggestions = messages.length === 1 && !loading;
+
   return (
     <div className="flex flex-col h-[calc(100vh-73px)] max-w-[1440px] mx-auto">
       {/* Header */}
@@ -165,6 +177,25 @@ export function Oracle() {
             </div>
           </div>
         )}
+        {/* Conversation starter suggestions */}
+        {showSuggestions && (
+          <div className="mt-4">
+            <p className="text-gray-600 text-xs text-center mb-4">Try asking…</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {SUGGESTIONS.map((s) => (
+                <button
+                  key={s.text}
+                  onClick={() => send(s.text)}
+                  className="flex items-start gap-2 p-3 bg-gradient-to-br from-[#1a1d29] to-[#14161f] border border-white/10 rounded-xl text-left text-sm text-gray-300 hover:border-blue-500/30 hover:text-white transition-all"
+                >
+                  <span className="text-lg leading-tight flex-shrink-0">{s.emoji}</span>
+                  <span className="leading-snug">{s.text}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div ref={messagesEndRef} />
       </div>
 

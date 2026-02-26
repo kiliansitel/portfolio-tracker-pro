@@ -12,7 +12,7 @@ import { fmt, pct } from '../lib/format';
 const MARKET_SYMBOLS = ['BTC-USD', 'ETH-USD', 'NVDA', 'AAPL', 'TSLA'];
 
 export function Dashboard() {
-  const [stats, setStats] = useState({ totalValue: 0, totalPL: 0, totalInvested: 0, assetCount: 0 });
+  const [stats, setStats] = useState({ totalValue: 0, totalPL: 0, totalInvested: 0, assetCount: 0, dailyPL: 0 });
   const [markets, setMarkets] = useState<any[]>([]);
   const [performance, setPerformance] = useState<{ date: string; value: number }[]>([]);
   const [donut, setDonut] = useState<{ name: string; value: number; color: string }[]>([]);
@@ -46,7 +46,12 @@ export function Dashboard() {
             openPos.reduce((s: number, p: any) => s + (p.quantity || 0) * (p.entry_price || 0), 0) +
             portfolioCash;
           const totalPL = positionsValue - (totalInvested - portfolioCash);
-          setStats({ totalValue, totalPL, totalInvested, assetCount: openPos.length });
+          // Daily P/L = sum of (quantity × priceChange per share) across all positions
+          const dailyPL = openPos.reduce(
+            (s: number, p: any) => s + (p.quantity || 0) * ((priceMap[p.symbol] as any)?.change || 0),
+            0
+          );
+          setStats({ totalValue, totalPL, totalInvested, assetCount: openPos.length, dailyPL });
 
           // Performance snapshots
           const perf = await api.portfolio.performance(portfolioId).catch(() => null);
@@ -100,8 +105,10 @@ export function Dashboard() {
     loadData();
   }, []);
 
-  const { totalValue, totalPL, totalInvested, assetCount } = stats;
-  const plPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0;
+  const { totalValue, totalPL, totalInvested, assetCount, dailyPL } = stats;
+  const plPct = totalInvested > 0 ? (totalPL / totalInvested) * 100 : 0; // total return %
+  const prevValue = totalValue - dailyPL;
+  const dailyPct = prevValue > 0 ? (dailyPL / prevValue) * 100 : 0; // today's % change
   const hasPortfolioData = totalValue > 0;
 
   const sparklineDummy = [1, 1.1, 1.05, 1.2, 1.15];
@@ -119,14 +126,14 @@ export function Dashboard() {
             <StatCard
               label="Portfolio Value"
               value={hasPortfolioData ? fmt(totalValue) : '$0.00'}
-              change={hasPortfolioData ? pct(plPct) : undefined}
-              changeType={totalPL >= 0 ? 'positive' : 'negative'}
+              change={hasPortfolioData ? `Today: ${pct(dailyPct)}` : undefined}
+              changeType={dailyPL >= 0 ? 'positive' : 'negative'}
               sparklineData={sparklineDummy}
             />
             <StatCard
               label="Total P/L"
               value={hasPortfolioData ? (totalPL >= 0 ? '+' : '') + fmt(Math.abs(totalPL)) : '$0.00'}
-              change={hasPortfolioData ? pct(plPct) : undefined}
+              change={hasPortfolioData && totalInvested > 0 ? `Total: ${pct(plPct)}` : undefined}
               changeType={totalPL >= 0 ? 'positive' : 'negative'}
               sparklineData={sparklineDummy}
             />

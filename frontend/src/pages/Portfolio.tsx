@@ -6,6 +6,17 @@ import { getPrices } from '../lib/priceCache';
 import { fmt } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
 
+/** Detect asset type from position, falling back to symbol-pattern detection for crypto. */
+function getAssetType(p: any): string {
+  const stored = (p.type || '').toLowerCase();
+  if (stored === 'crypto') return 'crypto';
+  if (stored && stored !== 'stock') return stored; // etf, option, etc.
+  // Fallback: crypto symbols typically end with -USD / -USDT / -BTC / -ETH
+  const sym = (p.symbol || '').toUpperCase();
+  if (/-USD$|-USDT$|-BTC$|-ETH$/.test(sym)) return 'crypto';
+  return 'stock';
+}
+
 const CURRENCIES = [
   { value: 'USD', label: 'USD — US Dollar' },
   { value: 'EUR', label: 'EUR — Euro' },
@@ -68,9 +79,9 @@ export function Portfolio() {
   const totalPL = posValue - invested;
   const plPct = invested > 0 ? (totalPL / invested) * 100 : 0;
 
-  // Group positions by type for exposure
+  // Group positions by type for exposure — uses smart classification (fixes crypto-as-stock bug)
   const exposure = positions.reduce((acc: Record<string, number>, p: any) => {
-    const type = p.type || 'stock';
+    const type = getAssetType(p);
     acc[type] = (acc[type] || 0) + (p.quantity || 0) * (priceMap[p.symbol] || 0);
     return acc;
   }, {});

@@ -14,6 +14,7 @@ import { Connections } from './pages/Connections';
 import { Settings } from './pages/Settings';
 import { Wallet } from './pages/Wallet';
 import { Transactions } from './pages/Transactions';
+import { NotFound } from './pages/NotFound';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, loading } = useAuth();
@@ -56,6 +57,9 @@ export const router = createBrowserRouter([
       { path: 'settings', element: <Settings /> },
       { path: 'wallet', element: <Wallet /> },
       { path: 'transactions', element: <Transactions /> },
+      { path: '*', element: <NotFound /> },
     ],
   },
+  // Top-level catch-all for unmatched URLs outside the app shell
+  { path: '*', element: <NotFound /> },
 ]);
