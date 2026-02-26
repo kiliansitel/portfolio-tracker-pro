@@ -1,7 +1,12 @@
-import { Settings as SettingsIcon, User, Lock, Globe, Bell, Download, Trash2, Eye, EyeOff, Check } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import {
+  Settings as SettingsIcon, User, Lock, Globe, Bell, Download, Trash2, Eye, EyeOff, Check,
+  Upload, Sparkles, SunMoon, MessageCircle, Info
+} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { auth } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
 import { FormInput, FormSelect, ActionBtn } from '../components/Modal';
 
@@ -10,7 +15,12 @@ const CURRENCIES = [
   { value: 'EUR', label: 'EUR — Euro (€)' },
   { value: 'GBP', label: 'GBP — British Pound (£)' },
   { value: 'CHF', label: 'CHF — Swiss Franc (CHF)' },
+  { value: 'JPY', label: 'JPY — Japanese Yen (¥)' },
+  { value: 'CAD', label: 'CAD — Canadian Dollar (C$)' },
+  { value: 'AUD', label: 'AUD — Australian Dollar (A$)' },
 ];
+
+const WEEK_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
 function Section({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
   return (
@@ -44,10 +54,20 @@ function Toggle({ checked, onChange, label, sub }: { checked: boolean; onChange:
 }
 
 export function Settings() {
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [currency, setCurrency] = useState('USD');
-  const [autoSettings, setAutoSettings] = useState<any>({});
+
   const [saving, setSaving] = useState(false);
+
+  // Basic prefs
+  const [currency, setCurrency] = useState('USD');
+  const [theme, setTheme] = useState<'dark'|'light'>('dark');
+
+  // Scheduled reports
+  const [autoReports, setAutoReports] = useState<any>({});
+
+  // Telegram
+  const [telegramChatId, setTelegramChatId] = useState('');
 
   // Password form
   const [currentPw, setCurrentPw] = useState('');
@@ -62,17 +82,41 @@ export function Settings() {
   const [newEmail, setNewEmail] = useState('');
   const [emailErr, setEmailErr] = useState('');
 
+  // Import / restore
+  const importRef = useRef<HTMLInputElement>(null);
+  const restoreRef = useRef<HTMLInputElement>(null);
+
   const showToast = (msg: string, ok = true) => {
     ok ? toast.success(msg) : toast.error(msg);
   };
 
   useEffect(() => {
-    if (user) {
-      setCurrency(user.currency || user.settings?.currency || 'USD');
-      setAutoSettings(user.settings?.autoReports || {});
-      setNewEmail(user.email || '');
-    }
+    if (!user) return;
+    setCurrency(user.currency || user.settings?.currency || 'USD');
+    setAutoReports(user.settings?.autoReports || {});
+    setNewEmail(user.email || '');
+    setTelegramChatId(user.settings?.telegramChatId || user.settings?.telegram_chat_id || '');
+
+    const storedTheme = (localStorage.getItem('theme') as any) || user.settings?.theme || 'dark';
+    setTheme(storedTheme === 'light' ? 'light' : 'dark');
   }, [user]);
+
+  // Apply theme immediately
+  useEffect(() => {
+    const root = document.documentElement;
+    if (theme === 'light') root.classList.add('light-theme');
+    else root.classList.remove('light-theme');
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const saveSettingsPatch = async (patch: any) => {
+    try {
+      await api.updateSettings({ settings: { ...user?.settings, ...patch } });
+      showToast('Settings saved');
+    } catch (e: any) {
+      showToast(e.message, false);
+    }
+  };
 
   const saveCurrency = async () => {
     setSaving(true);
@@ -82,12 +126,9 @@ export function Settings() {
     } catch (e: any) { showToast(e.message, false); } finally { setSaving(false); }
   };
 
-  const saveAutoReports = async (newAuto: any) => {
-    setAutoSettings(newAuto);
-    try {
-      await api.updateSettings({ settings: { ...user?.settings, autoReports: newAuto } });
-      showToast('Settings saved');
-    } catch (e: any) { showToast(e.message, false); }
+  const saveAutoReports = async (next: any) => {
+    setAutoReports(next);
+    await saveSettingsPatch({ autoReports: next });
   };
 
   const changePassword = async () => {
@@ -131,12 +172,128 @@ export function Settings() {
     } catch (e: any) { showToast(e.message, false); }
   };
 
-  const setDailyEnabled = (v: boolean) => saveAutoReports({ ...autoSettings, daily: { ...autoSettings.daily, enabled: v } });
-  const setWeeklyEnabled = (v: boolean) => saveAutoReports({ ...autoSettings, weekly: { ...autoSettings.weekly, enabled: v } });
+  const restoreBackup = async (file: File) => {
+    if (!confirm('This will replace ALL your data. Continue?')) return;
+    setSaving(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const token = auth.getToken();
+      const res = await fetch('/api/backup/restore', {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: fd,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      showToast('Backup restored');
+      window.location.reload();
+    } catch (e: any) {
+      showToast(e.message || 'Restore failed', false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const exportPositionsCsv = async () => {
+    try {
+      const ps = await api.portfolio.all();
+      if (!ps?.length) return toast.info('No portfolio');
+      const p0 = ps[0];
+      const positions = await api.portfolio.positions(p0.id);
+      const rows = (positions || []).map((p: any) => ({
+        symbol: p.symbol, quantity: p.quantity, entryPrice: p.entryPrice, type: p.type, currency: p.currency || 'USD'
+      }));
+      const header = Object.keys(rows[0] || { symbol: '', quantity: '', entryPrice: '' }).join(',');
+      const csv = [header, ...rows.map(r => Object.values(r).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'positions.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Exported positions CSV');
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const exportWatchlistCsv = async () => {
+    try {
+      const wls = await api.watchlists();
+      const items = (wls || []).flatMap((wl: any) => (wl.items || []).map((it: any) => ({ watchlist: wl.name, symbol: it.symbol, notes: it.notes || '' })));
+      if (!items.length) return toast.info('No watchlist items');
+      const header = Object.keys(items[0]).join(',');
+      const csv = [header, ...items.map(r => Object.values(r).map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'watchlist.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Exported watchlist CSV');
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const onImportCsv = async (file: File) => {
+    // Minimal: parse a very simple CSV with headers symbol,quantity,entryPrice
+    try {
+      const text = await file.text();
+      const [hdr, ...lines] = text.split(/\r?\n/).filter(Boolean);
+      const cols = hdr.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+      const symIdx = cols.findIndex(c => c.toLowerCase().includes('symbol') || c.toLowerCase() === 'ticker');
+      const qtyIdx = cols.findIndex(c => c.toLowerCase().includes('quantity'));
+      const epIdx = cols.findIndex(c => c.toLowerCase().includes('entry') || c.toLowerCase().includes('price'));
+      if (symIdx < 0) throw new Error('CSV must include a symbol/ticker column');
+      const ps = await api.portfolio.all();
+      if (!ps?.length) throw new Error('No portfolio found');
+      const portfolioId = ps[0].id;
+      let ok = 0, bad = 0;
+      for (const ln of lines) {
+        const parts = ln.split(',').map(s => s.trim().replace(/^"|"$/g, ''));
+        const symbol = (parts[symIdx] || '').toUpperCase();
+        if (!symbol) { bad++; continue; }
+        const quantity = qtyIdx >= 0 ? Number(parts[qtyIdx]) : 1;
+        const entryPrice = epIdx >= 0 ? Number(parts[epIdx]) : 0;
+        try {
+          await api.portfolio.createPosition(portfolioId, { symbol, quantity, entryPrice });
+          ok++;
+        } catch { bad++; }
+      }
+      toast.success(`Imported: ${ok} ok, ${bad} failed`);
+    } catch (e: any) {
+      toast.error(e.message || 'Import failed');
+    }
+  };
+
+  const pushSupported = window.isSecureContext && 'Notification' in window;
+
+  const enablePush = async () => {
+    // Backend requires a PushSubscription; without VAPID key exposure we can only best-effort.
+    toast.error('Push subscription requires HTTPS + VAPID public key; backend currently has no public-key endpoint.');
+  };
+
+  const disablePush = async () => {
+    toast.error('Push unsubscribe needs endpoint; not available without a subscription');
+  };
+
+  const testPush = async () => {
+    try {
+      await api.push.test();
+      toast.success('Test notification sent');
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  const saveTelegram = async () => {
+    await saveSettingsPatch({ telegramChatId });
+  };
+
+  const checkUpdates = async () => {
+    try {
+      const d = await api.updates.status();
+      toast.success(d?.message || 'Update check complete');
+    } catch (e: any) { toast.error(e.message); }
+  };
 
   return (
     <div className="p-8 max-w-[900px] mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-3 mb-8">
         <SettingsIcon className="w-6 h-6 text-blue-500" />
         <h2 className="text-2xl font-bold text-white">Settings</h2>
@@ -183,17 +340,13 @@ export function Settings() {
                     onChange={e => setter(e.target.value)}
                     className="w-full px-4 py-2.5 pr-10 bg-[#0d0f14] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-colors text-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={toggle}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
-                  >
+                  <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
                     {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
             ))}
-            {/* Password requirements */}
+
             {newPw.length > 0 && (
               <div className="p-3 bg-[#0d0f14] rounded-xl space-y-1.5">
                 {[
@@ -209,11 +362,33 @@ export function Settings() {
                 ))}
               </div>
             )}
+
             {pwErr && <p className="text-red-400 text-sm">{pwErr}</p>}
             <div className="pt-1">
               <ActionBtn onClick={changePassword} disabled={saving}>Change Password</ActionBtn>
             </div>
           </div>
+        </Section>
+
+        {/* AI / Oracle */}
+        <Section title="Oracle AI" icon={Sparkles}>
+          <div className="space-y-3">
+            <p className="text-gray-400 text-sm">Configure AI providers and scheduled reports in Oracle.</p>
+            <div className="flex gap-3">
+              <ActionBtn onClick={() => navigate('/oracle')}>Open Oracle</ActionBtn>
+              <ActionBtn onClick={() => navigate('/oracle')} variant="ghost">Configure Providers</ActionBtn>
+            </div>
+          </div>
+        </Section>
+
+        {/* Theme */}
+        <Section title="Appearance" icon={SunMoon}>
+          <Toggle
+            checked={theme === 'light'}
+            onChange={(v) => { setTheme(v ? 'light' : 'dark'); saveSettingsPatch({ theme: v ? 'light' : 'dark' }); }}
+            label="Light mode"
+            sub="Persisted locally and in your account settings"
+          />
         </Section>
 
         {/* Currency */}
@@ -227,38 +402,121 @@ export function Settings() {
           <p className="text-gray-500 text-xs mt-3">All values will be converted and displayed in the selected currency.</p>
         </Section>
 
-        {/* Auto Reports */}
-        <Section title="Automated Reports" icon={Bell}>
-          <div className="space-y-1">
+        {/* Scheduled Reports */}
+        <Section title="Scheduled Reports" icon={Bell}>
+          <div className="space-y-3">
             <Toggle
-              checked={autoSettings.daily?.enabled || false}
-              onChange={setDailyEnabled}
-              label="Daily Report"
-              sub={`Auto-generated each day at ${autoSettings.daily?.time || '09:00'} ${autoSettings.daily?.timezone || 'UTC'}`}
+              checked={autoReports.daily?.enabled || false}
+              onChange={(v) => saveAutoReports({
+                ...autoReports,
+                daily: { enabled: v, time: autoReports.daily?.time || '09:00', timezone: autoReports.daily?.timezone || 'UTC' }
+              })}
+              label="Daily Summary"
+              sub={`Time: ${autoReports.daily?.time || '09:00'} (${autoReports.daily?.timezone || 'UTC'})`}
             />
+            {(autoReports.daily?.enabled || false) && (
+              <div className="grid grid-cols-2 gap-3">
+                <FormInput label="Daily time" type="time" value={autoReports.daily?.time || '09:00'} onChange={e => saveAutoReports({ ...autoReports, daily: { ...autoReports.daily, time: e.target.value } })} />
+                <FormInput label="Timezone" value={autoReports.daily?.timezone || 'UTC'} onChange={e => saveAutoReports({ ...autoReports, daily: { ...autoReports.daily, timezone: e.target.value } })} placeholder="UTC" />
+              </div>
+            )}
+
             <Toggle
-              checked={autoSettings.weekly?.enabled || false}
-              onChange={setWeeklyEnabled}
-              label="Weekly Report"
-              sub={`Auto-generated each ${autoSettings.weekly?.day || 'Monday'} at ${autoSettings.weekly?.time || '09:00'}`}
+              checked={autoReports.weekly?.enabled || false}
+              onChange={(v) => saveAutoReports({
+                ...autoReports,
+                weekly: { enabled: v, day: autoReports.weekly?.day || 'Monday', time: autoReports.weekly?.time || '09:00' }
+              })}
+              label="Weekly Digest"
+              sub={`${autoReports.weekly?.day || 'Monday'} · ${autoReports.weekly?.time || '09:00'}`}
             />
+            {(autoReports.weekly?.enabled || false) && (
+              <div className="grid grid-cols-2 gap-3">
+                <FormSelect label="Day" value={autoReports.weekly?.day || 'Monday'} onChange={e => saveAutoReports({ ...autoReports, weekly: { ...autoReports.weekly, day: e.target.value } })}
+                  options={WEEK_DAYS.map(d => ({ value: d, label: d }))} />
+                <FormInput label="Weekly time" type="time" value={autoReports.weekly?.time || '09:00'} onChange={e => saveAutoReports({ ...autoReports, weekly: { ...autoReports.weekly, time: e.target.value } })} />
+              </div>
+            )}
           </div>
+        </Section>
+
+        {/* Push */}
+        <Section title="Push Notifications" icon={Bell}>
+          {!window.isSecureContext && (
+            <div className="text-yellow-400 text-sm">Requires HTTPS connection</div>
+          )}
+          <div className="flex gap-3 flex-wrap mt-3">
+            <ActionBtn onClick={enablePush} disabled={!pushSupported}>Enable</ActionBtn>
+            <ActionBtn onClick={disablePush} variant="ghost" disabled={!pushSupported}>Disable</ActionBtn>
+            <ActionBtn onClick={testPush} variant="ghost">Test</ActionBtn>
+          </div>
+          <p className="text-gray-500 text-xs mt-3">Note: subscribing requires a service worker + VAPID public key. Server must expose the public key.</p>
+        </Section>
+
+        {/* Telegram */}
+        <Section title="Telegram Integration" icon={MessageCircle}>
+          <div className="flex gap-3 items-end">
+            <FormInput label="Chat ID" value={telegramChatId} onChange={e => setTelegramChatId(e.target.value)} placeholder="e.g. 123456789" className="flex-1" />
+            <ActionBtn onClick={saveTelegram} disabled={saving}>Save</ActionBtn>
+          </div>
+          <p className="text-gray-500 text-xs mt-3">Enter your Telegram Chat ID. Start a chat with the bot first, then paste your Chat ID here.</p>
+        </Section>
+
+        {/* Export / Import */}
+        <Section title="Export / Import" icon={Download}>
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={exportPositionsCsv} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
+              <Download className="w-4 h-4" /> Export Positions CSV
+            </button>
+            <button onClick={exportWatchlistCsv} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
+              <Download className="w-4 h-4" /> Export Watchlist CSV
+            </button>
+            <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
+              🖨️ Portfolio PDF
+            </button>
+            <button onClick={() => importRef.current?.click()} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
+              <Upload className="w-4 h-4" /> Import Positions CSV
+            </button>
+            <input ref={importRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) onImportCsv(f);
+              e.currentTarget.value = '';
+            }} />
+          </div>
+          <p className="text-gray-500 text-xs mt-3">Import is a basic CSV importer (symbol/quantity/entryPrice). Advanced broker formats can be added later.</p>
         </Section>
 
         {/* Backup */}
         <Section title="Data Backup" icon={Download}>
           <p className="text-gray-400 text-sm mb-4">Download a full backup of your portfolio database.</p>
-          <div className="flex gap-3">
-            <button
-              onClick={downloadBackup}
-              className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium transition-colors"
-            >
+          <div className="flex gap-3 flex-wrap">
+            <button onClick={downloadBackup} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
               <Download className="w-4 h-4" /> Download Backup
             </button>
+            <button onClick={() => restoreRef.current?.click()} className="flex items-center gap-2 px-4 py-2.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-xl text-red-300 text-sm font-medium">
+              <Upload className="w-4 h-4" /> Restore Backup
+            </button>
+            <input ref={restoreRef} type="file" accept=".db,application/octet-stream" className="hidden" onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) restoreBackup(f);
+              e.currentTarget.value = '';
+            }} />
+          </div>
+          <p className="text-gray-500 text-xs mt-3">Restore will replace ALL your data.</p>
+        </Section>
+
+        {/* Updates */}
+        <Section title="App Info / Updates" icon={Info}>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-white text-sm font-medium">Version</div>
+              <div className="text-gray-500 text-xs">Client build: (version info pending)</div>
+            </div>
+            <ActionBtn onClick={checkUpdates} variant="ghost">Check for updates</ActionBtn>
           </div>
         </Section>
 
-        {/* Danger Zone */}
+        {/* Account */}
         <Section title="Account" icon={Trash2}>
           <div className="flex items-center justify-between">
             <div>

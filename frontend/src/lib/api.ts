@@ -91,6 +91,40 @@ export const api = {
     analyzeWatchlist: () => request('POST', '/ai/analyze/watchlist', {}),
   },
 
+  ai: {
+    providers: () => request('GET', '/ai/providers'),
+    conversations: () => request('GET', '/ai/conversations'),
+    conversation: (id: number) => request('GET', `/ai/conversations/${id}`),
+    deleteConversation: (id: number) => request('DELETE', `/ai/conversations/${id}`),
+  },
+
+  register: (username: string, password: string, email?: string) =>
+    request('POST', '/auth/register', { username, password, ...(email ? { email } : {}) }),
+
+  push: {
+    subscribe: (sub: any) => request('POST', '/push/subscribe', sub),
+    unsubscribe: () => request('POST', '/push/unsubscribe', {}),
+    test: () => request('POST', '/push/test', {}),
+  },
+
+  updates: {
+    status: () => request('GET', '/updates/status'),
+  },
+
+  info: () => request('GET', '/info'),
+
+  exchangeRates: () => request('GET', '/exchange-rates'),
+
+  options: {
+    chain: (symbol: string) => request('GET', `/options/${symbol}`),
+    byExpiry: (symbol: string, expiry: string) => request('GET', `/options/${symbol}/${expiry}`),
+  },
+
+  tickers: {
+    search: (q: string) => request('GET', `/tickers/search?q=${encodeURIComponent(q)}`),
+    popular: () => request('GET', '/tickers/popular'),
+  },
+
   backup: {
     download: () => fetch(`${BASE}/backup`, { headers: { Authorization: `Bearer ${auth.getToken()}` } }),
   },

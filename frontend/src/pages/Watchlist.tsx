@@ -6,6 +6,7 @@ import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
+import { ChartModal } from '../components/ChartModal';
 
 /** Sparkline from synthetic 8-point data derived from day change */
 function MiniSparkline({ price, changePercent }: { price: number; changePercent: number }) {
@@ -57,6 +58,7 @@ export function Watchlist() {
 
   // Add symbol modal
   const [showAdd, setShowAdd] = useState(false);
+  const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [addSymbol, setAddSymbol] = useState('');
   const [addNotes, setAddNotes] = useState('');
   const [acResults, setAcResults] = useState<any[]>([]);
@@ -168,6 +170,7 @@ export function Watchlist() {
   const topLoser = allItems.length ? allItems.reduce((b, c) => c.changePercent < b.changePercent ? c : b, allItems[0]) : null;
 
   return (
+    <>
     <div className="p-8 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -220,7 +223,7 @@ export function Watchlist() {
                     return (
                       <div key={item.id} className="group px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 flex-1">
+                          <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => setChartSymbol(item.symbol)}>
                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getGradient(item.symbol)} flex items-center justify-center shadow-lg flex-shrink-0`}>
                               <span className="text-white font-bold text-sm">{item.symbol.replace('-USD','')[0]}</span>
                             </div>
@@ -368,5 +371,8 @@ export function Watchlist() {
         </div>
       </Modal>
     </div>
+
+    {chartSymbol && <ChartModal symbol={chartSymbol} onClose={() => setChartSymbol(null)} />}
+    </>
   );
 }

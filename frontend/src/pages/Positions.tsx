@@ -6,6 +6,7 @@ import { getPrices } from '../lib/priceCache';
 import { fmt as fmtPrice } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
+import { ChartModal } from '../components/ChartModal';
 
 const POSITION_TYPES = [
   { value: 'stock', label: 'Stock' },
@@ -36,6 +37,7 @@ export function Positions() {
 
   // CRUD modals
   const [showAdd, setShowAdd] = useState(false);
+  const [chartSymbol, setChartSymbol] = useState<string | null>(null);
   const [editPos, setEditPos] = useState<EnrichedPosition | null>(null);
   const [closePos, setClosePos] = useState<EnrichedPosition | null>(null);
   const [deletePos, setDeletePos] = useState<EnrichedPosition | null>(null);
@@ -234,6 +236,7 @@ export function Positions() {
   );
 
   return (
+    <>
     <div className="p-8 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -340,12 +343,12 @@ export function Positions() {
               const isDayPos = position.dayChange >= 0;
               return (
                 <div key={position.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors items-center">
-                  <div className="col-span-2 flex items-center gap-3">
+                  <div className="col-span-2 flex items-center gap-3 cursor-pointer" onClick={() => setChartSymbol(position.symbol)}>
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
                       <span className="text-white font-bold text-xs">{position.symbol[0]}</span>
                     </div>
                     <div>
-                      <div className="text-white font-bold text-sm">{position.symbol}</div>
+                      <div className="text-white font-bold text-sm hover:text-blue-400 transition-colors">{position.symbol}</div>
                       <div className="text-gray-500 text-xs">{position.type}</div>
                     </div>
                   </div>
@@ -467,5 +470,8 @@ export function Positions() {
         </div>
       </Modal>
     </div>
+
+    {chartSymbol && <ChartModal symbol={chartSymbol} onClose={() => setChartSymbol(null)} />}
+    </>
   );
 }
