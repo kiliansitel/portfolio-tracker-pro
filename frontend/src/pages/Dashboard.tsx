@@ -11,11 +11,29 @@ import { fmt, pct } from '../lib/format';
 
 const MARKET_SYMBOLS = ['BTC-USD', 'ETH-USD', 'NVDA', 'AAPL', 'TSLA'];
 
+function guessAssetClass(symbol: string, type?: string): string {
+  if (type === 'crypto' || /(-USD$|-USDT$|-BTC$)/i.test(symbol)) return 'Crypto';
+  if (type === 'option') return 'Options';
+  if (type === 'bond') return 'Bonds';
+  if (type === 'etf') return 'ETF';
+  return 'Equities';
+}
+
+function guessRegion(symbol: string): string {
+  if (/(-USD$|-USDT$|-BTC$|-ETH$)/i.test(symbol)) return 'Crypto/Digital';
+  if (/\.(AS|PA|DE|MI|BR|SW|L|OL|ST|HE|CO|LS)$/i.test(symbol)) return 'Europe';
+  if (/\.(T|HK|SS|SZ|KS|NS|BO)$/i.test(symbol)) return 'Asia';
+  return 'North America';
+}
+
 export function Dashboard() {
   const [stats, setStats] = useState({ totalValue: 0, totalPL: 0, totalInvested: 0, assetCount: 0, dailyPL: 0 });
   const [markets, setMarkets] = useState<any[]>([]);
   const [performance, setPerformance] = useState<{ date: string; value: number }[]>([]);
   const [donut, setDonut] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [sectorDonut, setSectorDonut] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [regionDonut, setRegionDonut] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [donutTab, setDonutTab] = useState<'allocation'|'sectors'|'regions'>('allocation');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -92,6 +110,27 @@ export function Dashboard() {
 
           setDonut(donutData);
 
+          // Sector grouping (uses sector field from price API or rough guesses)
+          const sectorMap: Record<string, number> = {};
+          const regionMap: Record<string, number> = {};
+          for (const p of openPos) {
+            const val = (p.quantity || 0) * (priceMap[p.symbol]?.price || 0);
+            if (val <= 0) continue;
+            const sector = (priceMap[p.symbol] as any)?.sector || guessAssetClass(p.symbol, p.type);
+            sectorMap[sector] = (sectorMap[sector] || 0) + val;
+            const region = guessRegion(p.symbol);
+            regionMap[region] = (regionMap[region] || 0) + val;
+          }
+          const mkDonutFromMap = (map: Record<string, number>, cs: string[]) => {
+            const total = Object.values(map).reduce((a, b) => a + b, 0) || 1;
+            return Object.entries(map).sort((a, b) => b[1] - a[1]).map(([name, value], i) => ({
+              name, value: (value / total) * 100, color: cs[i % cs.length]
+            }));
+          };
+          const cs2 = ['#3b82f6','#8b5cf6','#10b981','#f59e0b','#ef4444','#22c55e','#06b6d4','#ec4899'];
+          setSectorDonut(mkDonutFromMap(sectorMap, cs2));
+          setRegionDonut(mkDonutFromMap(regionMap, cs2));
+
           // Market cards — already in priceMap from batch
           const mktData = MARKET_SYMBOLS.map((sym) => priceMap[sym] ? { ...priceMap[sym], symbol: sym } : null).filter(Boolean);
           setMarkets(mktData);
@@ -114,9 +153,9 @@ export function Dashboard() {
   const sparklineDummy = [1, 1.1, 1.05, 1.2, 1.15];
 
   return (
-    <div className="p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
       {/* Top Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
         {loading ? (
           Array.from({ length: 4 }).map((_, i) => (
             <Skeleton key={i} className="h-32 rounded-xl bg-white/5" />
@@ -168,8 +207,17 @@ export function Dashboard() {
           />
         </div>
         <div>
+          {/* Allocation tabs */}
+          <div className="flex bg-white/5 rounded-lg p-0.5 border border-white/10 mb-3">
+            {(['allocation','sectors','regions'] as const).map(t => (
+              <button key={t} onClick={() => setDonutTab(t)}
+                className={`flex-1 py-1.5 rounded text-xs font-medium capitalize transition-all ${donutTab === t ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+                {t === 'allocation' ? '🥧 Alloc' : t === 'sectors' ? '🏭 Sectors' : '🌍 Regions'}
+              </button>
+            ))}
+          </div>
           <PortfolioDonut
-            data={donut}
+            data={donutTab === 'allocation' ? donut : donutTab === 'sectors' ? sectorDonut : regionDonut}
             totalLabel={hasPortfolioData ? fmt(totalValue) : undefined}
             loading={loading}
           />

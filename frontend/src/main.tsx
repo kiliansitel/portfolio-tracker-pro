@@ -5,6 +5,13 @@ import { AuthProvider } from './contexts/AuthContext';
 import { router } from './router';
 import './styles/index.css';
 
+// Register service worker for PWA support
+if ('serviceWorker' in navigator && (import.meta as any).env?.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+  });
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider>

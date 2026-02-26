@@ -638,8 +638,8 @@ export function Oracle() {
         </div>
       </div>
 
-      {/* Context chips */}
-      <div className="px-6 pb-3 flex items-center gap-2 flex-wrap">
+      {/* Context chips — horizontally scrollable on mobile */}
+      <div className="px-6 pb-3 flex items-center gap-2 overflow-x-auto no-scrollbar flex-nowrap sm:flex-wrap">
         {[
           { id: 'general', label: '🌐 General' },
           { id: 'portfolio', label: '📊 Portfolio' },
@@ -665,8 +665,8 @@ export function Oracle() {
             <h3 className="text-xl font-bold text-white mb-2">Oracle AI Assistant</h3>
             <p className="text-gray-500 text-sm mb-8 max-w-md">Ask about your portfolio, market trends, or investment strategies. Toggle context chips to include your data.</p>
 
-            {/* Quick Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 w-full max-w-2xl mb-6">
+            {/* Quick Actions — 2 col mobile, 3 col desktop */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 w-full max-w-2xl mb-6">
               {[
                 { type: 'portfolio', emoji: '📊', label: 'Portfolio Review' },
                 { type: 'watchlist', emoji: '👀', label: 'Watchlist Signals' },

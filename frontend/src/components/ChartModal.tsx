@@ -151,8 +151,8 @@ export function ChartModal({ symbol, name, onClose }: ChartModalProps) {
   const currentPrice = price?.price ?? price?.c ?? 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="bg-[#0d0f14] rounded-2xl border border-white/10 w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center sm:p-4" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="bg-[#0d0f14] sm:rounded-2xl border-0 sm:border border-white/10 w-full sm:max-w-5xl h-full sm:max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <div className="flex items-center gap-4">

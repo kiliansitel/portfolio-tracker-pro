@@ -95,7 +95,7 @@ export function Wallet() {
   const dividends = transactions.filter(t => t.type === 'dividend').reduce((s, t) => s + (t.amount || 0), 0);
 
   return (
-    <div className="p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">

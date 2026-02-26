@@ -14,24 +14,48 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     document.addEventListener('keydown', handler);
-    return () => document.removeEventListener('keydown', handler);
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handler);
+      document.body.style.overflow = '';
+    };
   }, [open, onClose]);
 
   if (!open) return null;
 
-  const widths = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' };
+  // Desktop max-width, mobile = full bottom sheet
+  const widths = { sm: 'sm:max-w-sm', md: 'sm:max-w-lg', lg: 'sm:max-w-2xl' };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4">
+      {/* Backdrop */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative w-full ${widths[size]} bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-2xl border border-white/10 shadow-2xl`}>
+
+      {/* Sheet / Dialog */}
+      <div className={`
+        relative w-full ${widths[size]}
+        bg-gradient-to-br from-[#1a1d29] to-[#14161f]
+        border border-white/10 shadow-2xl
+        rounded-t-2xl sm:rounded-2xl
+        max-h-[92vh] sm:max-h-[85vh] overflow-y-auto
+        animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-200
+      `}>
+        {/* Drag handle (mobile only) */}
+        <div className="flex justify-center pt-3 pb-1 sm:hidden">
+          <div className="w-10 h-1 rounded-full bg-white/20" />
+        </div>
+
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
           <h3 className="text-white font-bold text-lg">{title}</h3>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors">
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          >
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="px-6 py-5">{children}</div>
+        <div className="px-6 py-5 pb-safe">{children}</div>
       </div>
     </div>
   );
@@ -46,7 +70,7 @@ export function FormInput({ label, error, className = '', ...props }: InputProps
     <div>
       <label className="block text-gray-400 text-sm font-medium mb-1.5">{label}</label>
       <input
-        className={`w-full px-4 py-2.5 bg-[#0d0f14] border ${error ? 'border-red-500/50' : 'border-white/10'} rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-colors text-sm ${className}`}
+        className={`w-full px-4 py-3 bg-[#0d0f14] border ${error ? 'border-red-500/50' : 'border-white/10'} rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-colors text-sm min-h-[44px] ${className}`}
         {...props}
       />
       {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
@@ -63,7 +87,7 @@ export function FormSelect({ label, options, className = '', ...props }: SelectP
     <div>
       <label className="block text-gray-400 text-sm font-medium mb-1.5">{label}</label>
       <select
-        className={`w-full px-4 py-2.5 bg-[#0d0f14] border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-sm ${className}`}
+        className={`w-full px-4 py-3 bg-[#0d0f14] border border-white/10 rounded-xl text-white focus:outline-none focus:border-blue-500/50 transition-colors text-sm min-h-[44px] ${className}`}
         {...props}
       >
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -87,7 +111,7 @@ export function ActionBtn({
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${styles[variant]} ${className}`}
+      className={`px-4 py-3 rounded-xl font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] ${styles[variant]} ${className}`}
     >
       {children}
     </button>

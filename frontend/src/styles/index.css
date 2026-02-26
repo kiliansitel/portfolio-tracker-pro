@@ -13,3 +13,35 @@
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+
+/* Hide scrollbar but keep scroll functionality */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Mobile touch improvements */
+@media (max-width: 639px) {
+  /* Ensure touch targets are large enough */
+  button, a, [role="button"] { min-height: 36px; }
+
+  /* Horizontal scroll for chip rows */
+  .chips-row { display: flex; overflow-x: auto; flex-wrap: nowrap; gap: 0.5rem; padding-bottom: 4px; }
+  .chips-row::-webkit-scrollbar { display: none; }
+
+  /* Safe bottom padding for modals */
+  .pb-safe { padding-bottom: max(1.25rem, env(safe-area-inset-bottom)); }
+}
+
+/* Light theme */
+.light-theme {
+  --color-bg-base: #f5f5f5;
+  --color-bg-card: #ffffff;
+  --color-text-primary: #1a1a2e;
+  --color-text-muted: #64748b;
+  --color-border: rgba(0,0,0,0.08);
+}
+
+/* Price tick animations */
+@keyframes flash-green { 0%,100% { background-color: transparent; } 30% { background-color: rgba(16,185,129,0.25); } }
+@keyframes flash-red   { 0%,100% { background-color: transparent; } 30% { background-color: rgba(239,68,68,0.25); } }
+.price-flash-up   { animation: flash-green 0.6s ease; border-radius: 4px; }
+.price-flash-down { animation: flash-red   0.6s ease; border-radius: 4px; }

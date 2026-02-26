@@ -12,6 +12,11 @@ interface PriceData {
   change: number;
   changePercent: number;
   name?: string;
+  marketState?: string; // 'REGULAR' | 'PRE' | 'POST' | 'CLOSED'
+  preMarketPrice?: number;
+  preMarketChange?: number;
+  postMarketPrice?: number;
+  postMarketChange?: number;
 }
 
 interface CacheEntry {

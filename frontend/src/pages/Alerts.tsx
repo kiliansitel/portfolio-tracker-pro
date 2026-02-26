@@ -115,8 +115,8 @@ export function Alerts() {
   );
 
   return (
-    <div className="p-8 max-w-[1440px] mx-auto">
-      <div className="flex items-center justify-between mb-8">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
           <Bell className="w-6 h-6 text-blue-500" />
           <h2 className="text-2xl font-bold text-white">Price Alerts</h2>
@@ -160,21 +160,21 @@ export function Alerts() {
               const triggered = isTriggered(alert);
               return (
                 <div key={alert.id} className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border p-6 transition-all ${triggered ? 'border-emerald-500/30' : 'border-white/5 hover:border-blue-500/20'}`}>
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getGradient(alert.symbol)} flex items-center justify-center shadow-lg`}>
+                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getGradient(alert.symbol)} flex items-center justify-center shadow-lg flex-shrink-0`}>
                         <span className="text-white font-bold text-lg">{alert.symbol.replace('-USD','')[0]}</span>
                       </div>
-                      <div>
-                        <div className="text-white font-bold text-lg">{alert.symbol}</div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <div className="text-white font-bold text-lg">{alert.symbol}</div>
+                          {triggered && <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full font-medium">⚡ Triggered</span>}
+                        </div>
                         <div className="text-gray-400 text-sm">
-                          {alert.condition === 'above' ? 'Above' : 'Below'} ${alert.targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {alert.condition === 'above' ? '↑ Above' : '↓ Below'} ${alert.targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </div>
                         {alert.currentPrice > 0 && (
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-gray-500 text-xs">Current: ${alert.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                            {triggered && <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-400 text-xs rounded-full font-medium">Triggered</span>}
-                          </div>
+                          <span className="text-gray-500 text-xs">Current: ${alert.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         )}
                       </div>
                     </div>
@@ -183,10 +183,10 @@ export function Alerts() {
                         <div className={`w-2 h-2 rounded-full ${alert.isActive ? 'bg-emerald-400' : 'bg-gray-600'}`} />
                         <span className={`text-sm font-medium ${alert.isActive ? 'text-emerald-400' : 'text-gray-500'}`}>{alert.isActive ? 'Active' : 'Inactive'}</span>
                       </div>
-                      <button onClick={() => toggleAlert(alert.id)} className={`relative w-12 h-6 rounded-full transition-colors ${alert.isActive ? 'bg-emerald-500' : 'bg-gray-700'}`}>
+                      <button onClick={() => toggleAlert(alert.id)} className={`relative w-12 h-6 rounded-full transition-colors min-w-[48px] min-h-[24px] ${alert.isActive ? 'bg-emerald-500' : 'bg-gray-700'}`}>
                         <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${alert.isActive ? 'right-0.5' : 'left-0.5'}`} />
                       </button>
-                      <button onClick={() => setDeleteTarget(alert)} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                      <button onClick={() => setDeleteTarget(alert)} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>

@@ -205,7 +205,7 @@ export function CandlestickChart({ initialSymbol, compact }: Props) {
             </div>
             {Object.keys(TF_MAP).map(t => (
               <button key={t} onClick={() => setTf(t)}
-                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-full text-sm font-medium transition-all min-h-[40px] min-w-[40px] ${
                   t === tf ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/30' : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                 }`}>
                 {t}

@@ -30,6 +30,37 @@ const CHAIN_ICONS: Record<string, string> = {
   arb: '◆', op: '●', ltc: 'Ł', doge: 'Ð', xrp: '✕', ada: '₳',
 };
 
+// Chain-specific address validation
+function validateAddress(addr: string, chain: string): string | null {
+  if (!addr) return 'Address is required';
+  const a = addr.trim();
+  if (['eth','bnb','matic','arb','op'].includes(chain)) {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(a)) return 'Invalid EVM address (must start with 0x, 42 chars)';
+  } else if (chain === 'btc') {
+    if (!/^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(a)) return 'Invalid Bitcoin address';
+  } else if (chain === 'sol') {
+    if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a)) return 'Invalid Solana address';
+  } else if (chain === 'xrp') {
+    if (!/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)) return 'Invalid XRP address';
+  } else if (chain === 'ada') {
+    if (!/^addr1[0-9a-z]+$/.test(a) && !/^[0-9a-zA-Z]{58,}$/.test(a)) return 'Invalid Cardano address';
+  }
+  return null;
+}
+
+function getExplorerUrl(chain: string, txHash: string): string {
+  const map: Record<string, string> = {
+    eth: `https://etherscan.io/tx/${txHash}`,
+    btc: `https://blockchain.com/btc/tx/${txHash}`,
+    sol: `https://solscan.io/tx/${txHash}`,
+    bnb: `https://bscscan.com/tx/${txHash}`,
+    matic: `https://polygonscan.com/tx/${txHash}`,
+    arb: `https://arbiscan.io/tx/${txHash}`,
+    op: `https://optimistic.etherscan.io/tx/${txHash}`,
+  };
+  return map[chain] || '#';
+}
+
 function timeSince(dateStr?: string): string {
   if (!dateStr) return 'Never';
   const s = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
@@ -68,6 +99,8 @@ export function Connections() {
 
   const doAdd = async () => {
     setErr(''); setSaving(true);
+    const addrErr = validateAddress(address, chain);
+    if (addrErr) { setErr(addrErr); setSaving(false); return; }
     try {
       await api.wallets.add({ address: address.trim(), chain, label: label.trim() || undefined });
       setShowAdd(false); setAddress(''); setLabel(''); setChain('eth');
@@ -103,7 +136,7 @@ export function Connections() {
   const totalUsd = wallets.reduce((s, w) => s + (w.usd_value || 0), 0);
 
   return (
-    <div className="p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -207,7 +240,14 @@ export function Connections() {
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Wallet" size="md">
         <div className="space-y-4">
           <FormSelect label="Blockchain Network" value={chain} onChange={e => setChain(e.target.value)} options={CHAINS} />
-          <FormInput label="Wallet Address" value={address} onChange={e => setAddress(e.target.value)} placeholder="0x... or bc1..." />
+          <FormInput
+            label="Wallet Address"
+            value={address}
+            onChange={e => { setAddress(e.target.value); if (err) setErr(''); }}
+            onBlur={() => { const e = validateAddress(address, chain); if (e) setErr(e); }}
+            placeholder="0x... or bc1..."
+            error={address.length > 8 ? (validateAddress(address, chain) || undefined) : undefined}
+          />
           <FormInput label="Label (optional)" value={label} onChange={e => setLabel(e.target.value)} placeholder="My cold wallet" />
           {err && <p className="text-red-400 text-sm">{err}</p>}
           <p className="text-gray-600 text-xs">Read-only tracking — no private keys required.</p>

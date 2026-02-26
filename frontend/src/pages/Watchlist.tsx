@@ -7,6 +7,7 @@ import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
 import { ChartModal } from '../components/ChartModal';
+import { MarketStateBadge } from '../components/MarketStateBadge';
 
 /** Sparkline from synthetic 8-point data derived from day change */
 function MiniSparkline({ price, changePercent }: { price: number; changePercent: number }) {
@@ -46,7 +47,7 @@ function getGradient(symbol: string): string {
   return LOGO_GRADIENTS[r] || 'from-blue-500 to-purple-600';
 }
 
-interface WatchItem { id: number; symbol: string; name: string; price: number; change: number; changePercent: number; }
+interface WatchItem { id: number; symbol: string; name: string; price: number; change: number; changePercent: number; marketState?: string; }
 interface Watchlist { id: number; name: string; items: WatchItem[]; }
 
 export function Watchlist() {
@@ -93,7 +94,7 @@ export function Watchlist() {
         id: wl.id, name: wl.name,
         items: (wl.items || []).map((item: any) => {
           const pd = (prices[item.symbol] as any) || {};
-          return { id: item.id, symbol: item.symbol, name: item.name || item.symbol, price: pd.price || 0, change: pd.change || 0, changePercent: pd.changePercent || 0 };
+          return { id: item.id, symbol: item.symbol, name: item.name || item.symbol, price: pd.price || 0, change: pd.change || 0, changePercent: pd.changePercent || 0, marketState: (pd as any).marketState };
         }),
       }));
       setWatchlists(enriched);
@@ -171,22 +172,22 @@ export function Watchlist() {
 
   return (
     <>
-    <div className="p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600" />
           <h2 className="text-2xl font-bold text-white">Watchlist</h2>
         </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => loadWatchlists(true)} disabled={refreshing} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50">
+        <div className="flex items-center gap-2">
+          <button onClick={() => loadWatchlists(true)} disabled={refreshing} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px]">
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={() => { setShowCreateList(true); setNewListName(''); }} className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-400 hover:text-white text-sm transition-colors">
+          <button onClick={() => { setShowCreateList(true); setNewListName(''); }} className="px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-gray-400 hover:text-white text-sm transition-colors min-h-[44px]">
             + New List
           </button>
-          <button onClick={() => { setAddSymbol(''); setAddNotes(''); setAddErr(''); setShowAdd(true); }} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm">
-            <Plus className="w-4 h-4" /> Add Symbol
+          <button onClick={() => { setAddSymbol(''); setAddNotes(''); setAddErr(''); setShowAdd(true); }} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm min-h-[44px]">
+            <Plus className="w-4 h-4" /> Add
           </button>
         </div>
       </div>
@@ -238,19 +239,22 @@ export function Watchlist() {
                               <div className="text-right">
                                 {item.price > 0 ? (
                                   <>
-                                    <div className="text-white font-bold">${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                    <div className="flex items-center gap-1 justify-end">
+                                      <MarketStateBadge marketState={item.marketState} />
+                                      <span className="text-white font-bold">${item.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    </div>
                                     <div className={`text-sm font-semibold ${isPos ? 'text-emerald-400' : 'text-red-400'}`}>{isPos ? '+' : ''}{item.changePercent.toFixed(2)}%</div>
                                   </>
                                 ) : <div className="text-gray-600 text-sm">—</div>}
                               </div>
                             </div>
-                            <div className="flex items-center gap-1 opacity-100 transition-opacity">
+                            <div className="flex items-center gap-1">
                               <button onClick={() => { setAlertItem(item); setAlertCondition('above'); setAlertValue(item.price ? item.price.toFixed(2) : ''); setAlertErr(''); }}
-                                className="p-1.5 text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors" title="Set alert">
-                                <Bell className="w-3.5 h-3.5" />
+                                className="p-2 text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center" title="Set alert">
+                                <Bell className="w-4 h-4" />
                               </button>
-                              <button onClick={() => setRemoveItem(item)} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Remove">
-                                <Trash2 className="w-3.5 h-3.5" />
+                              <button onClick={() => setRemoveItem(item)} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center" title="Remove">
+                                <Trash2 className="w-4 h-4" />
                               </button>
                             </div>
                           </div>

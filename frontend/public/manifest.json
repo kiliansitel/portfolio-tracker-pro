@@ -1,0 +1,14 @@
+{
+  "name": "Portfolio Tracker Pro",
+  "short_name": "ProTracker",
+  "description": "Track your investments, watchlist and alerts in real-time",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#131722",
+  "background_color": "#0d0f14",
+  "categories": ["finance", "business"],
+  "icons": [
+    { "src": "/vite.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

@@ -12,11 +12,16 @@ const POSITION_TYPES = [
   { value: 'stock', label: 'Stock' },
   { value: 'crypto', label: 'Crypto' },
   { value: 'etf', label: 'ETF' },
+  { value: 'option', label: 'Option' },
+  { value: 'bond', label: 'Bond' },
+  { value: 'other', label: 'Other' },
 ];
 
 const CURRENCIES = [
-  { value: 'USD', label: 'USD' }, { value: 'EUR', label: 'EUR' },
-  { value: 'GBP', label: 'GBP' }, { value: 'CHF', label: 'CHF' },
+  { value: 'USD', label: 'USD ($)' }, { value: 'EUR', label: 'EUR (€)' },
+  { value: 'GBP', label: 'GBP (£)' }, { value: 'CHF', label: 'CHF' },
+  { value: 'JPY', label: 'JPY (¥)' }, { value: 'CAD', label: 'CAD' },
+  { value: 'AUD', label: 'AUD' }, { value: 'BTC', label: 'BTC' },
 ];
 
 interface EnrichedPosition {
@@ -50,6 +55,9 @@ export function Positions() {
   const [fType, setFType] = useState('stock');
   const [fCurrency, setFCurrency] = useState('USD');
   const [fNotes, setFNotes] = useState('');
+  const [fStrike, setFStrike] = useState('');
+  const [fExpiry, setFExpiry] = useState('');
+  const [fMultiplier, setFMultiplier] = useState('100');
   const [fClosePrice, setFClosePrice] = useState('');
   const [fErr, setFErr] = useState('');
   const [saving, setSaving] = useState(false);
@@ -170,6 +178,7 @@ export function Positions() {
         symbol: fSymbol.toUpperCase(), quantity: Number(fQty),
         entry_price: Number(fPrice) || 0, entry_date: fDate || undefined,
         type: fType, currency: fCurrency, notes: fNotes || undefined,
+        ...(fType === 'option' ? { strike_price: Number(fStrike) || undefined, expiry_date: fExpiry || undefined, multiplier: Number(fMultiplier) || 100 } : {}),
       });
       setShowAdd(false);
       await loadPositions(true);
@@ -237,46 +246,46 @@ export function Positions() {
 
   return (
     <>
-    <div className="p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-600" />
           <h2 className="text-2xl font-bold text-white">My Positions</h2>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="relative">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input type="text" placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-[#1a1d29] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 w-56 text-sm" />
+              className="pl-10 pr-4 py-2.5 bg-[#1a1d29] border border-white/10 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 w-full sm:w-56 text-sm min-h-[44px]" />
           </div>
-          <button onClick={() => loadPositions(true)} disabled={refreshing} className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50">
+          <button onClick={() => loadPositions(true)} disabled={refreshing} className="p-2.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50 min-h-[44px] min-w-[44px]">
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
-          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm">
-            <Plus className="w-4 h-4" /> Add Position
+          <button onClick={openAdd} className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm min-h-[44px]">
+            <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Position</span><span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
-          <div className="text-gray-400 text-sm mb-2">Total Value</div>
-          <div className="text-3xl font-bold text-white">{loading ? '—' : fmtPrice(totalValue)}</div>
+      {/* Summary — 2×2 grid on mobile, 1×4 on desktop */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
+          <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total Value</div>
+          <div className="text-xl sm:text-3xl font-bold text-white">{loading ? '—' : fmtPrice(totalValue)}</div>
         </div>
-        <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border ${todayPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
-          <div className="text-gray-400 text-sm mb-2">Today's P/L</div>
-          <div className={`text-3xl font-bold ${todayPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (todayPL >= 0 ? '+' : '') + fmtPrice(Math.abs(todayPL))}</div>
+        <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border ${todayPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
+          <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Today's P/L</div>
+          <div className={`text-xl sm:text-3xl font-bold ${todayPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (todayPL >= 0 ? '+' : '') + fmtPrice(Math.abs(todayPL))}</div>
         </div>
-        <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border ${totalPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
-          <div className="text-gray-400 text-sm mb-2">Total P/L</div>
-          <div className={`text-3xl font-bold ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (totalPL >= 0 ? '+' : '') + fmtPrice(Math.abs(totalPL))}</div>
-          {!loading && totalInvested > 0 && <div className={`text-sm mt-1 ${totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{totalPLPct >= 0 ? '+' : ''}{totalPLPct.toFixed(2)}%</div>}
+        <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border ${totalPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
+          <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total P/L</div>
+          <div className={`text-xl sm:text-3xl font-bold ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (totalPL >= 0 ? '+' : '') + fmtPrice(Math.abs(totalPL))}</div>
+          {!loading && totalInvested > 0 && <div className={`text-xs sm:text-sm mt-0.5 ${totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{totalPLPct >= 0 ? '+' : ''}{totalPLPct.toFixed(1)}%</div>}
         </div>
-        <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
-          <div className="text-gray-400 text-sm mb-2">Total Invested</div>
-          <div className="text-3xl font-bold text-white">{loading ? '—' : fmtPrice(totalInvested)}</div>
+        <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
+          <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total Invested</div>
+          <div className="text-xl sm:text-3xl font-bold text-white">{loading ? '—' : fmtPrice(totalInvested)}</div>
         </div>
       </div>
 
@@ -289,10 +298,10 @@ export function Positions() {
               <TrendingUp className="w-5 h-5 text-blue-400" />
               <span className="text-white font-semibold">Dividends</span>
             </div>
-            <div className="flex items-center gap-8">
-              <div><div className="text-gray-400 text-xs">Annual Income</div><div className="text-emerald-400 font-bold">{dividends ? fmtPrice(dividends.income) : '—'}</div></div>
-              <div><div className="text-gray-400 text-xs">Yield</div><div className="text-white font-bold">{dividends ? `${dividends.yield.toFixed(2)}%` : '—'}</div></div>
-              <div><div className="text-gray-400 text-xs">Next Payment</div><div className="text-white font-bold">{dividends?.nextPayment || '—'}</div></div>
+            <div className="flex items-center gap-4 sm:gap-8">
+              <div className="hidden sm:block"><div className="text-gray-400 text-xs">Annual Income</div><div className="text-emerald-400 font-bold">{dividends ? fmtPrice(dividends.income) : '—'}</div></div>
+              <div><div className="text-gray-400 text-xs">Yield</div><div className="text-white font-bold text-sm sm:text-base">{dividends ? `${dividends.yield.toFixed(2)}%` : '—'}</div></div>
+              <div><div className="text-gray-400 text-xs">Next Pay</div><div className="text-white font-bold text-sm sm:text-base">{dividends?.nextPayment || '—'}</div></div>
             </div>
           </button>
         </div>
@@ -309,7 +318,8 @@ export function Positions() {
 
         {isStocksExpanded && (
           <>
-            <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-white/5 border-b border-white/5">
+            {/* Table header — hidden on mobile */}
+            <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-3 bg-white/5 border-b border-white/5">
               <div className="col-span-2 text-gray-400 text-xs font-medium uppercase">Symbol</div>
               <div className="col-span-1 text-gray-400 text-xs font-medium uppercase text-right">Shares</div>
               <div className="col-span-2 text-gray-400 text-xs font-medium uppercase text-right">Entry</div>
@@ -342,7 +352,9 @@ export function Positions() {
               const isPlPos = position.totalPL >= 0;
               const isDayPos = position.dayChange >= 0;
               return (
-                <div key={position.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors items-center">
+                <div key={position.id}>
+                {/* Desktop row */}
+                <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors items-center">
                   <div className="col-span-2 flex items-center gap-3 cursor-pointer" onClick={() => setChartSymbol(position.symbol)}>
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
                       <span className="text-white font-bold text-xs">{position.symbol[0]}</span>
@@ -376,17 +388,54 @@ export function Positions() {
                     ) : <div className="text-gray-600 text-sm">—</div>}
                   </div>
                   <div className="col-span-2 flex items-center justify-end gap-1">
-                    <button onClick={() => openEdit(position)} className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors" title="Edit">
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
+                    <button onClick={() => openEdit(position)} className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg transition-colors" title="Edit"><Edit2 className="w-3.5 h-3.5" /></button>
                     <button onClick={() => { setFClosePrice(String(position.currentPrice || '')); setFDate(new Date().toISOString().split('T')[0]); setFErr(''); setClosePos(position); }}
-                      className="p-1.5 text-gray-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors text-xs font-medium" title="Close position">
-                      Close
-                    </button>
-                    <button onClick={() => { setFErr(''); setDeletePos(position); }} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Delete">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                      className="p-1.5 text-gray-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg transition-colors text-xs font-medium" title="Close position">Close</button>
+                    <button onClick={() => { setFErr(''); setDeletePos(position); }} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Delete"><Trash2 className="w-3.5 h-3.5" /></button>
                   </div>
+                </div>
+
+                {/* Mobile card */}
+                <div className="sm:hidden px-4 py-4 border-b border-white/5 active:bg-white/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => setChartSymbol(position.symbol)}>
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
+                        <span className="text-white font-bold text-sm">{position.symbol[0]}</span>
+                      </div>
+                      <div>
+                        <div className="text-white font-bold">{position.symbol}</div>
+                        <div className="text-gray-500 text-xs">{position.type} · {position.quantity} shares</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      {position.currentValue > 0
+                        ? <div className="text-white font-bold">{fmtPrice(position.currentValue)}</div>
+                        : <div className="text-gray-600">—</div>}
+                      {position.currentPrice > 0 && (
+                        <div className={`text-xs font-semibold ${isPlPos ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {isPlPos ? '+' : ''}{fmtPrice(Math.abs(position.totalPL))}
+                          {position.totalPLPct !== null ? ` (${isPlPos ? '+' : ''}${position.totalPLPct.toFixed(1)}%)` : ' (N/A)'}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex gap-3 text-xs text-gray-500">
+                      <span>Entry: ${position.entryPrice.toFixed(2)}</span>
+                      {position.currentPrice > 0 && (
+                        <span className={isDayPos ? 'text-emerald-400' : 'text-red-400'}>
+                          Now: ${position.currentPrice.toFixed(2)} ({isDayPos ? '+' : ''}{position.dayChangePct.toFixed(1)}%)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button onClick={() => openEdit(position)} className="p-2 text-gray-500 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center"><Edit2 className="w-4 h-4" /></button>
+                      <button onClick={() => { setFClosePrice(String(position.currentPrice || '')); setFDate(new Date().toISOString().split('T')[0]); setFErr(''); setClosePos(position); }}
+                        className="px-2 py-1 text-gray-500 hover:text-orange-400 hover:bg-orange-400/10 rounded-lg text-xs font-medium min-h-[36px]">Close</button>
+                      <button onClick={() => { setFErr(''); setDeletePos(position); }} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg min-w-[36px] min-h-[36px] flex items-center justify-center"><Trash2 className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                </div>
                 </div>
               );
             })}
@@ -406,15 +455,25 @@ export function Positions() {
       <Modal open={showAdd} onClose={() => setShowAdd(false)} title="Add Position" size="md">
         <div className="space-y-4">
           <SymbolInput />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormInput label="Quantity" type="number" value={fQty} onChange={e => setFQty(e.target.value)} placeholder="10" />
             <FormInput label="Entry Price ($)" type="number" value={fPrice} onChange={e => setFPrice(e.target.value)} placeholder="0.00" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormSelect label="Type" value={fType} onChange={e => setFType(e.target.value)} options={POSITION_TYPES} />
             <FormSelect label="Currency" value={fCurrency} onChange={e => setFCurrency(e.target.value)} options={CURRENCIES} />
           </div>
           <FormInput label="Entry Date" type="date" value={fDate} onChange={e => setFDate(e.target.value)} />
+          {fType === 'option' && (
+            <div className="space-y-3 p-3 bg-[#0d0f14] rounded-xl border border-purple-500/20">
+              <div className="text-purple-400 text-xs font-semibold uppercase">Option Details</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <FormInput label="Strike Price ($)" type="number" value={fStrike} onChange={e => setFStrike(e.target.value)} placeholder="150.00" />
+                <FormInput label="Expiry Date" type="date" value={fExpiry} onChange={e => setFExpiry(e.target.value)} />
+              </div>
+              <FormInput label="Multiplier" type="number" value={fMultiplier} onChange={e => setFMultiplier(e.target.value)} placeholder="100" />
+            </div>
+          )}
           <FormInput label="Notes (optional)" value={fNotes} onChange={e => setFNotes(e.target.value)} placeholder="e.g. Long-term hold" />
           {fErr && <p className="text-red-400 text-sm">{fErr}</p>}
           <div className="flex gap-3 pt-2">
@@ -427,11 +486,11 @@ export function Positions() {
       {/* Edit Modal */}
       <Modal open={!!editPos} onClose={() => setEditPos(null)} title={`Edit ${editPos?.symbol}`} size="md">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormInput label="Quantity" type="number" value={fQty} onChange={e => setFQty(e.target.value)} />
             <FormInput label="Entry Price ($)" type="number" value={fPrice} onChange={e => setFPrice(e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <FormSelect label="Type" value={fType} onChange={e => setFType(e.target.value)} options={POSITION_TYPES} />
             <FormSelect label="Currency" value={fCurrency} onChange={e => setFCurrency(e.target.value)} options={CURRENCIES} />
           </div>

@@ -22,9 +22,9 @@ const CURRENCIES = [
 
 const WEEK_DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
-function Section({ title, icon: Icon, children }: { title: string; icon: any; children: React.ReactNode }) {
+function Section({ title, icon: Icon, children, id }: { title: string; icon: any; children: React.ReactNode; id?: string }) {
   return (
-    <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 p-6">
+    <div id={id} className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 p-6">
       <div className="flex items-center gap-3 mb-5">
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
           <Icon className="w-4 h-4 text-white" />
@@ -293,15 +293,37 @@ export function Settings() {
   };
 
   return (
-    <div className="p-8 max-w-[900px] mx-auto">
-      <div className="flex items-center gap-3 mb-8">
+    <div className="p-4 sm:p-8 pb-40 md:pb-8 max-w-[900px] mx-auto">
+      <div className="flex items-center gap-3 mb-4">
         <SettingsIcon className="w-6 h-6 text-blue-500" />
         <h2 className="text-2xl font-bold text-white">Settings</h2>
       </div>
 
+      {/* Quick nav — horizontal scroll on mobile */}
+      <div className="relative mb-6">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pr-6">
+        {[
+          { id: 'profile', label: '👤 Profile' },
+          { id: 'ai', label: '🧠 AI' },
+          { id: 'appearance', label: '🎨 Theme' },
+          { id: 'currency', label: '💱 Currency' },
+          { id: 'reports', label: '📅 Reports' },
+          { id: 'export', label: '📥 Export' },
+          { id: 'backup', label: '💾 Backup' },
+        ].map(({ id, label }) => (
+          <button key={id} onClick={() => document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            className="flex-shrink-0 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs text-gray-400 hover:text-white transition-colors min-h-[36px]">
+            {label}
+          </button>
+        ))}
+        </div>
+        {/* Scroll affordance */}
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-[#0d0f14] to-transparent z-10" />
+      </div>
+
       <div className="space-y-6">
         {/* Profile */}
-        <Section title="Profile" icon={User}>
+        <Section title="Profile" icon={User} id="section-profile">
           <div className="space-y-4">
             <div className="flex items-center gap-4 p-4 bg-[#0d0f14] rounded-xl">
               <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
@@ -340,7 +362,8 @@ export function Settings() {
                     onChange={e => setter(e.target.value)}
                     className="w-full px-4 py-2.5 pr-10 bg-[#0d0f14] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-colors text-sm"
                   />
-                  <button type="button" onClick={toggle} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300">
+                  <button type="button" onClick={toggle}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-lg hover:bg-white/5">
                     {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
@@ -371,7 +394,7 @@ export function Settings() {
         </Section>
 
         {/* AI / Oracle */}
-        <Section title="Oracle AI" icon={Sparkles}>
+        <Section title="Oracle AI" icon={Sparkles} id="section-ai">
           <div className="space-y-3">
             <p className="text-gray-400 text-sm">Configure AI providers and scheduled reports in Oracle.</p>
             <div className="flex gap-3">
@@ -382,7 +405,7 @@ export function Settings() {
         </Section>
 
         {/* Theme */}
-        <Section title="Appearance" icon={SunMoon}>
+        <Section title="Appearance" icon={SunMoon} id="section-appearance">
           <Toggle
             checked={theme === 'light'}
             onChange={(v) => { setTheme(v ? 'light' : 'dark'); saveSettingsPatch({ theme: v ? 'light' : 'dark' }); }}
@@ -392,7 +415,7 @@ export function Settings() {
         </Section>
 
         {/* Currency */}
-        <Section title="Display Currency" icon={Globe}>
+        <Section title="Display Currency" icon={Globe} id="section-currency">
           <div className="flex gap-3 items-end">
             <div className="flex-1">
               <FormSelect label="Currency" value={currency} onChange={e => setCurrency(e.target.value)} options={CURRENCIES} />
@@ -403,7 +426,7 @@ export function Settings() {
         </Section>
 
         {/* Scheduled Reports */}
-        <Section title="Scheduled Reports" icon={Bell}>
+        <Section title="Scheduled Reports" icon={Bell} id="section-reports">
           <div className="space-y-3">
             <Toggle
               checked={autoReports.daily?.enabled || false}
@@ -463,7 +486,7 @@ export function Settings() {
         </Section>
 
         {/* Export / Import */}
-        <Section title="Export / Import" icon={Download}>
+        <Section title="Export / Import" icon={Download} id="section-export">
           <div className="flex gap-3 flex-wrap">
             <button onClick={exportPositionsCsv} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
               <Download className="w-4 h-4" /> Export Positions CSV
@@ -487,7 +510,7 @@ export function Settings() {
         </Section>
 
         {/* Backup */}
-        <Section title="Data Backup" icon={Download}>
+        <Section title="Data Backup" icon={Download} id="section-backup">
           <p className="text-gray-400 text-sm mb-4">Download a full backup of your portfolio database.</p>
           <div className="flex gap-3 flex-wrap">
             <button onClick={downloadBackup} className="flex items-center gap-2 px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white text-sm font-medium">
