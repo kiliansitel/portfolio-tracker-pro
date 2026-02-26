@@ -50,7 +50,7 @@ export function CandlestickChart() {
     let alive = true;
     setLoading(true);
     const { range, interval } = TF_MAP[tf];
-    api.markets.chart(symbol, range + '&interval=' + interval)
+    api.markets.chart(symbol, `${range}&interval=${encodeURIComponent(interval)}`)
       .then((json: any) => {
         if (!alive) return;
         setData(parseYahooChart(json));

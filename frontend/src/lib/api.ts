@@ -66,7 +66,13 @@ export const api = {
         : request('GET', '/prices'),
     price: (symbol: string) => request('GET', `/price/${encodeURIComponent(symbol)}`),
     news: () => request('GET', '/news'),
-    chart: (symbol: string, range = '1mo') => request('GET', `/chart/${encodeURIComponent(symbol)}?range=${range}`),
+    chart: (symbol: string, rangeAndInterval = '1mo') => {
+      // Accepts "range" or "range&interval=Xd" — build clean URLSearchParams
+      const [rangePart, ...rest] = rangeAndInterval.split('&');
+      const qs = new URLSearchParams({ range: rangePart });
+      rest.forEach(kv => { const [k, v] = kv.split('='); if (k && v) qs.set(k, v); });
+      return request('GET', `/chart/${encodeURIComponent(symbol)}?${qs.toString()}`);
+    },
     search: (q: string) => request('GET', `/tickers/search?q=${encodeURIComponent(q)}`),
   },
 

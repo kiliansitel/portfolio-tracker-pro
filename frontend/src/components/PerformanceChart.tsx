@@ -60,8 +60,16 @@ export function PerformanceChart({
 
       <div className="h-64">
         {chartData.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-gray-600 text-sm">
-            No performance data yet
+          <div className="h-full flex flex-col items-center justify-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center">
+              <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 17l4-4 4 4 4-4M3 21h18" />
+              </svg>
+            </div>
+            <div className="text-center">
+              <div className="text-gray-500 text-sm font-medium">No performance data yet</div>
+              <div className="text-gray-600 text-xs mt-1">Chart builds up over time as daily snapshots are recorded</div>
+            </div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">

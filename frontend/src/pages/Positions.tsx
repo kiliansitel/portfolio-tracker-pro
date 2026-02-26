@@ -296,7 +296,7 @@ export function Positions() {
       </div>
 
       {/* Positions Table */}
-      <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 overflow-hidden">
+      <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 overflow-x-auto">
         <button onClick={() => setIsStocksExpanded(!isStocksExpanded)} className="w-full px-6 py-4 flex items-center justify-between hover:bg-white/5 transition-colors border-b border-white/5">
           <div className="flex items-center gap-3">
             {isStocksExpanded ? <ChevronDown className="w-5 h-5 text-gray-400" /> : <ChevronRight className="w-5 h-5 text-gray-400" />}

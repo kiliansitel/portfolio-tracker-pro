@@ -1,26 +1,33 @@
 import { ChevronDown, Plus, ChevronRight, RefreshCw, Trash2, Bell } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
 
-/** Tiny sparkline from synthetic 5-point data derived from day change */
+/** Sparkline from synthetic 8-point data derived from day change */
 function MiniSparkline({ price, changePercent }: { price: number; changePercent: number }) {
   const isPos = changePercent >= 0;
-  // Generate a plausible 5-point path using changePercent as total movement
-  const pctPerStep = changePercent / 4;
-  const data = Array.from({ length: 5 }, (_, i) => ({
-    v: Number((price / (1 + changePercent / 100) * (1 + (pctPerStep * i) / 100)).toFixed(4)),
+  const color = isPos ? '#10b981' : '#ef4444';
+  // Generate 8 points: starts at yesterday's close, ends at today's close
+  const startPrice = price / (1 + changePercent / 100);
+  const data = Array.from({ length: 8 }, (_, i) => ({
+    v: Number((startPrice + (price - startPrice) * (i / 7) + (Math.sin(i * 0.8) * Math.abs(changePercent) * startPrice * 0.001)).toFixed(4)),
   }));
   return (
-    <div className="w-16 h-8">
+    <div className="w-28 h-10 flex-shrink-0">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <Line dataKey="v" stroke={isPos ? '#10b981' : '#ef4444'} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-        </LineChart>
+        <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+          <defs>
+            <linearGradient id={`sg-${isPos ? 'g' : 'r'}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.4} />
+              <stop offset="100%" stopColor={color} stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <Area dataKey="v" stroke={color} strokeWidth={2} fill={`url(#sg-${isPos ? 'g' : 'r'})`} dot={false} isAnimationActive={false} />
+        </AreaChart>
       </ResponsiveContainer>
     </div>
   );

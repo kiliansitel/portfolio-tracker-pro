@@ -138,9 +138,9 @@ export function Wallet() {
             <div className="text-gray-400 text-sm mb-2">Total Withdrawals</div>
             <div className="text-2xl font-bold text-red-400">{fmt(withdrawals)}</div>
           </div>
-          <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-yellow-500/20">
+          <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-emerald-500/20">
             <div className="text-gray-400 text-sm mb-2">Dividends Received</div>
-            <div className="text-2xl font-bold text-yellow-400">{fmt(dividends)}</div>
+            <div className="text-2xl font-bold text-emerald-300">{fmt(dividends)}</div>
           </div>
         </div>
       )}
@@ -152,7 +152,11 @@ export function Wallet() {
         </div>
 
         {loading ? (
-          <div className="px-6 py-8 text-center text-gray-500">Loading...</div>
+          <div className="p-6 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" />
+            ))}
+          </div>
         ) : transactions.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <WalletIcon className="w-12 h-12 text-gray-600 mx-auto mb-3" />

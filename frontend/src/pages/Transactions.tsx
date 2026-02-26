@@ -1,6 +1,7 @@
 import { ClipboardList, Trash2, Plus } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { fmt, dateLabel } from '../lib/format';
 import { Modal, ActionBtn } from '../components/Modal';
@@ -22,9 +23,7 @@ export function Transactions() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [showDelete, setShowDelete] = useState<number | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const load = async () => {
     const list = await api.portfolio.all().catch(() => []);
@@ -49,7 +48,7 @@ export function Transactions() {
     await api.portfolio.deleteTransaction(showDelete!).catch(console.error);
     setShowDelete(null);
     if (selectedId) loadTx(selectedId);
-    showToast('Transaction deleted');
+    toast.success('Transaction deleted');
   };
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.type === filter);
@@ -57,10 +56,6 @@ export function Transactions() {
 
   return (
     <div className="p-8 max-w-[1440px] mx-auto">
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white bg-blue-500">{toast}</div>
-      )}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -109,7 +104,11 @@ export function Transactions() {
         </div>
 
         {loading ? (
-          <div className="px-6 py-8 text-center text-gray-500 text-sm">Loading...</div>
+          <div className="p-6 space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-14 rounded-xl bg-white/5 animate-pulse" />
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <ClipboardList className="w-12 h-12 text-gray-600 mx-auto mb-3" />
