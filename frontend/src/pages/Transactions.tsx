@@ -11,7 +11,7 @@ const TYPE_COLORS: Record<string, string> = {
   sell: 'text-red-400 bg-red-400/10',
   deposit: 'text-blue-400 bg-blue-400/10',
   withdrawal: 'text-orange-400 bg-orange-400/10',
-  dividend: 'text-yellow-400 bg-yellow-400/10',
+  dividend: 'text-emerald-300 bg-emerald-300/10',
   fee: 'text-gray-400 bg-gray-400/10',
 };
 
