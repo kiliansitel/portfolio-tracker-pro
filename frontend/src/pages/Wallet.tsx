@@ -33,7 +33,10 @@ export function Wallet() {
   const [txDate, setTxDate] = useState(new Date().toISOString().split('T')[0]);
   const [txNotes, setTxNotes] = useState('');
 
-  
+  // Cash edit
+  const [showEditCash, setShowEditCash] = useState(false);
+  const [cashValue, setCashValue] = useState('');
+  const [cashCurrency, setCashCurrency] = useState('USD');
 
   const load = async () => {
     setLoading(true);
@@ -55,6 +58,33 @@ export function Wallet() {
   useEffect(() => { if (selectedId) loadTx(selectedId); }, [selectedId]);
 
   const selected = portfolios.find(p => p.id === selectedId);
+
+  const openEditCash = () => {
+    if (!selected) return;
+    const cv = Number(selected.cash ?? 0);
+    setCashValue(Number.isFinite(cv) ? cv.toFixed(2) : '0.00');
+    setCashCurrency(selected.cash_currency || 'USD');
+    setErr('');
+    setShowEditCash(true);
+  };
+
+  const doUpdateCash = async () => {
+    if (!selected) return;
+    setErr('');
+    setSaving(true);
+    try {
+      const v = Number(cashValue);
+      if (!Number.isFinite(v)) throw new Error('Cash must be a number');
+      await api.portfolio.update(selected.id, { cash: v, cash_currency: cashCurrency });
+      await load();
+      toast.success('Cash balance updated');
+      setShowEditCash(false);
+    } catch (e: any) {
+      setErr(e.message || 'Failed to update cash');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const doAdd = async () => {
     setErr(''); setSaving(true);
@@ -122,9 +152,14 @@ export function Wallet() {
       {selected && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-blue-500/20">
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="w-4 h-4 text-blue-400" />
-              <div className="text-gray-400 text-sm">Cash Balance</div>
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-blue-400" />
+                <div className="text-gray-400 text-sm">Cash Balance</div>
+              </div>
+              <button onClick={openEditCash} className="text-xs text-blue-300 hover:text-blue-200 hover:underline">
+                Edit
+              </button>
             </div>
             <div className="text-3xl font-bold text-blue-400">{fmt(selected.cash || 0)}</div>
             <div className="text-gray-500 text-xs mt-1">{selected.cash_currency || 'USD'}</div>
@@ -231,6 +266,29 @@ export function Wallet() {
           <div className="flex gap-3 pt-2">
             <ActionBtn onClick={() => setShowAdd(false)} variant="ghost" className="flex-1">Cancel</ActionBtn>
             <ActionBtn onClick={doAdd} disabled={saving} className="flex-1">Add Transaction</ActionBtn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Cash */}
+      <Modal open={showEditCash} onClose={() => setShowEditCash(false)} title="Edit Cash Balance" size="sm">
+        <div className="space-y-4">
+          <FormInput label="Cash balance" type="number" value={cashValue} onChange={e => setCashValue(e.target.value)} placeholder="15000" />
+          <FormSelect
+            label="Currency"
+            value={cashCurrency}
+            onChange={e => setCashCurrency(e.target.value)}
+            options={[
+              { value: 'USD', label: 'USD' },
+              { value: 'EUR', label: 'EUR' },
+              { value: 'CHF', label: 'CHF' },
+              { value: 'GBP', label: 'GBP' },
+            ]}
+          />
+          {err && <p className="text-red-400 text-sm">{err}</p>}
+          <div className="flex gap-3 pt-2">
+            <ActionBtn onClick={() => setShowEditCash(false)} variant="ghost" className="flex-1">Cancel</ActionBtn>
+            <ActionBtn onClick={doUpdateCash} disabled={saving} className="flex-1">Save</ActionBtn>
           </div>
         </div>
       </Modal>
