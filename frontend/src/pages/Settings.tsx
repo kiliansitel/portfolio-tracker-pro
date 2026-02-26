@@ -1,4 +1,4 @@
-import { Settings as SettingsIcon, User, Lock, Mail, Globe, Bell, Download, Upload, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, User, Lock, Globe, Bell, Download, Trash2, Eye, EyeOff } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -54,6 +54,9 @@ export function Settings() {
   const [newPw, setNewPw] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
   const [pwErr, setPwErr] = useState('');
+  const [showCurrentPw, setShowCurrentPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // Email form
   const [newEmail, setNewEmail] = useState('');
@@ -174,9 +177,30 @@ export function Settings() {
         {/* Password */}
         <Section title="Change Password" icon={Lock}>
           <div className="space-y-3">
-            <FormInput label="Current Password" type="password" value={currentPw} onChange={e => setCurrentPw(e.target.value)} />
-            <FormInput label="New Password" type="password" value={newPw} onChange={e => setNewPw(e.target.value)} />
-            <FormInput label="Confirm New Password" type="password" value={confirmPw} onChange={e => setConfirmPw(e.target.value)} />
+            {[
+              { label: 'Current Password', val: currentPw, setter: setCurrentPw, show: showCurrentPw, toggle: () => setShowCurrentPw(v => !v) },
+              { label: 'New Password', val: newPw, setter: setNewPw, show: showNewPw, toggle: () => setShowNewPw(v => !v) },
+              { label: 'Confirm New Password', val: confirmPw, setter: setConfirmPw, show: showConfirmPw, toggle: () => setShowConfirmPw(v => !v) },
+            ].map(({ label, val, setter, show, toggle }) => (
+              <div key={label} className="relative">
+                <label className="block text-gray-400 text-sm font-medium mb-1.5">{label}</label>
+                <div className="relative">
+                  <input
+                    type={show ? 'text' : 'password'}
+                    value={val}
+                    onChange={e => setter(e.target.value)}
+                    className="w-full px-4 py-2.5 pr-10 bg-[#0d0f14] border border-white/10 rounded-xl text-white placeholder-gray-600 focus:outline-none focus:border-blue-500/50 transition-colors text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={toggle}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
+                  >
+                    {show ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            ))}
             {pwErr && <p className="text-red-400 text-sm">{pwErr}</p>}
             <div className="pt-1">
               <ActionBtn onClick={changePassword} disabled={saving}>Change Password</ActionBtn>

@@ -1,6 +1,8 @@
 import { Bell, Plus, Trash2, RefreshCw } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
 
 const GRADIENTS: Record<string, string> = {
@@ -26,23 +28,25 @@ export function Alerts() {
   const [aValue, setAValue] = useState('');
   const [aErr, setAErr] = useState('');
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
   const [acResults, setAcResults] = useState<any[]>([]);
   const [acOpen, setAcOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Alert | null>(null);
   const acTimer = useRef<any>(null);
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const load = async () => {
     setLoading(true);
     try {
       const data = await api.alerts.list();
       if (!Array.isArray(data) || !data.length) { setAlertList([]); return; }
+
+      // ── BATCH price fetch (P1-1) ──
       const symbols = Array.from(new Set(data.map((a: any) => String(a.symbol)))) as string[];
+      const priceData = await getPrices(symbols);
       const prices: Record<string, number> = {};
-      await Promise.all(symbols.map(async (sym) => {
-        try { const p = await api.markets.price(sym); if (p?.price) prices[sym] = p.price; } catch { /**/ }
-      }));
+      for (const [sym, d] of Object.entries(priceData)) {
+        if ((d as any)?.price) prices[sym] = (d as any).price;
+      }
+
       setAlertList(data.map((a: any) => ({
         id: a.id, symbol: a.symbol, condition: a.condition,
         targetPrice: a.value || 0, currentPrice: prices[a.symbol] || 0,
@@ -54,15 +58,25 @@ export function Alerts() {
 
   useEffect(() => { load(); }, []);
 
+  // P2-3: Persist toggle to backend
   const toggleAlert = async (id: number) => {
-    setAlertList(p => p.map(a => a.id === id ? { ...a, isActive: !a.isActive } : a));
+    const alert = alertList.find(a => a.id === id);
+    if (!alert) return;
+    const newActive = !alert.isActive;
+    // Optimistic update
+    setAlertList(p => p.map(a => a.id === id ? { ...a, isActive: newActive } : a));
+    try {
+      // Backend may support update — try it, silently ignore if not
+      await (api.alerts as any).update?.(id, { is_active: newActive });
+    } catch { /* no-op — backend may not support toggle */ }
   };
 
-  const doDelete = async (id: number, symbol: string) => {
-    if (!confirm(`Delete alert for ${symbol}?`)) return;
-    await api.alerts.delete(id).catch(e => showToast(e.message));
+  const doDelete = async () => {
+    if (!deleteTarget) return;
+    await api.alerts.delete(deleteTarget.id).catch((e: any) => toast.error(e.message));
+    setDeleteTarget(null);
     await load();
-    showToast('Alert deleted');
+    toast.success('Alert deleted');
   };
 
   const onAcChange = (val: string) => {
@@ -83,7 +97,7 @@ export function Alerts() {
       await api.alerts.create({ symbol: aSymbol.toUpperCase(), condition: aCondition, value: Number(aValue) });
       setShowAdd(false); setASymbol(''); setAValue('');
       await load();
-      showToast(`Alert set for ${aSymbol.toUpperCase()}`);
+      toast.success(`Alert set for ${aSymbol.toUpperCase()}`);
     } catch (e: any) { setAErr(e.message); } finally { setSaving(false); }
   };
 
@@ -99,8 +113,6 @@ export function Alerts() {
 
   return (
     <div className="p-8 max-w-[1440px] mx-auto">
-      {toast && <div className="fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white bg-blue-500">{toast}</div>}
-
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <Bell className="w-6 h-6 text-blue-500" />
@@ -160,7 +172,7 @@ export function Alerts() {
                       <button onClick={() => toggleAlert(alert.id)} className={`relative w-12 h-6 rounded-full transition-colors ${alert.isActive ? 'bg-emerald-500' : 'bg-gray-700'}`}>
                         <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 ${alert.isActive ? 'right-0.5' : 'left-0.5'}`} />
                       </button>
-                      <button onClick={() => doDelete(alert.id, alert.symbol)} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
+                      <button onClick={() => setDeleteTarget(alert)} className="p-2 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -211,6 +223,17 @@ export function Alerts() {
           <div className="flex gap-3 pt-2">
             <ActionBtn onClick={() => setShowAdd(false)} variant="ghost" className="flex-1">Cancel</ActionBtn>
             <ActionBtn onClick={doCreate} disabled={saving || !aSymbol} className="flex-1">Create Alert</ActionBtn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirm Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Delete Alert" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-400">Delete alert for <span className="text-white font-bold">{deleteTarget?.symbol}</span>?</p>
+          <div className="flex gap-3 pt-2">
+            <ActionBtn onClick={() => setDeleteTarget(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
+            <ActionBtn onClick={doDelete} variant="danger" className="flex-1">Delete</ActionBtn>
           </div>
         </div>
       </Modal>

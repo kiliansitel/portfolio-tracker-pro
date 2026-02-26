@@ -53,21 +53,17 @@ export function News() {
       .then((data: any) => {
         // API returns { query, items: [...] }
         const items = Array.isArray(data) ? data : (data?.items || []);
-        if (items.length > 0) {
-          setArticles(items.map((a: any, i: number) => ({
-            id: String(a.id || i),
-            title: decodeHtmlEntities(a.title || a.headline || '—'),
-            source: a.source || a.publisher || '—',
-            timeAgo: a.timeAgo || '—',
-            iconGradient: GRADIENTS[i % GRADIENTS.length],
-            iconLetter: (a.source || a.publisher || 'N')[0]?.toUpperCase() || 'N',
-            url: a.link || a.url,
-          })));
-        } else {
-          setArticles(MOCK_ARTICLES);
-        }
+        setArticles(items.map((a: any, i: number) => ({
+          id: String(a.id || i),
+          title: decodeHtmlEntities(a.title || a.headline || '—'),
+          source: a.source || a.publisher || '—',
+          timeAgo: a.timeAgo || '—',
+          iconGradient: GRADIENTS[i % GRADIENTS.length],
+          iconLetter: (a.source || a.publisher || 'N')[0]?.toUpperCase() || 'N',
+          url: a.link || a.url,
+        })));
       })
-      .catch(() => setArticles(MOCK_ARTICLES))
+      .catch(() => setArticles([]))
       .finally(() => setLoading(false));
   }, []);
 
@@ -148,8 +144,12 @@ export function News() {
             </a>
           ))}
 
-          {displayed.length === 0 && (
-            <div className="text-center py-12 text-gray-500">No articles found</div>
+          {displayed.length === 0 && !loading && (
+            <div className="text-center py-16 bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5">
+              <div className="text-4xl mb-3">📰</div>
+              <div className="text-gray-400 font-medium mb-1">No news available</div>
+              <div className="text-gray-600 text-sm">Check back later or try a different tab</div>
+            </div>
           )}
         </div>
       )}

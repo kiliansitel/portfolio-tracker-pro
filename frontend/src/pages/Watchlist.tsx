@@ -1,7 +1,10 @@
-import { ChevronDown, Plus, ChevronRight, RefreshCw, Search, Trash2, Bell, X } from 'lucide-react';
+import { ChevronDown, Plus, ChevronRight, RefreshCw, Trash2, Bell } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
-import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
+import { getPrices } from '../lib/priceCache';
+import { Modal, FormInput, ActionBtn } from '../components/Modal';
+import { Skeleton } from '../components/ui/skeleton';
 
 const LOGO_GRADIENTS: Record<string, string> = {
   BTC: 'from-orange-500 to-orange-600', ETH: 'from-blue-500 to-purple-600',
@@ -45,20 +48,10 @@ export function Watchlist() {
   const [alertValue, setAlertValue] = useState('');
   const [alertErr, setAlertErr] = useState('');
 
-  const [toast, setToast] = useState<string | null>(null);
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  const [removeItem, setRemoveItem] = useState<WatchItem | null>(null);
 
-  const fetchPrices = async (symbols: string[]): Promise<Record<string, any>> => {
-    const results: Record<string, any> = {};
-    const chunks: string[][] = [];
-    for (let i = 0; i < symbols.length; i += 5) chunks.push(symbols.slice(i, i + 5));
-    for (const chunk of chunks) {
-      await Promise.all(chunk.map(async (sym) => {
-        try { const d = await api.markets.price(sym); if (d) results[sym] = d; } catch { /**/ }
-      }));
-    }
-    return results;
-  };
+  // ── BATCH price fetch (P1-1) ──
+  const fetchPrices = getPrices;
 
   const loadWatchlists = async (showRef = false) => {
     if (showRef) setRefreshing(true);
@@ -70,7 +63,7 @@ export function Watchlist() {
       const enriched: Watchlist[] = rawLists.map((wl: any) => ({
         id: wl.id, name: wl.name,
         items: (wl.items || []).map((item: any) => {
-          const pd = prices[item.symbol] || {};
+          const pd = (prices[item.symbol] as any) || {};
           return { id: item.id, symbol: item.symbol, name: item.name || item.symbol, price: pd.price || 0, change: pd.change || 0, changePercent: pd.changePercent || 0 };
         }),
       }));
@@ -107,15 +100,16 @@ export function Watchlist() {
       await api.addToWatchlist(selectedId, addSymbol.toUpperCase(), addNotes || undefined);
       setShowAdd(false); setAddSymbol(''); setAddNotes('');
       await loadWatchlists(true);
-      showToast(`${addSymbol.toUpperCase()} added to watchlist`);
+      toast.success(`${addSymbol.toUpperCase()} added to watchlist`);
     } catch (e: any) { setAddErr(e.message); } finally { setSaving(false); }
   };
 
-  const doRemove = async (item: WatchItem) => {
-    if (!confirm(`Remove ${item.symbol}?`)) return;
-    await api.removeFromWatchlist(item.id).catch(e => showToast(e.message));
+  const doRemove = async () => {
+    if (!removeItem) return;
+    await api.removeFromWatchlist(removeItem.id).catch((e: any) => toast.error(e.message));
+    setRemoveItem(null);
     await loadWatchlists(true);
-    showToast(`${item.symbol} removed`);
+    toast.success(`${removeItem.symbol} removed`);
   };
 
   const doCreateList = async () => {
@@ -126,8 +120,8 @@ export function Watchlist() {
       setShowCreateList(false); setNewListName('');
       await loadWatchlists();
       if (newList?.id) setSelectedId(newList.id);
-      showToast('Watchlist created');
-    } catch (e: any) { showToast(e.message); } finally { setSaving(false); }
+      toast.success('Watchlist created');
+    } catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
 
   const doCreateAlert = async () => {
@@ -137,7 +131,7 @@ export function Watchlist() {
     try {
       await api.alerts.create({ symbol: alertItem!.symbol, condition: alertCondition, value: Number(alertValue) });
       setAlertItem(null); setAlertValue('');
-      showToast(`Alert set for ${alertItem!.symbol}`);
+      toast.success(`Alert set for ${alertItem!.symbol}`);
     } catch (e: any) { setAlertErr(e.message); } finally { setSaving(false); }
   };
 
@@ -148,8 +142,6 @@ export function Watchlist() {
 
   return (
     <div className="p-8 max-w-[1440px] mx-auto">
-      {toast && <div className="fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white bg-blue-500">{toast}</div>}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -189,7 +181,11 @@ export function Watchlist() {
               <span className="text-white font-semibold text-sm">{selectedList.name} ({selectedList.items.length})</span>
             </button>
             {expandedSections[selectedList.id] !== false && (
-              loading ? <div className="px-6 py-8 text-center text-gray-500 text-sm">Loading...</div>
+              loading ? (
+                <div className="p-6 space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 rounded-xl bg-white/5" />)}
+                </div>
+              )
               : selectedList.items.length === 0
                 ? <div className="px-6 py-10 text-center text-gray-500 text-sm">No items. <button onClick={() => setShowAdd(true)} className="text-blue-400 hover:underline">Add a symbol</button></div>
                 : selectedList.items.map(item => {
@@ -220,7 +216,7 @@ export function Watchlist() {
                                 className="p-1.5 text-gray-500 hover:text-yellow-400 hover:bg-yellow-400/10 rounded-lg transition-colors" title="Set alert">
                                 <Bell className="w-3.5 h-3.5" />
                               </button>
-                              <button onClick={() => doRemove(item)} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Remove">
+                              <button onClick={() => setRemoveItem(item)} className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors" title="Remove">
                                 <Trash2 className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -327,6 +323,17 @@ export function Watchlist() {
           <div className="flex gap-3 pt-2">
             <ActionBtn onClick={() => setAlertItem(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
             <ActionBtn onClick={doCreateAlert} disabled={saving} className="flex-1">Set Alert</ActionBtn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Remove Confirm Modal */}
+      <Modal open={!!removeItem} onClose={() => setRemoveItem(null)} title="Remove from Watchlist" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-400">Remove <span className="text-white font-bold">{removeItem?.symbol}</span> from this watchlist?</p>
+          <div className="flex gap-3 pt-2">
+            <ActionBtn onClick={() => setRemoveItem(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
+            <ActionBtn onClick={doRemove} variant="danger" className="flex-1">Remove</ActionBtn>
           </div>
         </div>
       </Modal>

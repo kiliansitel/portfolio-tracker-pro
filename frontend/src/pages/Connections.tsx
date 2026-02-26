@@ -1,5 +1,6 @@
 import { Link2, Plus, Trash2, RefreshCw, Wifi } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
 
@@ -58,9 +59,7 @@ export function Connections() {
   const [label, setLabel] = useState('');
   const [err, setErr] = useState('');
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -77,15 +76,16 @@ export function Connections() {
       await api.wallets.add({ address: address.trim(), chain, label: label.trim() || undefined });
       setShowAdd(false); setAddress(''); setLabel(''); setChain('eth');
       await load();
-      showToast('Wallet added');
+      toast.success('Wallet added');
     } catch (e: any) { setErr(e.message); } finally { setSaving(false); }
   };
 
-  const doDelete = async (id: number, name: string) => {
-    if (!confirm(`Remove wallet "${name}"?`)) return;
-    await api.wallets.delete(id).catch(e => showToast(e.message));
+  const doDelete = async () => {
+    if (!deleteTarget) return;
+    await api.wallets.delete(deleteTarget.id).catch((e: any) => toast.error(e.message));
+    setDeleteTarget(null);
     await load();
-    showToast('Wallet removed');
+    toast.success('Wallet removed');
   };
 
   const doSync = async (id: number) => {
@@ -93,25 +93,21 @@ export function Connections() {
     try {
       await api.wallets.sync(id);
       await load();
-      showToast('Synced');
-    } catch (e: any) { showToast(e.message); }
+      toast.success('Synced');
+    } catch (e: any) { toast.error(e.message); }
     finally { setSyncing(p => ({ ...p, [id]: false })); }
   };
 
   const doSyncAll = async () => {
     setSaving(true);
-    try { await api.wallets.syncAll(); await load(); showToast('All wallets synced'); }
-    catch (e: any) { showToast(e.message); } finally { setSaving(false); }
+    try { await api.wallets.syncAll(); await load(); toast.success('All wallets synced'); }
+    catch (e: any) { toast.error(e.message); } finally { setSaving(false); }
   };
 
   const totalUsd = wallets.reduce((s, w) => s + (w.usd_value || 0), 0);
 
   return (
     <div className="p-8 max-w-[1440px] mx-auto">
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white bg-blue-500">{toast}</div>
-      )}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
@@ -185,7 +181,7 @@ export function Connections() {
                       <span className="text-gray-500 font-mono">{trunc(w.address)}</span>
                       <span className="text-gray-600">•</span>
                       <span className="text-gray-400">{balance} {w.chain?.toUpperCase()}</span>
-                      {w.token_count > 0 && <span className="text-gray-600">+ {w.token_count} tokens</span>}
+                      {w.token_count > 0 && <span className="text-gray-600">+ {w.token_count} {w.token_count === 1 ? 'token' : 'tokens'}</span>}
                     </div>
                     <div className="text-gray-600 text-xs mt-1 flex items-center gap-1">
                       <Wifi className="w-3 h-3" /> Synced {timeSince(w.last_synced)}
@@ -199,7 +195,7 @@ export function Connections() {
                       className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50">
                       <RefreshCw className={`w-4 h-4 ${syncing[w.id] ? 'animate-spin' : ''}`} />
                     </button>
-                    <button onClick={() => doDelete(w.id, w.label || w.chain)}
+                    <button onClick={() => setDeleteTarget({ id: w.id, name: w.label || w.chain })}
                       className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -222,6 +218,17 @@ export function Connections() {
           <div className="flex gap-3 pt-2">
             <ActionBtn onClick={() => setShowAdd(false)} variant="ghost" className="flex-1">Cancel</ActionBtn>
             <ActionBtn onClick={doAdd} disabled={saving || !address.trim()} className="flex-1">Add Wallet</ActionBtn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Delete Confirm Modal */}
+      <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Remove Wallet" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-400">Remove wallet <span className="text-white font-bold">"{deleteTarget?.name}"</span>? This cannot be undone.</p>
+          <div className="flex gap-3 pt-2">
+            <ActionBtn onClick={() => setDeleteTarget(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
+            <ActionBtn onClick={doDelete} variant="danger" className="flex-1">Remove</ActionBtn>
           </div>
         </div>
       </Modal>

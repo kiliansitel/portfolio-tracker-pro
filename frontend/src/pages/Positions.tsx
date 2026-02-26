@@ -1,13 +1,11 @@
-import { Search, Plus, TrendingUp, ChevronDown, ChevronRight, RefreshCw, Edit2, Trash2, X } from 'lucide-react';
+import { Search, Plus, TrendingUp, ChevronDown, ChevronRight, RefreshCw, Edit2, Trash2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { getPrices } from '../lib/priceCache';
+import { fmt as fmtPrice } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
-
-function fmtPrice(v: number): string {
-  if (Math.abs(v) >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (Math.abs(v) >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${v.toFixed(2)}`;
-}
+import { Skeleton } from '../components/ui/skeleton';
 
 const POSITION_TYPES = [
   { value: 'stock', label: 'Stock' },
@@ -59,8 +57,7 @@ export function Positions() {
   const [acOpen, setAcOpen] = useState(false);
   const acTimer = useRef<any>(null);
 
-  const [toast, setToast] = useState<string | null>(null);
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+  const [dividends, setDividends] = useState<{ income: number; yield: number; nextPayment: string | null } | null>(null);
 
   const loadPositions = async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
@@ -74,14 +71,24 @@ export function Positions() {
       const rawPositions = await api.portfolio.positions(pid).catch(() => []);
       const openPos = (rawPositions || []).filter((p: any) => p.status === 'open' || !p.status);
 
+      // ── BATCH price fetch (P1-1) ──
       const symbols = Array.from(new Set(openPos.map((p: any) => String(p.symbol)))) as string[];
-      const priceMap: Record<string, any> = {};
-      await Promise.all(symbols.map(async (sym) => {
-        try { const d = await api.markets.price(sym); if (d) priceMap[sym] = d; } catch { /**/ }
-      }));
+      const priceMap = await getPrices(symbols);
+
+      // Dividends
+      try {
+        const divData = await api.portfolio.dividends(pid);
+        if (divData && (divData.annual_income > 0 || divData.yield > 0)) {
+          setDividends({
+            income: divData.annual_income || 0,
+            yield: divData.yield || 0,
+            nextPayment: divData.next_payment || null,
+          });
+        }
+      } catch { /* dividends optional */ }
 
       setPositions(openPos.map((p: any) => {
-        const pd = priceMap[p.symbol] || {};
+        const pd = (priceMap[p.symbol] as any) || {};
         const qty = p.quantity || 0;
         const ep = p.entry_price || 0;
         const cp = pd.price || 0;
@@ -161,7 +168,7 @@ export function Positions() {
       });
       setShowAdd(false);
       await loadPositions(true);
-      showToast(`${fSymbol.toUpperCase()} added`);
+      toast.success(`${fSymbol.toUpperCase()} added`);
     } catch (e: any) { setFErr(e.message); } finally { setSaving(false); }
   };
 
@@ -174,7 +181,7 @@ export function Positions() {
       });
       setEditPos(null);
       await loadPositions(true);
-      showToast('Position updated');
+      toast.success('Position updated');
     } catch (e: any) { setFErr(e.message); } finally { setSaving(false); }
   };
 
@@ -187,7 +194,7 @@ export function Positions() {
       });
       setClosePos(null);
       await loadPositions(true);
-      showToast(`${closePos!.symbol} position closed`);
+      toast.success(`${closePos!.symbol} position closed`);
     } catch (e: any) { setFErr(e.message); } finally { setSaving(false); }
   };
 
@@ -197,7 +204,7 @@ export function Positions() {
       await api.portfolio.deletePosition(deletePos!.id);
       setDeletePos(null);
       await loadPositions(true);
-      showToast('Position deleted');
+      toast.success('Position deleted');
     } catch (e: any) { setFErr(e.message); } finally { setSaving(false); }
   };
 
@@ -225,8 +232,6 @@ export function Positions() {
 
   return (
     <div className="p-8 max-w-[1440px] mx-auto">
-      {toast && <div className="fixed bottom-6 right-6 z-50 px-6 py-3 rounded-xl shadow-xl font-medium text-sm text-white bg-blue-500">{toast}</div>}
-
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -249,7 +254,7 @@ export function Positions() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
           <div className="text-gray-400 text-sm mb-2">Total Value</div>
           <div className="text-3xl font-bold text-white">{loading ? '—' : fmtPrice(totalValue)}</div>
@@ -279,10 +284,9 @@ export function Positions() {
               <span className="text-white font-semibold">Dividends</span>
             </div>
             <div className="flex items-center gap-8">
-              <div><div className="text-gray-400 text-xs">Income</div><div className="text-emerald-400 font-bold">—</div></div>
-              <div><div className="text-gray-400 text-xs">Yield</div><div className="text-white font-bold">—</div></div>
-              <div><div className="text-gray-400 text-xs">Next Payment</div><div className="text-white font-bold">—</div></div>
-              <button className="px-4 py-1.5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white text-sm font-medium shadow-lg shadow-blue-500/20">+ Calendar</button>
+              <div><div className="text-gray-400 text-xs">Annual Income</div><div className="text-emerald-400 font-bold">{dividends ? fmtPrice(dividends.income) : '—'}</div></div>
+              <div><div className="text-gray-400 text-xs">Yield</div><div className="text-white font-bold">{dividends ? `${dividends.yield.toFixed(2)}%` : '—'}</div></div>
+              <div><div className="text-gray-400 text-xs">Next Payment</div><div className="text-white font-bold">{dividends?.nextPayment || '—'}</div></div>
             </div>
           </button>
         </div>
@@ -309,7 +313,13 @@ export function Positions() {
               <div className="col-span-2 text-gray-400 text-xs font-medium uppercase text-right">Actions</div>
             </div>
 
-            {loading && <div className="px-6 py-8 text-center text-gray-500 text-sm">Loading positions...</div>}
+            {loading && (
+              <div className="p-6 space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 rounded-xl bg-white/5" />
+                ))}
+              </div>
+            )}
 
             {!loading && (searchQuery ? filtered : positions).map(position => {
               const isPlPos = position.totalPL >= 0;

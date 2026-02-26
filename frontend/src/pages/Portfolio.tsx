@@ -1,13 +1,10 @@
-import { PieChart, Plus, Edit2, Trash2, Copy, DollarSign, RefreshCw, ChevronDown } from 'lucide-react';
+import { PieChart, Plus, Edit2, Trash2, Copy, DollarSign } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { getPrices } from '../lib/priceCache';
+import { fmt } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
-
-function fmt(v: number) {
-  if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}M`;
-  if (v >= 1_000) return `$${(v / 1_000).toFixed(1)}K`;
-  return `$${v.toFixed(2)}`;
-}
 
 const CURRENCIES = [
   { value: 'USD', label: 'USD — US Dollar' },
@@ -52,10 +49,11 @@ export function Portfolio() {
     const open = (pos || []).filter((p: any) => p.status === 'open' || !p.status);
     setPositions(open);
     const symbols = Array.from(new Set(open.map((p: any) => String(p.symbol)))) as string[];
+    const priceData = await getPrices(symbols);
     const pm: Record<string, number> = {};
-    await Promise.all(symbols.map(async (s) => {
-      try { const d = await api.markets.price(s); if (d?.price) pm[s] = d.price; } catch { /**/ }
-    }));
+    for (const [sym, d] of Object.entries(priceData)) {
+      if ((d as any)?.price) pm[sym] = (d as any).price;
+    }
     setPriceMap(pm);
   };
 
@@ -108,9 +106,12 @@ export function Portfolio() {
     } catch (e: any) { setErr(e.message); } finally { setSaving(false); }
   };
 
-  const doDuplicate = async (p: any) => {
-    if (!confirm(`Duplicate "${p.name}"?`)) return;
-    await api.portfolio.duplicate(p.id).catch(console.error);
+  const [dupTarget, setDupTarget] = useState<any | null>(null);
+  const doDuplicate = async () => {
+    if (!dupTarget) return;
+    await api.portfolio.duplicate(dupTarget.id).catch(console.error);
+    setDupTarget(null);
+    toast.success(`"${dupTarget.name}" duplicated`);
     await load();
   };
 
@@ -156,7 +157,7 @@ export function Portfolio() {
             {selectedId === p.id && (
               <div className="flex items-center gap-1 ml-1">
                 <Edit2 className="w-3 h-3 opacity-60 hover:opacity-100 cursor-pointer" onClick={e => { e.stopPropagation(); setFormName(p.name); setFormCashCurrency(p.cash_currency || 'USD'); setErr(''); setShowEdit(p); }} />
-                <Copy className="w-3 h-3 opacity-60 hover:opacity-100 cursor-pointer" onClick={e => { e.stopPropagation(); doDuplicate(p); }} />
+                <Copy className="w-3 h-3 opacity-60 hover:opacity-100 cursor-pointer" onClick={e => { e.stopPropagation(); setDupTarget(p); }} />
                 {portfolios.length > 1 && <Trash2 className="w-3 h-3 opacity-60 hover:opacity-100 cursor-pointer text-red-400" onClick={e => { e.stopPropagation(); setErr(''); setShowDelete(p); }} />}
               </div>
             )}
@@ -319,6 +320,17 @@ export function Portfolio() {
             <ActionBtn onClick={doCash} disabled={saving || !formCashDelta} className="flex-1">
               {formCashAction === 'deposit' ? 'Deposit' : 'Withdraw'}
             </ActionBtn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Duplicate Confirm Modal */}
+      <Modal open={!!dupTarget} onClose={() => setDupTarget(null)} title="Duplicate Portfolio" size="sm">
+        <div className="space-y-4">
+          <p className="text-gray-400">Duplicate <span className="text-white font-bold">"{dupTarget?.name}"</span>? A copy will be created.</p>
+          <div className="flex gap-3 pt-2">
+            <ActionBtn onClick={() => setDupTarget(null)} variant="ghost" className="flex-1">Cancel</ActionBtn>
+            <ActionBtn onClick={doDuplicate} className="flex-1">Duplicate</ActionBtn>
           </div>
         </div>
       </Modal>
