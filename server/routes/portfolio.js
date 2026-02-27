@@ -468,7 +468,10 @@ router.get('/:id/dividends', async (req, res) => {
     if (!data) continue;
     
     const divRate = data.dividendRate || data.trailingAnnualDividendRate || 0;
-    const divYield = data.dividendYield || data.trailingAnnualDividendYield || 0;
+    // dividendYield from Yahoo is in percent form (e.g. 0.38 = 0.38%), normalise to decimal
+    const divYield = data.dividendYield
+      ? data.dividendYield / 100
+      : (data.trailingAnnualDividendYield || 0);
     const exTs = data.exDividendDate || data.dividendDate;
     const exDate = exTs ? new Date(exTs * 1000).toISOString().split('T')[0] : null;
     const annualIncome = divRate * pos.quantity;
