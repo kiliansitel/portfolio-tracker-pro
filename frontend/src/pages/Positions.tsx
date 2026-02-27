@@ -1,4 +1,4 @@
-import { Search, Plus, TrendingUp, ChevronDown, ChevronRight, RefreshCw, Edit2, Trash2 } from 'lucide-react';
+import { Search, Plus, TrendingUp, ChevronDown, ChevronRight, RefreshCw, Edit2, Trash2, BarChart2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
@@ -309,12 +309,12 @@ export function Positions() {
         </div>
         <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border ${todayPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
           <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Today's P/L</div>
-          <div className={`text-xl sm:text-3xl font-bold ${todayPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (todayPL >= 0 ? '+' : '') + fmtPrice(Math.abs(todayPL))}</div>
+          <div className={`text-xl sm:text-3xl font-bold ${todayPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (todayPL >= 0 ? '+' : '-') + fmtPrice(Math.abs(todayPL))}</div>
         </div>
         <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border ${totalPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
           <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total P/L</div>
-          <div className={`text-xl sm:text-3xl font-bold ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (totalPL >= 0 ? '+' : '') + fmtPrice(Math.abs(totalPL))}</div>
-          {!loading && totalInvested > 0 && <div className={`text-xs sm:text-sm mt-0.5 ${totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{totalPLPct >= 0 ? '+' : ''}{totalPLPct.toFixed(1)}%</div>}
+          <div className={`text-xl sm:text-3xl font-bold ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{loading ? '—' : (totalPL >= 0 ? '+' : '-') + fmtPrice(Math.abs(totalPL))}</div>
+          {!loading && totalInvested > 0 && <div className={`text-xs sm:text-sm mt-0.5 ${totalPLPct >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{totalPLPct >= 0 ? '+' : '-'}{Math.abs(totalPLPct).toFixed(1)}%</div>}
         </div>
         <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
           <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total Invested</div>
@@ -393,9 +393,9 @@ export function Positions() {
                       <span className="text-white font-bold text-xs">{position.symbol[0]}</span>
                     </div>
                     <div>
-                      <div className="flex items-center gap-1">
-                        <span style={{color:'#93c5fd'}} className="font-bold text-sm group-hover:underline underline-offset-2 transition-all">{position.symbol}</span>
-                        <span style={{color:'#4b5563'}} className="text-xs group-hover:text-blue-400 transition-colors">↗</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-blue-400 font-bold text-sm underline underline-offset-2 decoration-blue-400/40 group-hover:decoration-blue-400 transition-all">{position.symbol}</span>
+                        <BarChart2 className="w-3 h-3 text-blue-400/50 group-hover:text-blue-400 flex-shrink-0 transition-colors" />
                       </div>
                       <div className="text-gray-500 text-xs">{position.type}</div>
                     </div>
@@ -447,7 +447,10 @@ export function Positions() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <div style={{color:'#93c5fd'}} className="font-bold transition-colors">{position.symbol} <span style={{color:'#4b5563'}} className="text-xs">↗</span></div>
+                          <div className="flex items-center gap-1">
+                            <span className="text-blue-400 font-bold underline underline-offset-2 decoration-blue-400/40">{position.symbol}</span>
+                            <BarChart2 className="w-3 h-3 text-blue-400/50 flex-shrink-0" />
+                          </div>
                           {(position as any).marketState && (position as any).marketState !== 'REGULAR' && (
                             <MarketStateBadge marketState={(position as any).marketState} />
                           )}

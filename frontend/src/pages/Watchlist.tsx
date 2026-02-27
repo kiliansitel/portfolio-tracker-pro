@@ -1,4 +1,4 @@
-import { ChevronDown, Plus, ChevronRight, RefreshCw, Trash2, Bell } from 'lucide-react';
+import { ChevronDown, Plus, ChevronRight, RefreshCw, Trash2, Bell, BarChart2 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { AreaChart, Area, ResponsiveContainer } from 'recharts';
@@ -300,7 +300,10 @@ export function Watchlist() {
                               <span className="text-white font-bold text-sm">{item.symbol.replace('-USD','')[0]}</span>
                             </div>
                             <div>
-                              <div style={{color:'#93c5fd'}} className="font-bold group-hover/ticker:underline underline-offset-2 transition-all">{item.symbol} <span style={{color:'#4b5563'}} className="text-xs">↗</span></div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-blue-400 font-bold underline underline-offset-2 decoration-blue-400/40 group-hover/ticker:decoration-blue-400 transition-all">{item.symbol}</span>
+                                <BarChart2 className="w-3 h-3 text-blue-400/50 group-hover/ticker:text-blue-400 flex-shrink-0 transition-colors" />
+                              </div>
                               <div className="text-gray-500 text-sm">{item.name}</div>
                             </div>
                           </div>

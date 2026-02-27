@@ -477,17 +477,16 @@ export function Settings() {
   };
 
   return (
-    <div className="p-4 sm:p-8 pb-40 md:pb-8 max-w-[900px] mx-auto">
+    <div className="p-4 sm:p-8 pb-48 md:pb-12 max-w-[900px] mx-auto">
       <div className="flex items-center gap-3 mb-4">
         <SettingsIcon className="w-6 h-6 text-blue-500" />
         <h2 className="text-2xl font-bold text-white">Settings</h2>
       </div>
 
       {/* Quick nav — horizontal scroll on mobile */}
-      <div className="mb-6 relative">
-        {/* fade-right indicator */}
-        <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-[#0f1117] via-[#0f1117]/80 to-transparent z-10 sm:hidden rounded-r" />
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pr-10 pl-1 flex-nowrap whitespace-nowrap">
+      <div className="mb-6">
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pr-2 pl-1 flex-nowrap whitespace-nowrap"
+          style={{ WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 100%)', maskImage: 'linear-gradient(to right, black 75%, transparent 100%)' } as any}>
         {[
           { id: 'profile', label: '👤 Profile' },
           { id: 'ai', label: '🧠 AI' },

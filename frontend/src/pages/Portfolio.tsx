@@ -185,16 +185,16 @@ export function Portfolio() {
               <div className="text-xl sm:text-3xl font-bold text-white truncate">{fmt(totalValue)}</div>
             </div>
             <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border ${totalPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
-              <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total P/L</div>
+              <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total P/L (vs. cost)</div>
               <div className={`text-xl sm:text-3xl font-bold truncate ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                {totalPL >= 0 ? '+' : ''}{fmt(Math.abs(totalPL))}
+                {totalPL >= 0 ? '+' : '-'}{fmt(Math.abs(totalPL))}
               </div>
-              {invested > 0 && <div className={`text-xs sm:text-sm mt-1 ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{plPct >= 0 ? '+' : ''}{plPct.toFixed(1)}%</div>}
+              {invested > 0 && <div className={`text-xs sm:text-sm mt-1 ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{plPct >= 0 ? '+' : '-'}{Math.abs(plPct).toFixed(1)}%</div>}
             </div>
             <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
-              <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Positions</div>
+              <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Open Positions Value</div>
               <div className="text-xl sm:text-3xl font-bold text-white truncate">{fmt(posValue)}</div>
-              <div className="text-gray-500 text-xs sm:text-sm mt-1">{positions.length} pos.</div>
+              <div className="text-gray-500 text-xs sm:text-sm mt-1">{positions.length} positions</div>
             </div>
             <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-blue-500/20">
               <div className="flex items-center justify-between mb-1 sm:mb-2">
