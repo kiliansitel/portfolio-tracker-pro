@@ -657,7 +657,7 @@ async function sendAiChatMessage() {
             try {
                 const errData = await response.json();
                 errMsg = errData.error || errMsg;
-            } catch {}
+            } catch { /* non-JSON error body — ignore */ }
             if (thinkingMsg) thinkingMsg.remove();
             appendAiError(errMsg);
             aiIsStreaming = false;
@@ -895,7 +895,7 @@ async function aiQuickAction(type) {
 
         if (!response.ok) {
             let errMsg = 'Request failed';
-            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch {}
+            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch { /* non-JSON error body — ignore */ }
             if (thinkingMsg) thinkingMsg.remove();
             appendAiError(errMsg);
             aiIsStreaming = false;
@@ -947,7 +947,7 @@ async function aiQuickAction(type) {
                     if (data.type === 'done') {
                         appendAiUsageInfo(data);
                     }
-                } catch (e) {}
+                } catch (e) { console.debug('[oracle] SSE chunk parse error:', e.message); }
             }
         }
 
@@ -1199,7 +1199,7 @@ async function runQuickAnalysis(type, symbol) {
 
         if (!response.ok) {
             let errMsg = 'Request failed';
-            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch {}
+            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch { /* non-JSON error body — ignore */ }
             if (thinkingMsg) thinkingMsg.remove();
             appendAiError(errMsg);
             aiIsStreaming = false;
@@ -1247,7 +1247,7 @@ async function runQuickAnalysis(type, symbol) {
                     if (data.type === 'done') {
                         appendAiUsageInfo(data);
                     }
-                } catch {}
+                } catch (e) { console.debug('[oracle] SSE chunk parse error:', e.message); }
             }
         }
 
