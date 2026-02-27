@@ -257,15 +257,18 @@ function loadPriceCache() {
         if (saved) {
             const parsed = JSON.parse(saved);
             Object.assign(priceCache, parsed);
-            // Price cache loaded
         }
-    } catch (e) {}
+    } catch (e) {
+        console.warn('[utils] Failed to load price cache from localStorage:', e.message);
+    }
 }
 
 function savePriceCache() {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(priceCache));
-    } catch (e) {}
+    } catch (e) {
+        console.warn('[utils] Failed to save price cache to localStorage:', e.message);
+    }
 }
 
 // Data sources with fallback - Server API is primary (cached, no rate limits)
@@ -707,7 +710,9 @@ function loadChartCache() {
     try {
         const saved = localStorage.getItem(CHART_CACHE_KEY);
         if (saved) chartCache = JSON.parse(saved);
-    } catch (e) {}
+    } catch (e) {
+        console.warn('[utils] Failed to load chart cache from localStorage:', e.message);
+    }
 }
 
 function saveChartCache() {
@@ -719,7 +724,9 @@ function saveChartCache() {
             sorted.slice(20).forEach(k => delete chartCache[k]);
         }
         localStorage.setItem(CHART_CACHE_KEY, JSON.stringify(chartCache));
-    } catch (e) {}
+    } catch (e) {
+        console.warn('[utils] Failed to save chart cache to localStorage:', e.message);
+    }
 }
 
 async function fetchChartData(symbol, range) {
