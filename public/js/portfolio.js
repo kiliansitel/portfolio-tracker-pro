@@ -1360,7 +1360,7 @@ async function loadSparklines(positions) {
             sparkChart.timeScale().fitContent();
             sparklineCharts[elId] = sparkChart;
         } catch (e) {
-            // Silently skip failed sparklines
+            console.warn('[portfolio] sparkline render failed for', elId, ':', e.message);
         }
     }
 }
