@@ -498,7 +498,7 @@ export function Settings() {
           { id: 'updates', label: '🔄 Updates' },
         ].map(({ id, label }) => (
           <button key={id} onClick={() => document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className="flex-shrink-0 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs text-gray-400 hover:text-white transition-colors min-h-[36px]">
+            className="flex-shrink-0 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs text-gray-400 hover:text-white transition-colors min-h-[44px]">
             {label}
           </button>
         ))}

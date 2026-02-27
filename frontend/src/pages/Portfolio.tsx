@@ -137,7 +137,7 @@ export function Portfolio() {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 pb-40 md:pb-8 max-w-[1440px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">

@@ -302,7 +302,7 @@ export function Watchlist() {
                             <div>
                               <div className="flex items-center gap-1.5">
                                 <span className="text-blue-400 font-bold underline underline-offset-2 decoration-blue-400/40 group-hover/ticker:decoration-blue-400 transition-all">{item.symbol}</span>
-                                <BarChart2 className="w-3 h-3 text-blue-400/50 group-hover/ticker:text-blue-400 flex-shrink-0 transition-colors" />
+                                <BarChart2 className="w-3 h-3 text-blue-400 flex-shrink-0" />
                               </div>
                               <div className="text-gray-500 text-sm">{item.name}</div>
                             </div>

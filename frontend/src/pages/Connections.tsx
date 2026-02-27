@@ -167,11 +167,11 @@ function WalletCard({ w, onDelete, onSync, syncing }: { w: any; onDelete: () => 
               <div className="text-white font-bold text-base sm:text-lg">{fmt(w.usd_value || 0)}</div>
             </div>
             <button onClick={onSync} disabled={syncing}
-              className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50 min-w-[36px] min-h-[36px] flex items-center justify-center">
+              className="p-2 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-colors disabled:opacity-50 min-w-[44px] min-h-[44px] flex items-center justify-center">
               <RefreshCw className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} />
             </button>
             <button onClick={onDelete}
-              className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-colors min-w-[36px] min-h-[36px] flex items-center justify-center">
+              className="p-2 bg-red-500/10 hover:bg-red-500/20 rounded-lg text-red-400 hover:text-red-300 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>
@@ -182,14 +182,14 @@ function WalletCard({ w, onDelete, onSync, syncing }: { w: any; onDelete: () => 
           <div className="flex gap-2">
             {w.token_count > 0 && (
               <button onClick={toggleTokens} disabled={loadingTokens}
-                className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors min-h-[36px]">
+                className="flex items-center gap-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors min-h-[44px]">
                 <Coins className="w-3 h-3" />
                 {loadingTokens ? '…' : `${w.token_count} tokens`}
                 {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
               </button>
             )}
             <button onClick={() => loadTxs(0)} disabled={loadingTx}
-              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors min-h-[36px]">
+              className="px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white text-xs transition-colors min-h-[44px]">
               {loadingTx ? 'Loading…' : 'Txns'}
             </button>
           </div>

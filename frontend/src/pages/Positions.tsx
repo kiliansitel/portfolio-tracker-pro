@@ -145,7 +145,7 @@ export function Positions() {
     const currentValue = currentPrice * p.quantity;
     const totalPL = currentValue - p.entryPrice * p.quantity;
     const totalPLPct = p.entryPrice > 0 ? (totalPL / (p.entryPrice * p.quantity)) * 100 : null;
-    const dayChange = (lp.change ?? p.dayChange);
+    const dayChange = lp.change != null ? lp.change * p.quantity : p.dayChange;
     const dayChangePct = (lp.changePercent ?? p.dayChangePct);
     return { ...p, currentPrice, currentValue, totalPL, totalPLPct, dayChange, dayChangePct, marketState: (lp as any).marketState };
   });
