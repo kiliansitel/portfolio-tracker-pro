@@ -131,7 +131,26 @@ export function News() {
       .finally(() => setLoading(false));
   }, []);
 
-  useEffect(() => { loadNews(); }, [loadNews]);
+  // Load portfolio symbols for "My Stocks" tab
+  const [portfolioSymbols, setPortfolioSymbols] = useState<string[]>([]);
+  useEffect(() => {
+    api.portfolio.all().then((portfolios: any[]) => {
+      if (portfolios?.[0]?.id) {
+        api.portfolio.positions(portfolios[0].id).then((pos: any[]) => {
+          const syms = [...new Set((pos || []).filter((p: any) => p.status === 'open' || !p.status).map((p: any) => p.symbol as string))].slice(0, 5);
+          setPortfolioSymbols(syms);
+        }).catch(() => {});
+      }
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === 'myStocks' && portfolioSymbols.length) {
+      loadNews('__q__' + portfolioSymbols.join(' OR '));
+    } else if (activeTab !== 'myStocks' && activeTab !== 'search') {
+      loadNews();
+    }
+  }, [activeTab, portfolioSymbols]);
 
   const handleFaviconError = (id: string) => {
     setFaviconErrors(prev => new Set([...prev, id]));
@@ -160,8 +179,9 @@ export function News() {
                 : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
             }`}>
             {tab === 'picked' && <Star className="w-4 h-4" />}
+            {tab === 'myStocks' && <span>📊</span>}
             {tab === 'search' && <Search className="w-4 h-4" />}
-            {tab === 'picked' ? 'Top Stories' : tab === 'myStocks' ? 'My Stocks' : 'Search'}
+            {tab === 'picked' ? 'Market' : tab === 'myStocks' ? 'Portfolio' : 'Search'}
           </button>
         ))}
       </div>

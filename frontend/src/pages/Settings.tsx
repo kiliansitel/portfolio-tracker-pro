@@ -61,7 +61,7 @@ export function Settings() {
 
   // Basic prefs
   const [currency, setCurrency] = useState('USD');
-  const [theme, setTheme] = useState<'dark'|'light'>('dark');
+  const [theme, setTheme] = useState<'dark'|'light'|'auto'>('dark');
 
   // Scheduled reports
   const [autoReports, setAutoReports] = useState<any>({});
@@ -104,7 +104,9 @@ export function Settings() {
   // Apply theme immediately
   useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'light') root.classList.add('light-theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const effectiveLight = theme === 'light' || (theme === 'auto' && !prefersDark);
+    if (effectiveLight) root.classList.add('light-theme');
     else root.classList.remove('light-theme');
     localStorage.setItem('theme', theme);
   }, [theme]);
@@ -553,12 +555,18 @@ export function Settings() {
 
         {/* Theme */}
         <Section title="Appearance" icon={SunMoon} id="section-appearance">
-          <Toggle
-            checked={theme === 'light'}
-            onChange={(v) => { setTheme(v ? 'light' : 'dark'); saveSettingsPatch({ theme: v ? 'light' : 'dark' }); }}
-            label="Light mode"
-            sub="Persisted locally and in your account settings"
-          />
+          <div>
+            <div className="text-gray-400 text-sm mb-3">Color Theme</div>
+            <div className="flex gap-2">
+              {(['dark','light','auto'] as const).map(t => (
+                <button key={t} onClick={() => { setTheme(t as any); saveSettingsPatch({ theme: t }); }}
+                  className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-all ${theme === t ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}>
+                  {t === 'dark' ? '🌙 Dark' : t === 'light' ? '☀️ Light' : '🔄 Auto'}
+                </button>
+              ))}
+            </div>
+            <p className="text-gray-500 text-xs mt-2">Note: Light and Auto themes are in preview — some areas remain dark.</p>
+          </div>
         </Section>
 
         {/* Currency */}

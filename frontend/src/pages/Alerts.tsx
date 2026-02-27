@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
 import { SwipeableCard } from '../components/SwipeableCard';
+import { useChartModal } from '../lib/chartModalContext';
 
 const GRADIENTS: Record<string, string> = {
   BTC: 'from-orange-500 to-orange-600', ETH: 'from-blue-500 to-purple-600',
@@ -21,6 +22,7 @@ interface Alert {
 }
 
 export function Alerts() {
+  const { openChart } = useChartModal();
   const [alertList, setAlertList] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
@@ -178,12 +180,12 @@ export function Alerts() {
                 <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border p-4 sm:p-6 transition-all ${triggered ? 'border-emerald-500/30' : 'border-white/5 hover:border-blue-500/20'}`}>
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getGradient(alert.symbol)} flex items-center justify-center shadow-lg flex-shrink-0`}>
+                      <button onClick={() => openChart(alert.symbol)} className={`w-12 h-12 rounded-lg bg-gradient-to-br ${getGradient(alert.symbol)} flex items-center justify-center shadow-lg flex-shrink-0 hover:ring-2 hover:ring-white/30 transition-all`}>
                         <span className="text-white font-bold text-lg">{alert.symbol.replace('-USD','')[0]}</span>
-                      </div>
+                      </button>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <div className="text-white font-bold text-lg">{alert.symbol}</div>
+                          <button onClick={() => openChart(alert.symbol)} className="text-white font-bold text-lg hover:text-blue-400 transition-colors">{alert.symbol}</button>
                           {triggered && <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-xs rounded-full font-medium">⚡ Triggered</span>}
                         </div>
                         <div className="text-gray-400 text-sm">

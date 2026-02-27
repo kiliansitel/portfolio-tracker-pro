@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Pin, PinOff } from 'lucide-react';
 import { CandlestickChart } from './CandlestickChart';
 import { api } from '../lib/api';
 import { fmt } from '../lib/format';
+import { usePinnedMarkets } from '../lib/usePinnedMarkets';
 
 interface OptionsData {
   expiries: string[];
@@ -138,6 +139,8 @@ interface ChartModalProps {
 export function ChartModal({ symbol, name, onClose }: ChartModalProps) {
   const [tab, setTab] = useState<'chart'|'options'>('chart');
   const [price, setPrice] = useState<any>(null);
+  const { pinned, toggle } = usePinnedMarkets();
+  const isPinned = pinned.includes(symbol);
 
   useEffect(() => {
     api.markets.price(symbol).then(setPrice).catch(() => {});
@@ -185,6 +188,10 @@ export function ChartModal({ symbol, name, onClose }: ChartModalProps) {
                 ⛓️ Options
               </button>
             </div>
+            <button onClick={() => toggle(symbol)} title={isPinned ? 'Unpin from Markets' : 'Pin to Markets'}
+              className={`p-2 rounded-lg transition-colors ${isPinned ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-gray-500 hover:text-yellow-400 hover:bg-white/5'}`}>
+              {isPinned ? <PinOff className="w-4 h-4" /> : <Pin className="w-4 h-4" />}
+            </button>
             <button onClick={onClose} className="p-2 text-gray-500 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5" />
             </button>
