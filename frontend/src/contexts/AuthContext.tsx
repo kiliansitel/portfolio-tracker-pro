@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { auth } from '../lib/auth';
 import { api } from '../lib/api';
+import { setUserCurrency, setExchangeRates } from '../lib/currency';
 
 interface AuthContextType {
   user: any;
@@ -19,8 +20,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (auth.isLoggedIn()) {
       api.me()
-        .then((u) => {
+        .then(async (u) => {
           setUser(u);
+          // Sync currency preference + exchange rates
+          if (u?.settings?.currency || u?.currency) {
+            setUserCurrency(u.settings?.currency || u.currency);
+          }
+          try {
+            const rates = await api.exchangeRates();
+            if (rates && typeof rates === 'object') setExchangeRates(rates);
+          } catch {}
           setLoading(false);
         })
         .catch(() => {

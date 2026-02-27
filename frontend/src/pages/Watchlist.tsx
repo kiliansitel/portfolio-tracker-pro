@@ -6,7 +6,7 @@ import { api } from '../lib/api';
 import { getPrices } from '../lib/priceCache';
 import { Modal, FormInput, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
-import { ChartModal } from '../components/ChartModal';
+import { useChartModal } from '../lib/chartModalContext';
 import { MarketStateBadge } from '../components/MarketStateBadge';
 import { useLivePrices, usePriceFlash } from '../lib/useLivePrices';
 import { SwipeableCard } from '../components/SwipeableCard';
@@ -75,7 +75,7 @@ export function Watchlist() {
 
   // Add symbol modal
   const [showAdd, setShowAdd] = useState(false);
-  const [chartSymbol, setChartSymbol] = useState<string | null>(null);
+  const { openChart } = useChartModal();
   const [addSymbol, setAddSymbol] = useState('');
   const [addNotes, setAddNotes] = useState('');
   const [acResults, setAcResults] = useState<any[]>([]);
@@ -295,7 +295,7 @@ export function Watchlist() {
                       >
                       <div className="group px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => setChartSymbol(item.symbol)}>
+                          <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => openChart(item.symbol)}>
                             <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getGradient(item.symbol)} flex items-center justify-center shadow-lg flex-shrink-0`}>
                               <span className="text-white font-bold text-sm">{item.symbol.replace('-USD','')[0]}</span>
                             </div>
@@ -468,7 +468,6 @@ export function Watchlist() {
       </Modal>
     </div>
 
-    {chartSymbol && <ChartModal symbol={chartSymbol} onClose={() => setChartSymbol(null)} />}
     </>
   );
 }

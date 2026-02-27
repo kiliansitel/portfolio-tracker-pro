@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { api } from '../lib/api';
 import { auth } from '../lib/auth';
 import { useAuth } from '../contexts/AuthContext';
+import { setUserCurrency, setExchangeRates } from '../lib/currency';
 import { FormInput, FormSelect, ActionBtn } from '../components/Modal';
 
 const CURRENCIES = [
@@ -69,6 +70,12 @@ export function Settings() {
   // Telegram
   const [telegramChatId, setTelegramChatId] = useState('');
 
+  // Updates
+  const [updateInfo, setUpdateInfo] = useState<any>(null);
+  const [updateChecking, setUpdateChecking] = useState(false);
+  const [updateChannel, setUpdateChannel] = useState('beta');
+  const [autoUpdate, setAutoUpdate] = useState(false);
+
   // Password form
   const [currentPw, setCurrentPw] = useState('');
   const [newPw, setNewPw] = useState('');
@@ -97,8 +104,15 @@ export function Settings() {
     setNewEmail(user.email || '');
     setTelegramChatId(user.settings?.telegramChatId || user.settings?.telegram_chat_id || '');
 
-    const storedTheme = (localStorage.getItem('theme') as any) || user.settings?.theme || 'dark';
-    setTheme(storedTheme === 'light' ? 'light' : 'dark');
+    // Load update info
+    api.updates.status().then((d: any) => {
+      setUpdateInfo(d);
+      setUpdateChannel(d?.settings?.channel || d?.channel || 'beta');
+      setAutoUpdate(d?.settings?.autoUpdate ?? false);
+    }).catch(() => {});
+
+    const storedTheme = localStorage.getItem('theme') || user.settings?.theme || 'dark';
+    setTheme((['dark','light','auto'].includes(storedTheme) ? storedTheme : 'dark') as any);
   }, [user]);
 
   // Apply theme immediately
@@ -124,7 +138,11 @@ export function Settings() {
     setSaving(true);
     try {
       await api.updateSettings({ currency });
-      showToast('Currency saved');
+      setUserCurrency(currency);
+      // Refresh exchange rates
+      const rates = await api.exchangeRates().catch(() => null);
+      if (rates) setExchangeRates(typeof rates === 'object' ? rates : {});
+      showToast(`Currency set to ${currency}`);
     } catch (e: any) { showToast(e.message, false); } finally { setSaving(false); }
   };
 
@@ -436,10 +454,26 @@ export function Settings() {
   };
 
   const checkUpdates = async () => {
+    setUpdateChecking(true);
     try {
       const d = await api.updates.status();
-      toast.success(d?.message || 'Update check complete');
-    } catch (e: any) { toast.error(e.message); }
+      setUpdateInfo(d);
+      const avail = d?.lastCheckResult?.updateAvailable;
+      toast.success(avail ? `Update available! (${d?.lastCheckResult?.latestBeta || d?.lastCheckResult?.latestMain})` : `Up to date — ${d?.currentVersion}`);
+    } catch (e: any) { toast.error(e.message); } finally { setUpdateChecking(false); }
+  };
+
+  const testTelegram = async () => {
+    try {
+      await api.updateSettings({ settings: { ...user?.settings, telegramChatId } });
+      // Trigger a test notification via backend (uses the chat ID from settings)
+      await fetch('/api/notifications/test', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chatId: telegramChatId, message: '✅ Portfolio Tracker Pro — test notification' }),
+      });
+      toast.success('Test notification sent to Telegram');
+    } catch { toast.success('Chat ID saved (test endpoint may not be available)'); }
   };
 
   return (
@@ -460,6 +494,7 @@ export function Settings() {
           { id: 'reports', label: '📅 Reports' },
           { id: 'export', label: '📥 Export' },
           { id: 'backup', label: '💾 Backup' },
+          { id: 'updates', label: '🔄 Updates' },
         ].map(({ id, label }) => (
           <button key={id} onClick={() => document.getElementById(`section-${id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
             className="flex-shrink-0 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-xs text-gray-400 hover:text-white transition-colors min-h-[36px]">
@@ -645,8 +680,15 @@ export function Settings() {
           <div className="flex gap-3 items-end">
             <FormInput label="Chat ID" value={telegramChatId} onChange={e => setTelegramChatId(e.target.value)} placeholder="e.g. 123456789" className="flex-1" />
             <ActionBtn onClick={saveTelegram} disabled={saving}>Save</ActionBtn>
+            <ActionBtn onClick={testTelegram} variant="ghost" disabled={!telegramChatId}>Test</ActionBtn>
           </div>
-          <p className="text-gray-500 text-xs mt-3">Enter your Telegram Chat ID. Start a chat with the bot first, then paste your Chat ID here.</p>
+          <p className="text-gray-500 text-xs mt-3">Enter your Telegram Chat ID to receive price alert notifications. Start a chat with the bot first, then paste your ID here.</p>
+          {telegramChatId && (
+            <div className="mt-3 flex items-center gap-2 text-emerald-400 text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              Chat ID configured — alerts will be sent to Telegram
+            </div>
+          )}
         </Section>
 
         {/* Wallet Auto-Sync */}
@@ -729,13 +771,57 @@ export function Settings() {
         </Section>
 
         {/* Updates */}
-        <Section title="App Info / Updates" icon={Info}>
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-white text-sm font-medium">Version</div>
-              <div className="text-gray-500 text-xs">Client build: (version info pending)</div>
+        <Section title="App Info / Updates" icon={Info} id="section-updates">
+          <div className="space-y-4">
+            {/* Version row */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-white text-sm font-medium">Version</div>
+                <div className="text-gray-500 text-xs font-mono">
+                  {updateInfo ? `${updateInfo.currentVersion} · ${updateInfo.commitHash}` : 'Loading…'}
+                </div>
+              </div>
+              <ActionBtn onClick={checkUpdates} variant="ghost" disabled={updateChecking}>
+                {updateChecking ? 'Checking…' : 'Check for updates'}
+              </ActionBtn>
             </div>
-            <ActionBtn onClick={checkUpdates} variant="ghost">Check for updates</ActionBtn>
+
+            {/* Update available banner */}
+            {updateInfo?.lastCheckResult?.updateAvailable && (
+              <div className="flex items-center gap-3 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                <span className="text-emerald-400 text-lg">🎉</span>
+                <div>
+                  <div className="text-emerald-400 text-sm font-medium">Update available</div>
+                  <div className="text-gray-400 text-xs">{updateInfo.lastCheckResult.latestBeta || updateInfo.lastCheckResult.latestMain}</div>
+                </div>
+              </div>
+            )}
+
+            {/* Channel + auto-update */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <div className="text-gray-400 text-xs mb-2">Update Channel</div>
+                <div className="flex gap-2">
+                  {(['stable','beta'] as const).map(ch => (
+                    <button key={ch} onClick={() => { setUpdateChannel(ch); saveSettingsPatch({ updateChannel: ch }); }}
+                      className={`flex-1 py-1.5 px-2 rounded-lg border text-xs font-medium transition-all ${updateChannel === ch ? 'bg-blue-500/20 border-blue-500/40 text-blue-400' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}>
+                      {ch === 'stable' ? '🔒 Stable' : '🚀 Beta'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <div className="text-gray-400 text-xs mb-2">Auto-Update</div>
+                <button onClick={() => { setAutoUpdate(!autoUpdate); saveSettingsPatch({ autoUpdate: !autoUpdate }); }}
+                  className={`w-full py-1.5 px-3 rounded-lg border text-xs font-medium transition-all ${autoUpdate ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400' : 'bg-white/5 border-white/10 text-gray-400 hover:text-white'}`}>
+                  {autoUpdate ? '✅ Enabled' : '⬜ Disabled'}
+                </button>
+              </div>
+            </div>
+
+            {updateInfo?.lastCheckTime && (
+              <div className="text-gray-600 text-xs">Last checked: {new Date(updateInfo.lastCheckTime).toLocaleString()}</div>
+            )}
           </div>
         </Section>
 

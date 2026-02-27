@@ -6,9 +6,9 @@ import { getPrices } from '../lib/priceCache';
 import { fmt as fmtPrice } from '../lib/format';
 import { Modal, FormInput, FormSelect, ActionBtn } from '../components/Modal';
 import { Skeleton } from '../components/ui/skeleton';
-import { ChartModal } from '../components/ChartModal';
 import { useLivePrices, usePriceFlash } from '../lib/useLivePrices';
 import { MarketStateBadge } from '../components/MarketStateBadge';
+import { useChartModal } from '../lib/chartModalContext';
 import { SwipeableCard } from '../components/SwipeableCard';
 
 function PriceText({ price }: { price: number }) {
@@ -50,7 +50,7 @@ export function Positions() {
 
   // CRUD modals
   const [showAdd, setShowAdd] = useState(false);
-  const [chartSymbol, setChartSymbol] = useState<string | null>(null);
+  const { openChart } = useChartModal();
   const [editPos, setEditPos] = useState<EnrichedPosition | null>(null);
   const [closePos, setClosePos] = useState<EnrichedPosition | null>(null);
   const [deletePos, setDeletePos] = useState<EnrichedPosition | null>(null);
@@ -127,6 +127,7 @@ export function Positions() {
           dayChange: dc, dayChangePct: pd.changePercent || 0,
           type: p.type || 'stock', status: p.status || 'open',
           currency: p.currency || 'USD', notes: p.notes,
+          marketState: pd.marketState || null,
         };
       }));
     } catch (e) { console.error(e); }
@@ -387,7 +388,7 @@ export function Positions() {
                 <div key={position.id}>
                 {/* Desktop row */}
                 <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors items-center">
-                  <div className="col-span-2 flex items-center gap-3 cursor-pointer" onClick={() => setChartSymbol(position.symbol)}>
+                  <div className="col-span-2 flex items-center gap-3 cursor-pointer" onClick={() => openChart(position.symbol)}>
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
                       <span className="text-white font-bold text-xs">{position.symbol[0]}</span>
                     </div>
@@ -437,12 +438,17 @@ export function Positions() {
                 >
                 <div className="sm:hidden px-4 py-4 border-b border-white/5">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => setChartSymbol(position.symbol)}>
+                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => openChart(position.symbol)}>
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
                         <span className="text-white font-bold text-sm">{position.symbol[0]}</span>
                       </div>
                       <div>
-                        <div className="text-white font-bold">{position.symbol}</div>
+                        <div className="flex items-center gap-2">
+                          <div className="text-white font-bold">{position.symbol}</div>
+                          {(position as any).marketState && (position as any).marketState !== 'REGULAR' && (
+                            <MarketStateBadge marketState={(position as any).marketState} />
+                          )}
+                        </div>
                         <div className="text-gray-500 text-xs">{position.type} · {position.quantity} shares</div>
                       </div>
                     </div>
@@ -591,7 +597,6 @@ export function Positions() {
       </Modal>
     </div>
 
-    {chartSymbol && <ChartModal symbol={chartSymbol} onClose={() => setChartSymbol(null)} />}
     </>
   );
 }
