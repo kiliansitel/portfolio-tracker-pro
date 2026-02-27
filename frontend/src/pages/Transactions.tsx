@@ -36,7 +36,9 @@ export function Transactions() {
     setLoading(true);
     try {
       const data = await api.portfolio.transactions(pid);
-      setTransactions(Array.isArray(data) ? data : []);
+      // API returns { transactions: [...], total: N } or plain array
+      const list = Array.isArray(data) ? data : (data?.transactions || []);
+      setTransactions(list);
     } catch { setTransactions([]); }
     finally { setLoading(false); }
   };
@@ -108,7 +110,7 @@ export function Transactions() {
       </div>
 
       {/* Type Filters */}
-      <div className="flex items-center gap-1.5 mb-6 overflow-x-auto no-scrollbar">
+      <div className="flex items-center gap-1.5 mb-6 overflow-x-auto no-scrollbar pr-4">
         {tabsToShow.filter(t => countFor(t) > 0 || t === 'all').map(t => {
           const count = countFor(t);
           const active = filter === t;

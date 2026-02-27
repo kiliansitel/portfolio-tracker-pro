@@ -28,12 +28,42 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&quot;/g, '"').replace(/&#39;/g, "'");
 }
 
-function extractDomain(url: string): string {
-  try { return new URL(url).hostname.replace(/^www\./, ''); } catch { return ''; }
-}
+// Map well-known source names to their actual domains for accurate favicons
+const SOURCE_DOMAIN_MAP: Record<string, string> = {
+  'yahoo finance': 'finance.yahoo.com',
+  'yahoo': 'finance.yahoo.com',
+  'cnbc': 'cnbc.com',
+  'bloomberg': 'bloomberg.com',
+  'reuters': 'reuters.com',
+  'the motley fool': 'fool.com',
+  'motley fool': 'fool.com',
+  'barron\'s': 'barrons.com',
+  'barrons': 'barrons.com',
+  'marketwatch': 'marketwatch.com',
+  'seeking alpha': 'seekingalpha.com',
+  'investing.com': 'investing.com',
+  'nasdaq': 'nasdaq.com',
+  'tipranks': 'tipranks.com',
+  'investor\'s business daily': 'investors.com',
+  'investors.com': 'investors.com',
+  'benzinga': 'benzinga.com',
+  'thestreet': 'thestreet.com',
+  'financial times': 'ft.com',
+  'wall street journal': 'wsj.com',
+  'wsj': 'wsj.com',
+  'fortune': 'fortune.com',
+  'forbes': 'forbes.com',
+  'business insider': 'businessinsider.com',
+  'techcrunch': 'techcrunch.com',
+  'coindesk': 'coindesk.com',
+  'cointelegraph': 'cointelegraph.com',
+};
 
 function faviconUrl(url: string, source: string): string {
-  const domain = extractDomain(url) || (source ? `${source.toLowerCase().replace(/\s+/g, '')}.com` : '');
+  const sourceKey = source.toLowerCase().trim();
+  const domain = SOURCE_DOMAIN_MAP[sourceKey] ||
+    (() => { try { const h = new URL(url).hostname.replace(/^www\./, ''); return h === 'news.google.com' ? '' : h; } catch { return ''; } })() ||
+    '';
   return domain ? `https://www.google.com/s2/favicons?domain=${domain}&sz=64` : '';
 }
 
@@ -112,7 +142,7 @@ export function News() {
     : articles;
 
   return (
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-24">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Newspaper className="w-6 h-6 text-blue-500" />
@@ -201,6 +231,8 @@ export function News() {
               </a>
             );
           })}
+          {/* Extra bottom spacer so last card never sits under bottom nav */}
+          <div className="h-24" />
         </div>
       )}
     </div>
