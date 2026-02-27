@@ -91,7 +91,7 @@ export function Dashboard() {
           }
 
           // Donut allocation — uses batch prices, handles 0-price gracefully
-          const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#22c55e', '#06b6d4'];
+          const colors = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444', '#22c55e', '#06b6d4', '#ec4899', '#a855f7', '#14b8a6'];
           const values = openPos
             .map((p: any) => ({
               symbol: p.symbol,
@@ -99,7 +99,8 @@ export function Dashboard() {
             }))
             .sort((a: any, b: any) => b.value - a.value);
 
-          const top = values.slice(0, 4);
+          const TOP_N = 8;
+          const top = values.slice(0, TOP_N);
           const topSum = top.reduce((s: any, v: any) => s + v.value, 0);
           const other = Math.max(positionsValue - topSum, 0);
 
@@ -109,9 +110,9 @@ export function Dashboard() {
               value: totalValue > 0 ? (t.value / totalValue) * 100 : 0,
               color: colors[i % colors.length],
             })),
-            { name: 'Cash', value: totalValue > 0 ? (portfolioCash / totalValue) * 100 : 0, color: colors[4] },
-            ...(other > 0
-              ? [{ name: 'Other', value: totalValue > 0 ? (other / totalValue) * 100 : 0, color: colors[5] }]
+            { name: 'Cash', value: totalValue > 0 ? (portfolioCash / totalValue) * 100 : 0, color: '#06b6d4' },
+            ...(other > 0.5
+              ? [{ name: 'Other', value: totalValue > 0 ? (other / totalValue) * 100 : 0, color: '#6b7280' }]
               : []),
           ].filter((d) => d.value > 0.05);
 
@@ -171,7 +172,7 @@ export function Dashboard() {
   const sparklineDummy = [1, 1.1, 1.05, 1.2, 1.15];
 
   return (
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-24">
       {/* Top Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
         {loading ? (

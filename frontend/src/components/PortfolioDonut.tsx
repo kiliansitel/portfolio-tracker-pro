@@ -33,7 +33,7 @@ export function PortfolioDonut({
 } = {}) {
   const [showAll, setShowAll] = useState(false);
   const [hovered, setHovered] = useState<number | null>(null);
-  const MAX = 5;
+  const MAX = 8;
 
   const hasData = Array.isArray(data) && data.length > 0;
   const total = hasData ? data!.reduce((s, d) => s + d.value, 0) : 0;

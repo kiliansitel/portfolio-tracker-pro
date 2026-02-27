@@ -83,7 +83,7 @@ export function Transactions() {
   }, 0);
 
   return (
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-24">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
@@ -110,7 +110,7 @@ export function Transactions() {
       </div>
 
       {/* Type Filters */}
-      <div className="flex items-center gap-1.5 mb-6 overflow-x-auto no-scrollbar pr-4">
+      <div className="flex flex-nowrap items-center gap-1.5 mb-6 overflow-x-auto no-scrollbar pr-4 -mx-4 px-4 sm:mx-0 sm:px-0">
         {tabsToShow.filter(t => countFor(t) > 0 || t === 'all').map(t => {
           const count = countFor(t);
           const active = filter === t;
@@ -184,13 +184,15 @@ export function Transactions() {
           </div>
         ) : (
           filtered.slice().reverse().map((tx: any) => {
-            const color = TYPE_COLORS[tx.type] || 'text-gray-400 bg-gray-400/10';
+            const typeColor = TYPE_COLORS[tx.type] || 'text-gray-400 bg-gray-400/10';
+            const actionColor = tx.action === 'buy' ? 'text-emerald-400 bg-emerald-400/10' : tx.action === 'sell' ? 'text-red-400 bg-red-400/10' : null;
             const total = tx.quantity && tx.price ? tx.quantity * tx.price : tx.amount || 0;
             return (
               <div key={tx.id} className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors items-center">
                 <div className="col-span-2 text-gray-400 text-sm">{dateLabel(tx.date || tx.created_at)}</div>
-                <div className="col-span-2">
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize ${color}`}>{tx.type}</span>
+                <div className="col-span-2 flex flex-wrap gap-1">
+                  <span className={`px-2 py-0.5 rounded text-xs font-semibold capitalize ${typeColor}`}>{tx.type}</span>
+                  {actionColor && <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${actionColor}`}>{tx.action}</span>}
                 </div>
                 <div className="col-span-2 text-white font-medium">{tx.symbol || '—'}</div>
                 <div className="col-span-1 text-gray-400 text-sm">{tx.quantity || '—'}</div>

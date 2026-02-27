@@ -66,8 +66,9 @@ export function PerformanceChart({
   const tickFmt = yTickFormatter ?? ((v: number) => fmt(v));
 
   // Chart dimensions
-  const H = 220;
-  const padT = 10, padB = 24, padL = 56, padR = 32;
+  // Responsive height: taller on wider screens
+  const H = svgWidth < 400 ? 180 : 220;
+  const padT = 10, padB = 28, padL = 52, padR = 32;
   const chartW = Math.max(svgWidth - padL - padR, 10);
   const chartH = H - padT - padB;
 
@@ -95,11 +96,12 @@ export function PerformanceChart({
   // Y-axis ticks (4)
   const yTicks = Array.from({ length: 4 }, (_, i) => minV + (range * i) / 3);
 
-  // X-axis labels (max 5)
+  // X-axis labels — fewer on narrow screens to avoid overlap
+  const xLabelCount = svgWidth < 400 ? 3 : svgWidth < 600 ? 4 : 5;
   const xLabelIdxs: number[] = [];
   if (chartData.length >= 2) {
-    const step = Math.floor((chartData.length - 1) / 4);
-    for (let i = 0; i <= 4; i++) xLabelIdxs.push(Math.min(i * step, chartData.length - 1));
+    const step = Math.floor((chartData.length - 1) / (xLabelCount - 1));
+    for (let i = 0; i < xLabelCount; i++) xLabelIdxs.push(Math.min(i * step, chartData.length - 1));
   }
 
   const { tooltip, handleMouseMove, handleMouseLeave } = useLiveTooltip(chartData, svgWidth, H, padL, padR);

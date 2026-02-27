@@ -142,7 +142,7 @@ export function News() {
     : articles;
 
   return (
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-24">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-32">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <Newspaper className="w-6 h-6 text-blue-500" />
