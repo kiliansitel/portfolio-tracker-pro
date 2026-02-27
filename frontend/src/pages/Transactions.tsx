@@ -51,11 +51,19 @@ export function Transactions() {
     toast.success('Transaction deleted');
   };
 
-  const filtered = filter === 'all' ? transactions : transactions.filter(t => t.type === filter);
-  const TABS = ['all', 'buy', 'sell', 'dividend', 'deposit', 'withdrawal'];
-  const types = ['all', ...Array.from(new Set(transactions.map((t: any) => String(t.type))))];
-  const tabsToShow = [...new Set([...TABS, ...types])];
-  const countFor = (t: string) => t === 'all' ? transactions.length : transactions.filter((tx: any) => tx.type === t).length;
+  // Filter by action (buy/sell/dividend/deposit/withdrawal) OR type (crypto/stock)
+  const matchFilter = (tx: any, f: string) => {
+    if (f === 'all') return true;
+    return tx.action === f || tx.type === f;
+  };
+  const filtered = transactions.filter((t: any) => matchFilter(t, filter));
+  // Build tabs from actual data fields
+  const actions = Array.from(new Set(transactions.map((t: any) => t.action).filter(Boolean)));
+  const txTypes = Array.from(new Set(transactions.map((t: any) => t.type).filter(Boolean)));
+  const FIXED_TABS = ['all', 'buy', 'sell', 'dividend', 'deposit', 'withdrawal'];
+  const dynamicTabs = [...new Set([...FIXED_TABS, ...actions, ...txTypes])];
+  const tabsToShow = dynamicTabs;
+  const countFor = (t: string) => t === 'all' ? transactions.length : transactions.filter((tx: any) => matchFilter(tx, t)).length;
 
   // Dividend calendar: group dividends by month
   const dividends = transactions.filter((t: any) => t.type === 'dividend');
@@ -85,7 +93,7 @@ export function Transactions() {
           onClick={() => navigate('/wallet')}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg text-white font-medium shadow-lg shadow-blue-500/30 text-sm"
         >
-          <Plus className="w-4 h-4" /> Add Transaction
+          <Plus className="w-4 h-4" /> <span className="hidden sm:inline">Add Transaction</span><span className="sm:hidden">Add</span>
         </button>
       </div>
 
@@ -101,7 +109,7 @@ export function Transactions() {
 
       {/* Type Filters */}
       <div className="flex items-center gap-1.5 mb-6 overflow-x-auto no-scrollbar">
-        {tabsToShow.filter(t => countFor(t) > 0 || TABS.includes(t)).map(t => {
+        {tabsToShow.filter(t => countFor(t) > 0 || t === 'all').map(t => {
           const count = countFor(t);
           const active = filter === t;
           return (
@@ -110,7 +118,7 @@ export function Transactions() {
                 active ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-gray-500 hover:text-gray-300 border border-transparent'
               }`}>
               {t}
-              {count > 0 && <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${active ? 'bg-blue-500/30 text-blue-300' : 'bg-white/5 text-gray-600'}`}>{count}</span>}
+              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${active ? 'bg-blue-500/30 text-blue-300' : 'bg-white/5 text-gray-600'}`}>{count}</span>
             </button>
           );
         })}

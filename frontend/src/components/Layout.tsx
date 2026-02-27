@@ -85,8 +85,8 @@ export function Layout() {
           </div>
         </div>
 
-        {/* Page Content — extra bottom padding on mobile for the fixed bottom nav (≈80px) */}
-        <div className="pb-24 md:pb-6">
+        {/* Page Content — extra bottom padding on mobile for the fixed bottom nav (≈80px nav + safe area) */}
+        <div className="pb-32 md:pb-6">
           <Outlet />
         </div>
       </div>

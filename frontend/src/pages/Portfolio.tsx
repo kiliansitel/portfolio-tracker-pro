@@ -179,33 +179,33 @@ export function Portfolio() {
       {selected ? (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-4 gap-6 mb-8">
-            <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
-              <div className="text-gray-400 text-sm mb-2">Total Value</div>
-              <div className="text-3xl font-bold text-white">{fmt(totalValue)}</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-6 mb-8">
+            <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
+              <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total Value</div>
+              <div className="text-xl sm:text-3xl font-bold text-white truncate">{fmt(totalValue)}</div>
             </div>
-            <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border ${totalPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
-              <div className="text-gray-400 text-sm mb-2">Total P/L</div>
-              <div className={`text-3xl font-bold ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+            <div className={`bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border ${totalPL >= 0 ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
+              <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Total P/L</div>
+              <div className={`text-xl sm:text-3xl font-bold truncate ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                 {totalPL >= 0 ? '+' : ''}{fmt(Math.abs(totalPL))}
               </div>
-              {invested > 0 && <div className={`text-sm mt-1 ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{plPct >= 0 ? '+' : ''}{plPct.toFixed(1)}%</div>}
+              {invested > 0 && <div className={`text-xs sm:text-sm mt-1 ${totalPL >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>{plPct >= 0 ? '+' : ''}{plPct.toFixed(1)}%</div>}
             </div>
-            <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-white/5">
-              <div className="text-gray-400 text-sm mb-2">Positions Value</div>
-              <div className="text-3xl font-bold text-white">{fmt(posValue)}</div>
-              <div className="text-gray-500 text-sm mt-1">{positions.length} positions</div>
+            <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-white/5">
+              <div className="text-gray-400 text-xs sm:text-sm mb-1 sm:mb-2">Positions</div>
+              <div className="text-xl sm:text-3xl font-bold text-white truncate">{fmt(posValue)}</div>
+              <div className="text-gray-500 text-xs sm:text-sm mt-1">{positions.length} pos.</div>
             </div>
-            <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-blue-500/20">
-              <div className="flex items-center justify-between mb-2">
-                <div className="text-gray-400 text-sm">Cash Balance</div>
+            <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-4 sm:p-6 border border-blue-500/20">
+              <div className="flex items-center justify-between mb-1 sm:mb-2">
+                <div className="text-gray-400 text-xs sm:text-sm">Cash</div>
                 <button onClick={() => { setFormCashDelta(''); setFormCashAction('deposit'); setErr(''); setShowCash(selected); }}
                   className="p-1 bg-blue-500/20 rounded-lg text-blue-400 hover:bg-blue-500/30 transition-colors">
-                  <DollarSign className="w-4 h-4" />
+                  <DollarSign className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
               </div>
-              <div className="text-3xl font-bold text-blue-400">{fmt(cashUsd)}</div>
-              <div className="text-gray-500 text-sm mt-1">{selected.cash_currency || 'USD'}</div>
+              <div className="text-xl sm:text-3xl font-bold text-blue-400 truncate">{fmt(cashUsd)}</div>
+              <div className="text-gray-500 text-xs sm:text-sm mt-1">{selected.cash_currency || 'USD'}</div>
             </div>
           </div>
 

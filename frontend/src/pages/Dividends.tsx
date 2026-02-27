@@ -51,6 +51,10 @@ export function Dividends() {
     .sort((a, b) => a.daysLeft - b.daysLeft)
     .slice(0, 10);
 
+  // Next upcoming ex-date: prefer future, fall back to most recent past
+  const nextUpcomingExDate = upcomingEx.find(p => p.daysLeft >= 0)?.exDividendDate
+    || summary.nextExDate;
+
   if (loading) return (
     <div className="p-4 sm:p-8 max-w-[1440px] mx-auto space-y-4">
       <Skeleton className="h-8 w-48 bg-white/5 rounded-xl" />
@@ -113,11 +117,11 @@ export function Dividends() {
             <Clock className="w-4 h-4 text-orange-400" />
             <span className="text-gray-400 text-xs">Next Ex-Date</span>
           </div>
-          <div className="text-lg font-bold text-white">{summary.nextExDate || '—'}</div>
-          {summary.nextExDate && (
-            <div className={`text-xs mt-0.5 ${daysUntil(summary.nextExDate) < 0 ? 'text-gray-500' : 'text-orange-400'}`}>
+          <div className="text-lg font-bold text-white">{nextUpcomingExDate || '—'}</div>
+          {nextUpcomingExDate && (
+            <div className={`text-xs mt-0.5 ${daysUntil(nextUpcomingExDate) < 0 ? 'text-gray-500' : 'text-orange-400'}`}>
               {(() => {
-                const d = daysUntil(summary.nextExDate);
+                const d = daysUntil(nextUpcomingExDate);
                 if (d === 0) return 'Today!';
                 if (d < 0) return `${Math.abs(d)}d ago`;
                 return `In ${d} days`;

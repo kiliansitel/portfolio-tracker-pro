@@ -97,12 +97,15 @@ export function Positions() {
 
       // Dividends
       try {
-        const divData = await api.portfolio.dividends(pid);
-        if (divData && (divData.annual_income > 0 || divData.yield > 0)) {
+        const divData = await api.dividends(pid);
+        const summary = divData?.summary || divData || {};
+        const income = summary.totalAnnualIncome || divData?.annual_income || 0;
+        const yld = summary.averageYield || divData?.yield || 0;
+        if (income > 0 || yld > 0) {
           setDividends({
-            income: divData.annual_income || 0,
-            yield: divData.yield || 0,
-            nextPayment: divData.next_payment || null,
+            income,
+            yield: yld * 100,  // backend returns decimal (0.0075 → 0.75%)
+            nextPayment: summary.nextExDate || divData?.next_payment || null,
           });
         }
       } catch { /* dividends optional */ }

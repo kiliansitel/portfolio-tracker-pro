@@ -78,8 +78,8 @@ export function Dashboard() {
           );
           setStats({ totalValue, totalPL, totalInvested, assetCount: openPos.length, dailyPL });
 
-          // Performance snapshots
-          const perf = await api.portfolio.performance(portfolioId).catch(() => null);
+          // Performance snapshots — default 1M (30 days) to match initial chart tab
+          const perf = await api.portfolio.performance(portfolioId, { days: 30 }).catch(() => null);
           const snaps = perf?.snapshots || [];
           if (Array.isArray(snaps) && snaps.length) {
             setPerformance(
