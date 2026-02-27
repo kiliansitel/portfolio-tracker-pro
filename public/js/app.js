@@ -355,8 +355,9 @@ if (token) {
                 initApp();
             }
         })
-        .catch(() => {
+        .catch((e) => {
             // Network error / aborted — try loading anyway with cached token
+            console.warn('[app] token validation failed, proceeding with cached token:', e.message);
             hideAuth();
             setupSessionTimeout(token);
             initApp();
