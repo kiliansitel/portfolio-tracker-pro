@@ -197,7 +197,7 @@ async function fetchMAData(symbol) {
         const data = r.timestamp.map((t, i) => q.close[i] != null ? { time: t, value: q.close[i] } : null).filter(Boolean);
         chartCache[cacheKey] = { data, _ts: now };
         return data;
-    } catch (e) { return []; }
+    } catch (e) { console.warn('[markets] chart data parse error:', e.message); return []; }
 }
 
 async function updateDetailChart() {
@@ -245,7 +245,7 @@ function renderDetailRSI(data) {
         return;
     }
     rsiEl.style.display = 'block';
-    if (detailRSISeries) { try { detailRSIChart.removeSeries(detailRSISeries); } catch(e){} }
+    if (detailRSISeries) { try { detailRSIChart.removeSeries(detailRSISeries); } catch(e) { /* cleanup: series may already be removed */ } }
     detailRSISeries = detailRSIChart.addLineSeries({
         color: '#ab47bc', lineWidth: 1.5,
         priceFormat: { type: 'custom', formatter: v => v.toFixed(0) }
