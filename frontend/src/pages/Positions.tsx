@@ -279,7 +279,7 @@ export function Positions() {
 
   return (
     <>
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-24">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-32 md:pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
@@ -388,12 +388,15 @@ export function Positions() {
                 <div key={position.id}>
                 {/* Desktop row */}
                 <div className="hidden sm:grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 hover:bg-white/5 transition-colors items-center">
-                  <div className="col-span-2 flex items-center gap-3 cursor-pointer" onClick={() => openChart(position.symbol)}>
-                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
+                  <div className="col-span-2 flex items-center gap-3 cursor-pointer group" onClick={() => openChart(position.symbol)} title="Click to open chart">
+                    <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0 group-hover:from-blue-700 group-hover:to-blue-800 transition-all">
                       <span className="text-white font-bold text-xs">{position.symbol[0]}</span>
                     </div>
                     <div>
-                      <div className="text-white font-bold text-sm hover:text-blue-400 transition-colors">{position.symbol}</div>
+                      <div className="flex items-center gap-1">
+                        <span style={{color:'#93c5fd'}} className="font-bold text-sm group-hover:underline underline-offset-2 transition-all">{position.symbol}</span>
+                        <span style={{color:'#4b5563'}} className="text-xs group-hover:text-blue-400 transition-colors">↗</span>
+                      </div>
                       <div className="text-gray-500 text-xs">{position.type}</div>
                     </div>
                   </div>
@@ -438,13 +441,13 @@ export function Positions() {
                 >
                 <div className="sm:hidden px-4 py-4 border-b border-white/5">
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => openChart(position.symbol)}>
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center flex-shrink-0">
+                    <div className="flex items-center gap-3 flex-1 cursor-pointer group" onClick={() => openChart(position.symbol)}>
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-gray-700 to-gray-800 group-hover:from-blue-700 group-hover:to-blue-800 flex items-center justify-center flex-shrink-0 transition-all">
                         <span className="text-white font-bold text-sm">{position.symbol[0]}</span>
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <div className="text-white font-bold">{position.symbol}</div>
+                          <div style={{color:'#93c5fd'}} className="font-bold transition-colors">{position.symbol} <span style={{color:'#4b5563'}} className="text-xs">↗</span></div>
                           {(position as any).marketState && (position as any).marketState !== 'REGULAR' && (
                             <MarketStateBadge marketState={(position as any).marketState} />
                           )}

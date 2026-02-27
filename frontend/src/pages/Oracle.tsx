@@ -334,6 +334,34 @@ function ProviderPanel({ onClose }: { onClose: () => void }) {
 }
 
 // ─── ConversationsPanel ─────────────────────────────────────────────────
+// Inline list for desktop sidebar (no overlay, no close button)
+function ConversationsList({ currentId, onLoad }: { currentId?: number; onLoad: (conv: any) => void }) {
+  const [convs, setConvs] = useState<any[]>([]);
+  useEffect(() => {
+    fetch('/api/ai/conversations', { headers: { Authorization: `Bearer ${auth.getToken()}` } })
+      .then(r => r.json()).then(setConvs).catch(() => {});
+  }, [currentId]);
+
+  const load = async (id: number) => {
+    try {
+      const r = await fetch(`/api/ai/conversations/${id}`, { headers: { Authorization: `Bearer ${auth.getToken()}` } });
+      onLoad(await r.json());
+    } catch { toast.error('Failed to load'); }
+  };
+
+  if (!convs.length) return <div className="text-gray-600 text-xs text-center py-6">No conversations yet</div>;
+  return (
+    <>
+      {convs.map(c => (
+        <button key={c.id} onClick={() => load(c.id)} className={`w-full text-left px-4 py-3 border-b border-white/5 hover:bg-white/5 transition-colors ${currentId === c.id ? 'bg-white/5 border-l-2 border-l-blue-500' : ''}`}>
+          <div className="text-white text-xs font-medium truncate">{c.title || 'Untitled'}</div>
+          <div className="text-gray-600 text-xs mt-0.5">{new Date(c.updated_at || c.created_at).toLocaleDateString()}</div>
+        </button>
+      ))}
+    </>
+  );
+}
+
 function ConversationsPanel({ currentId, onLoad, onClose }: { currentId?: number; onLoad: (conv: any) => void; onClose: () => void }) {
   const [convs, setConvs] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -613,8 +641,21 @@ export function Oracle() {
   const showWelcome = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-73px)] max-w-[1440px] mx-auto">
-      {/* Panels */}
+    <div className="flex h-[calc(100vh-73px)] max-w-[1440px] mx-auto">
+      {/* Persistent conversations sidebar — desktop only */}
+      <div className="hidden lg:flex flex-col w-[260px] border-r border-white/10 flex-shrink-0 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+          <span className="text-white text-sm font-semibold">Conversations</span>
+          <button onClick={newChat} title="New chat" className="p-1 text-gray-500 hover:text-white transition-colors"><Plus className="w-4 h-4" /></button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <ConversationsList currentId={conversationId} onLoad={loadConversation} />
+        </div>
+      </div>
+
+      {/* Main oracle area */}
+      <div className="flex flex-col flex-1 min-w-0">
+      {/* Panels (mobile) */}
       {showProviders && <ProviderPanel onClose={() => { setShowProviders(false); loadProviderBadge(); }} />}
       {showConvs && <ConversationsPanel currentId={conversationId} onLoad={loadConversation} onClose={() => setShowConvs(false)} />}
 
@@ -746,6 +787,7 @@ export function Oracle() {
         </div>
         <p className="text-gray-600 text-xs mt-2 text-center">Oracle uses your configured AI provider. Always verify financial information independently.</p>
       </div>
+      </div>{/* end main oracle area */}
     </div>
   );
 }

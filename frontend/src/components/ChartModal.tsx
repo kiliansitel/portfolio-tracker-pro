@@ -67,14 +67,24 @@ function OptionsChain({ symbol }: { symbol: string }) {
 
   return (
     <div>
-      {/* Expiry tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-        {expiries.slice(0, 8).map(e => (
-          <button key={e} onClick={() => setSelectedExpiry(e)}
-            className={`flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${selectedExpiry === e ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400' : 'bg-white/5 border border-white/10 text-gray-500 hover:text-white'}`}>
-            {e}
-          </button>
-        ))}
+      {/* Expiry selector — dropdown on mobile, tab strip on desktop */}
+      <div className="mb-4">
+        {/* Mobile dropdown */}
+        <div className="sm:hidden">
+          <select value={selectedExpiry} onChange={e => setSelectedExpiry(e.target.value)}
+            className="w-full px-3 py-2 bg-[#1a1d29] border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/50 min-h-[44px]">
+            {expiries.map(e => <option key={e} value={e}>{e}</option>)}
+          </select>
+        </div>
+        {/* Desktop tab strip */}
+        <div className="hidden sm:flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+          {expiries.slice(0, 12).map(e => (
+            <button key={e} onClick={() => setSelectedExpiry(e)}
+              className={`flex-shrink-0 px-3 py-1 rounded-lg text-xs font-medium transition-colors ${selectedExpiry === e ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400' : 'bg-white/5 border border-white/10 text-gray-500 hover:text-white'}`}>
+              {e}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-4">
         {/* Calls */}

@@ -239,7 +239,7 @@ export function Watchlist() {
 
   return (
     <>
-    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto">
+    <div className="p-4 sm:p-8 max-w-[1440px] mx-auto pb-[180px] md:pb-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 sm:mb-8">
         <div className="flex items-center gap-3">
@@ -261,7 +261,7 @@ export function Watchlist() {
       </div>
 
       {/* Watchlist Container */}
-      <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 overflow-hidden mb-6">
+      <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 mb-6">
         {/* List tabs */}
         <div className="px-6 py-4 border-b border-white/5 flex items-center gap-2 flex-wrap">
           {watchlists.map(wl => (
@@ -295,12 +295,12 @@ export function Watchlist() {
                       >
                       <div className="group px-6 py-4 hover:bg-white/5 transition-colors border-b border-white/5 last:border-b-0">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3 flex-1 cursor-pointer" onClick={() => openChart(item.symbol)}>
-                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getGradient(item.symbol)} flex items-center justify-center shadow-lg flex-shrink-0`}>
+                          <div className="flex items-center gap-3 flex-1 cursor-pointer group/ticker" onClick={() => openChart(item.symbol)} title="Click to open chart">
+                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${getGradient(item.symbol)} flex items-center justify-center shadow-lg flex-shrink-0 group-hover/ticker:ring-2 group-hover/ticker:ring-white/30 transition-all`}>
                               <span className="text-white font-bold text-sm">{item.symbol.replace('-USD','')[0]}</span>
                             </div>
                             <div>
-                              <div className="text-white font-bold">{item.symbol}</div>
+                              <div style={{color:'#93c5fd'}} className="font-bold group-hover/ticker:underline underline-offset-2 transition-all">{item.symbol} <span style={{color:'#4b5563'}} className="text-xs">↗</span></div>
                               <div className="text-gray-500 text-sm">{item.name}</div>
                             </div>
                           </div>
@@ -344,6 +344,8 @@ export function Watchlist() {
         {!loading && watchlists.length === 0 && (
           <div className="px-6 py-12 text-center text-gray-500">No watchlists. <button onClick={() => setShowCreateList(true)} className="text-blue-400 hover:underline">Create one</button></div>
         )}
+        {/* Mobile bottom spacer — prevents last item hiding behind bottom nav */}
+        <div className="h-40 sm:h-0" />
       </div>
 
       {/* Stats */}

@@ -484,8 +484,10 @@ export function Settings() {
       </div>
 
       {/* Quick nav — horizontal scroll on mobile */}
-      <div className="mb-6">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pr-6 pl-1">
+      <div className="mb-6 relative">
+        {/* fade-right indicator */}
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-12 bg-gradient-to-l from-[#0f1117] via-[#0f1117]/80 to-transparent z-10 sm:hidden rounded-r" />
+        <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pr-10 pl-1 flex-nowrap whitespace-nowrap">
         {[
           { id: 'profile', label: '👤 Profile' },
           { id: 'ai', label: '🧠 AI' },

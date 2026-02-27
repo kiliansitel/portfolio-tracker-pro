@@ -173,24 +173,26 @@ export function Dashboard() {
             <StatCard
               label="Portfolio Value (incl. cash)"
               value={hasPortfolioData ? fmt(totalValue) : '$0.00'}
-              change={hasPortfolioData ? `Today: ${pct(dailyPct)}` : undefined}
+              change={hasPortfolioData
+                ? `Today: ${dailyPL >= 0 ? '+' : ''}${fmt(Math.abs(dailyPL))} (${pct(dailyPct)})`
+                : undefined}
               changeType={dailyPL >= 0 ? 'positive' : 'negative'}
               sparklineData={sparklineDummy}
             />
             <StatCard
-              label="Total P/L"
+              label="Total P/L (vs. cost)"
               value={hasPortfolioData ? (totalPL >= 0 ? '+' : '') + fmt(Math.abs(totalPL)) : '$0.00'}
-              change={hasPortfolioData && totalInvested > 0 ? `Total: ${pct(plPct)}` : undefined}
+              change={hasPortfolioData && totalInvested > 0 ? `Return: ${pct(plPct)}` : undefined}
               changeType={totalPL >= 0 ? 'positive' : 'negative'}
               sparklineData={sparklineDummy}
             />
             <StatCard
-              label="Total Investment"
+              label="Total Invested"
               value={hasPortfolioData ? fmt(totalInvested) : '$0.00'}
               sparklineData={sparklineDummy}
             />
             <StatCard
-              label="Assets"
+              label="Open Positions"
               value={String(assetCount)}
               change={assetCount > 0 ? `${assetCount} positions` : 'No positions yet'}
               changeType="neutral"
