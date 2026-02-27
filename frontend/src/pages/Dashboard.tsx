@@ -174,7 +174,7 @@ export function Dashboard() {
               label="Portfolio Value (incl. cash)"
               value={hasPortfolioData ? fmt(totalValue) : '$0.00'}
               change={hasPortfolioData
-                ? `Today: ${dailyPL >= 0 ? '+' : '-'}${fmt(Math.abs(dailyPL))} (${pct(dailyPct)})`
+                ? `1D: ${dailyPL >= 0 ? '+' : '-'}${fmt(Math.abs(dailyPL))} (${pct(dailyPct)})`
                 : undefined}
               changeType={dailyPL >= 0 ? 'positive' : 'negative'}
               sparklineData={sparklineDummy}

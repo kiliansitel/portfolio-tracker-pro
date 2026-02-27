@@ -334,7 +334,7 @@ export function Positions() {
             <div className="flex items-center gap-4 sm:gap-8">
               <div><div className="text-gray-400 text-xs">Annual Income</div><div className="text-emerald-400 font-bold text-sm sm:text-base">{dividends ? fmtPrice(dividends.income) : '—'}</div></div>
               <div><div className="text-gray-400 text-xs">Yield</div><div className="text-white font-bold text-sm sm:text-base">{dividends ? `${dividends.yield.toFixed(2)}%` : '—'}</div></div>
-              <div><div className="text-gray-400 text-xs">Next Pay</div><div className="text-white font-bold text-sm sm:text-base">{dividends?.nextPayment || '—'}</div></div>
+              <div><div className="text-gray-400 text-xs">Next Pay</div><div className="text-white font-bold text-sm sm:text-base whitespace-nowrap">{dividends?.nextPayment ? new Date(dividends.nextPayment).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</div></div>
             </div>
           </button>
         </div>

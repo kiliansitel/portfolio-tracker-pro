@@ -74,7 +74,7 @@ export function MarketTiles() {
         <span className="text-gray-500 text-xs ml-auto">Click tile to chart · Pin in chart modal</span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6 gap-3">
+      <div className="flex gap-3 overflow-x-auto pb-1 no-scrollbar sm:grid sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6">
         {displaySymbols.map(sym => {
           const q = getPrice(sym);
           const price = q?.price ?? 0;
@@ -92,7 +92,7 @@ export function MarketTiles() {
             <button
               key={sym}
               onClick={() => openChart(sym, NAMES[sym] || sym)}
-              className="relative text-left bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl p-3 transition-all group"
+              className="relative text-left bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl p-3 transition-all group flex-shrink-0 w-[140px] sm:w-auto"
             >
               {isPinned && (
                 <span className="absolute top-2 right-2 text-yellow-400 text-xs">📌</span>
