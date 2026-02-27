@@ -69,6 +69,7 @@ export function News() {
           iconGradient: GRADIENTS[i % GRADIENTS.length],
           iconLetter: (a.source || a.publisher || 'N')[0]?.toUpperCase() || 'N',
           url: a.link || a.url,
+          thumbnail: a.thumbnail || a.image || a.cover || a.imageUrl || null,
         })));
       })
       .catch(() => setArticles([]))
@@ -135,9 +136,15 @@ export function News() {
               className="block bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl border border-white/5 p-5 hover:border-blue-500/30 transition-all group"
             >
               <div className="flex items-start gap-4">
-                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${article.iconGradient} flex items-center justify-center flex-shrink-0 shadow-lg`}>
-                  <span className="text-white font-bold text-sm">{article.iconLetter}</span>
-                </div>
+                {(article as any).thumbnail ? (
+                  <img src={(article as any).thumbnail} alt="" loading="lazy"
+                    className="w-16 h-12 sm:w-20 sm:h-14 rounded-lg object-cover flex-shrink-0 bg-white/5"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                ) : (
+                  <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${article.iconGradient} flex items-center justify-center flex-shrink-0 shadow-lg`}>
+                    <span className="text-white font-bold text-sm">{article.iconLetter}</span>
+                  </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <h3 className="text-white font-medium leading-relaxed mb-2 group-hover:text-blue-400 transition-colors line-clamp-2">
                     {article.title}

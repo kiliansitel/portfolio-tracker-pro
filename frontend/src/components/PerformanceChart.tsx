@@ -67,7 +67,7 @@ export function PerformanceChart({
 
   // Chart dimensions
   const H = 220;
-  const padT = 10, padB = 24, padL = 56, padR = 12;
+  const padT = 10, padB = 24, padL = 56, padR = 32;
   const chartW = Math.max(svgWidth - padL - padR, 10);
   const chartH = H - padT - padB;
 

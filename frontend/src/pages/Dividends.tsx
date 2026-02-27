@@ -115,7 +115,14 @@ export function Dividends() {
           </div>
           <div className="text-lg font-bold text-white">{summary.nextExDate || '—'}</div>
           {summary.nextExDate && (
-            <div className="text-orange-400 text-xs mt-0.5">In {Math.max(0, daysUntil(summary.nextExDate))} days</div>
+            <div className={`text-xs mt-0.5 ${daysUntil(summary.nextExDate) < 0 ? 'text-gray-500' : 'text-orange-400'}`}>
+              {(() => {
+                const d = daysUntil(summary.nextExDate);
+                if (d === 0) return 'Today!';
+                if (d < 0) return `${Math.abs(d)}d ago`;
+                return `In ${d} days`;
+              })()}
+            </div>
           )}
         </div>
       </div>

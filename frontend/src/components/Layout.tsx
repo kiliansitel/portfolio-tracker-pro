@@ -59,7 +59,7 @@ export function Layout() {
         {/* Header */}
         <div className="bg-[#0f1117] border-b border-white/5 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
               Portfolio Pro
             </h1>
           </div>
@@ -85,8 +85,8 @@ export function Layout() {
           </div>
         </div>
 
-        {/* Page Content — extra bottom padding on mobile for the bottom nav */}
-        <div className="pb-32 pb-safe md:pb-0">
+        {/* Page Content — extra bottom padding on mobile for the fixed bottom nav (≈80px) */}
+        <div className="pb-24 md:pb-6">
           <Outlet />
         </div>
       </div>

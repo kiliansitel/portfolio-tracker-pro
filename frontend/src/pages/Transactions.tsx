@@ -52,7 +52,10 @@ export function Transactions() {
   };
 
   const filtered = filter === 'all' ? transactions : transactions.filter(t => t.type === filter);
+  const TABS = ['all', 'buy', 'sell', 'dividend', 'deposit', 'withdrawal'];
   const types = ['all', ...Array.from(new Set(transactions.map((t: any) => String(t.type))))];
+  const tabsToShow = [...new Set([...TABS, ...types])];
+  const countFor = (t: string) => t === 'all' ? transactions.length : transactions.filter((tx: any) => tx.type === t).length;
 
   // Dividend calendar: group dividends by month
   const dividends = transactions.filter((t: any) => t.type === 'dividend');
@@ -97,13 +100,20 @@ export function Transactions() {
       </div>
 
       {/* Type Filters */}
-      <div className="flex items-center gap-2 mb-6 flex-wrap">
-        {types.map(t => (
-          <button key={t} onClick={() => setFilter(t)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${filter === t ? 'bg-white/10 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
-            {t}
-          </button>
-        ))}
+      <div className="flex items-center gap-1.5 mb-6 overflow-x-auto no-scrollbar">
+        {tabsToShow.filter(t => countFor(t) > 0 || TABS.includes(t)).map(t => {
+          const count = countFor(t);
+          const active = filter === t;
+          return (
+            <button key={t} onClick={() => setFilter(t)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-all whitespace-nowrap flex-shrink-0 ${
+                active ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' : 'text-gray-500 hover:text-gray-300 border border-transparent'
+              }`}>
+              {t}
+              {count > 0 && <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${active ? 'bg-blue-500/30 text-blue-300' : 'bg-white/5 text-gray-600'}`}>{count}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Dividend Calendar */}

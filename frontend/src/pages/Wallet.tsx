@@ -34,6 +34,7 @@ export function Wallet() {
   const [txNotes, setTxNotes] = useState('');
 
   // Cash edit
+  const [annualDividends, setAnnualDividends] = useState<number | null>(null);
   const [showEditCash, setShowEditCash] = useState(false);
   const [cashValue, setCashValue] = useState('');
   const [cashCurrency, setCashCurrency] = useState('USD');
@@ -55,7 +56,13 @@ export function Wallet() {
   };
 
   useEffect(() => { load(); }, []);
-  useEffect(() => { if (selectedId) loadTx(selectedId); }, [selectedId]);
+  useEffect(() => {
+    if (!selectedId) return;
+    loadTx(selectedId);
+    api.dividends(selectedId)
+      .then((d: any) => setAnnualDividends(d?.summary?.totalAnnualIncome ?? null))
+      .catch(() => setAnnualDividends(null));
+  }, [selectedId]);
 
   const selected = portfolios.find(p => p.id === selectedId);
 
@@ -174,8 +181,9 @@ export function Wallet() {
             <div className="text-2xl font-bold text-red-400">{fmt(withdrawals)}</div>
           </div>
           <div className="bg-gradient-to-br from-[#1a1d29] to-[#14161f] rounded-xl p-6 border border-emerald-500/20">
-            <div className="text-gray-400 text-sm mb-2">Dividends Received</div>
-            <div className="text-2xl font-bold text-emerald-300">{fmt(dividends)}</div>
+            <div className="text-gray-400 text-sm mb-2">Annual Dividends</div>
+            <div className="text-2xl font-bold text-emerald-300">{fmt(annualDividends ?? dividends)}</div>
+            {annualDividends !== null && <div className="text-gray-600 text-xs mt-1">estimated/yr</div>}
           </div>
         </div>
       )}
