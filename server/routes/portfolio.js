@@ -209,6 +209,7 @@ router.post('/:id/positions', positionValidation, async (req, res) => {
 
 // Update position
 router.put('/positions/:id', idParamValidation, async (req, res) => {
+  try {
   const { id } = req.params;
   const { symbol, quantity, avg_cost, entry_price, location, name, type, entry_date, notes, strike_price, expiry_date, multiplier, current_price, currency } = req.body;
   
@@ -276,10 +277,15 @@ router.put('/positions/:id', idParamValidation, async (req, res) => {
   
   const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [position.portfolio_id]);
   res.json({ message: 'Position updated', cash: updatedPortfolio.cash, cash_adjustment: cashAdjustment });
+  } catch (err) {
+    console.error('PUT /positions/:id error:', err.message);
+    res.status(500).json({ error: 'Failed to update position', detail: err.message });
+  }
 });
 
 // Delete position
 router.delete('/positions/:id', idParamValidation, async (req, res) => {
+  try {
   const { id } = req.params;
   
   const position = dbGet(`
@@ -328,10 +334,15 @@ router.delete('/positions/:id', idParamValidation, async (req, res) => {
   
   const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [position.portfolio_id]);
   res.json({ message: 'Position deleted', cash: updatedPortfolio.cash, cash_reversed: cashReversed });
+  } catch (err) {
+    console.error('DELETE /positions/:id error:', err.message);
+    res.status(500).json({ error: 'Failed to delete position', detail: err.message });
+  }
 });
 
 // Close position (full or partial)
 router.post('/:id/positions/:posId/close', async (req, res) => {
+  try {
   const { id, posId } = req.params;
   const { close_price, quantity: closeQty, fees = 0, date, affects_cash = true } = req.body;
   
@@ -429,6 +440,10 @@ router.post('/:id/positions/:posId/close', async (req, res) => {
       new_cash_balance: updatedPortfolio.cash
     }
   });
+  } catch (err) {
+    console.error('POST /positions/:posId/close error:', err.message);
+    res.status(500).json({ error: 'Failed to close position', detail: err.message });
+  }
 });
 
 // Get dividend data for all positions in a portfolio

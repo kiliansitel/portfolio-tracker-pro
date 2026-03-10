@@ -232,6 +232,7 @@ async function initDatabase() {
   try { db.run(`ALTER TABLE positions ADD COLUMN closed_at TEXT`); } catch (e) { /* exists */ }
   try { db.run(`ALTER TABLE positions ADD COLUMN close_price REAL`); } catch (e) { /* exists */ }
   try { db.run(`ALTER TABLE positions ADD COLUMN realized_pnl REAL`); } catch (e) { /* exists */ }
+  try { db.run(`ALTER TABLE positions ADD COLUMN updated_at TEXT`); } catch (e) { /* exists */ }
   try { db.run(`ALTER TABLE transactions ADD COLUMN affects_cash INTEGER DEFAULT 0`); } catch (e) { /* exists */ }
 
   // Portfolio enhancements
