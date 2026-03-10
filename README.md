@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.29.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.30.0-blue" alt="Version">
   <img src="https://github.com/kiliansitel/portfolio-tracker-pro/actions/workflows/ci.yml/badge.svg" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/docker-multi--arch-2496ED?logo=docker&logoColor=white" alt="Docker">
@@ -136,6 +136,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 
 | Version | Highlights |
 |---------|-----------|
+| **v0.30.0** | Styled Modals & Code Quality — custom confirm dialogs, dividend yield fix, updated_at migration, server crash fix |
 | **v0.29.0** | Cash Management & Close Positions — auto cash tracking, close position flow, realized P&L, multi-currency cash |
 | **v0.28.1** | Chart Density Fix — higher-resolution candle intervals (hourly/daily), smart barSpacing cap |
 | **v0.28.0** | Live Charts & Real-Time Pricing — candlestick charts with RSI/MA, SSE live streaming, after-hours pricing, index futures |
@@ -186,6 +187,7 @@ See **[VERSIONS.md](VERSIONS.md)** for full changelog.
 - [x] ~~After-hours / pre-market pricing~~
 - [x] ~~Voice input for Oracle AI (Web Speech API)~~
 - [x] ~~Export/share AI insights as PDF~~
+- [x] ~~Styled confirmation modals (replace native browser dialogs)~~
 - [ ] Live broker API sync (Keytrade, IBKR)
 - [x] ~~Dividend tracking & income calendar~~
 - [x] ~~AI news digest & scheduled reports~~
