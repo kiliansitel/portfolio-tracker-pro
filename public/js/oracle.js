@@ -1,4 +1,9 @@
 // ============ AI ORACLE ============
+// Sub-modules (loaded via separate <script> tags in index.html):
+//   oracle-voice.js        — voice input / speech recognition
+//   oracle-settings.js     — AI settings panel & Ollama model management
+//   oracle-conversations.js — conversation list panel
+//   oracle-pdf.js          — PDF export (single response & full conversation)
 let aiProviders = [];
 let aiSelectedProvider = localStorage.getItem('aiProvider') || '';
 let aiSelectedModel = localStorage.getItem('aiModel') || '';
@@ -8,86 +13,9 @@ let aiActiveContexts = ['general'];
 let aiConversations = [];
 let aiOnboardingChecked = false;
 
-// ============ VOICE INPUT ============
-let voiceRecognition = null;
-let voiceIsListening = false;
 
-function initVoiceInput() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const btn = document.getElementById('aiVoiceBtn');
-    if (!SpeechRecognition || !btn) {
-        if (btn) btn.style.display = 'none';
-        return;
-    }
-    btn.style.display = 'flex';
-    voiceRecognition = new SpeechRecognition();
-    voiceRecognition.continuous = false;
-    voiceRecognition.interimResults = true;
-    voiceRecognition.lang = 'en-US';
+/* Voice input functions → see oracle-voice.js */
 
-    voiceRecognition.onresult = (event) => {
-        const input = document.getElementById('aiInput');
-        let transcript = '';
-        for (let i = 0; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
-        }
-        if (input) {
-            input.value = transcript;
-            aiInputAutoResize(input);
-        }
-    };
-    voiceRecognition.onend = () => stopVoiceVisual();
-    voiceRecognition.onerror = (e) => {
-        console.warn('Voice input error:', e.error);
-        stopVoiceVisual();
-        if (e.error === 'not-allowed') {
-            if (typeof showToast === 'function') showToast('Microphone access denied', 'error');
-        }
-    };
-}
-
-function toggleVoiceInput() {
-    if (!voiceRecognition) return;
-    if (voiceIsListening) {
-        voiceRecognition.stop();
-        stopVoiceVisual();
-    } else {
-        voiceRecognition.start();
-        voiceIsListening = true;
-        const btn = document.getElementById('aiVoiceBtn');
-        if (btn) btn.classList.add('voice-listening');
-    }
-}
-
-function stopVoiceVisual() {
-    voiceIsListening = false;
-    const btn = document.getElementById('aiVoiceBtn');
-    if (btn) btn.classList.remove('voice-listening');
-}
-
-// Check if user needs onboarding (no positions in any portfolio)
-async function checkOnboardingNeeded() {
-    try {
-        const resp = await fetch(`${API_BASE}/portfolios`, {
-            headers: { 'Authorization': 'Bearer ' + token }
-        });
-        const portfolios = await resp.json();
-        console.log('[ONBOARD] portfolios:', portfolios.length);
-        if (!portfolios.length) return true;
-        for (const pf of portfolios) {
-            const posResp = await fetch(`${API_BASE}/portfolios/${pf.id}/positions`, {
-                headers: { 'Authorization': 'Bearer ' + token }
-            });
-            const positions = await posResp.json();
-            console.log('[ONBOARD] portfolio', pf.id, 'positions:', positions.length);
-            if (Array.isArray(positions) && positions.length > 0) return false;
-        }
-        return true;
-    } catch (e) {
-        console.log('[ONBOARD] error:', e.message);
-        return true; // Assume onboarding needed if check fails
-    }
-}
 
 // Update the welcome screen based on onboarding state
 function updateWelcomeForOnboarding(needsOnboarding) {
@@ -657,7 +585,7 @@ async function sendAiChatMessage() {
             try {
                 const errData = await response.json();
                 errMsg = errData.error || errMsg;
-            } catch {}
+            } catch { /* non-JSON error body — ignore */ }
             if (thinkingMsg) thinkingMsg.remove();
             appendAiError(errMsg);
             aiIsStreaming = false;
@@ -895,7 +823,7 @@ async function aiQuickAction(type) {
 
         if (!response.ok) {
             let errMsg = 'Request failed';
-            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch {}
+            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch { /* non-JSON error body — ignore */ }
             if (thinkingMsg) thinkingMsg.remove();
             appendAiError(errMsg);
             aiIsStreaming = false;
@@ -947,7 +875,7 @@ async function aiQuickAction(type) {
                     if (data.type === 'done') {
                         appendAiUsageInfo(data);
                     }
-                } catch (e) {}
+                } catch (e) { console.debug('[oracle] SSE chunk parse error:', e.message); }
             }
         }
 
@@ -1199,7 +1127,7 @@ async function runQuickAnalysis(type, symbol) {
 
         if (!response.ok) {
             let errMsg = 'Request failed';
-            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch {}
+            try { const ed = await response.json(); errMsg = ed.error || errMsg; } catch { /* non-JSON error body — ignore */ }
             if (thinkingMsg) thinkingMsg.remove();
             appendAiError(errMsg);
             aiIsStreaming = false;
@@ -1247,7 +1175,7 @@ async function runQuickAnalysis(type, symbol) {
                     if (data.type === 'done') {
                         appendAiUsageInfo(data);
                     }
-                } catch {}
+                } catch (e) { console.debug('[oracle] SSE chunk parse error:', e.message); }
             }
         }
 
@@ -1309,451 +1237,7 @@ async function newAiChat() {
 }
 
 // Settings panel
-function openAiSettings() {
-    closeAiConversations();
-    document.getElementById('aiPanelOverlay').classList.add('show');
-    document.getElementById('aiSettingsPanel').classList.add('show');
-    renderAiProviderSettings();
-}
 
-function closeAiSettings() {
-    document.getElementById('aiPanelOverlay').classList.remove('show');
-    document.getElementById('aiSettingsPanel').classList.remove('show');
-}
-
-function closeAiPanels() {
-    closeAiSettings();
-    closeAiConversations();
-}
-
-async function renderAiProviderSettings() {
-    const container = document.getElementById('aiProvidersList');
-    try {
-        aiProviders = await api('/ai/providers');
-    } catch (e) {
-        // Retry once after 1 second
-        try {
-            await new Promise(r => setTimeout(r, 1000));
-            aiProviders = await api('/ai/providers');
-        } catch (e2) {
-            container.innerHTML = '<div style="color:var(--accent-red);">Failed to load providers. <a href="#" onclick="renderAiProviderSettings();return false;" style="color:var(--accent-blue);">Retry</a></div>';
-            return;
-        }
-    }
-
-    let html = '';
-    for (const p of aiProviders) {
-        const statusIcon = p.configured ? '✅' : (p.requiresKey ? '❌' : '⚡');
-        const statusTitle = p.configured ? 'Configured' : (p.requiresKey ? 'Not configured' : 'No key needed');
-
-        html += `<div class="ai-provider-card" id="ai-provider-${p.id}">
-            <div class="ai-provider-card-header">
-                <div class="ai-provider-name">
-                    <span class="ai-provider-status" title="${statusTitle}">${statusIcon}</span>
-                    ${p.name}
-                </div>
-            </div>
-            <div class="ai-provider-fields">`;
-
-        if (p.requiresKey) {
-            html += `<input type="password" class="ai-provider-input" id="ai-key-${p.id}"
-                placeholder="API Key" value="${p.configured ? '••••••••' : ''}">`;
-        }
-
-        if (p.id === 'ollama' || p.id === 'custom') {
-            const onchangeAttr = p.id === 'ollama' ? `onchange="fetchOllamaModels('${p.id}')" onblur="fetchOllamaModels('${p.id}')"` : '';
-            html += `<input type="text" class="ai-provider-input" id="ai-url-${p.id}"
-                placeholder="Base URL (e.g., http://localhost:11434)" value="${p.baseUrl || ''}" ${onchangeAttr}>`;
-        }
-
-        if (p.id === 'custom') {
-            html += `<input type="text" class="ai-provider-input" id="ai-model-custom"
-                placeholder="Model name" value="${p.modelPreference || ''}">`;
-        }
-
-        if (p.models && p.models.length > 0) {
-            html += `<select class="ai-provider-input" id="ai-model-${p.id}" data-selected-model="${p.modelPreference || ''}">`;
-            for (const m of p.models) {
-                const sel = m.id === p.modelPreference ? 'selected' : '';
-                html += `<option value="${m.id}" ${sel}>${m.name}</option>`;
-            }
-            html += `</select>`;
-        }
-
-        if (p.id === 'ollama') {
-            html += `<input type="number" class="ai-provider-input" id="ai-ctx-${p.id}"
-                placeholder="Context window (e.g. 8192)" value="${p.contextLength || ''}" min="256" step="256">`;
-        }
-
-        html += `</div>
-            <div class="ai-provider-actions">
-                <button class="ai-btn-sm primary" onclick="saveAiProvider('${p.id}')">💾 Save</button>
-                <button class="ai-btn-sm" onclick="testAiProvider('${p.id}')">🧪 Test</button>
-                ${p.configured ? `<button class="ai-btn-sm danger" onclick="removeAiProvider('${p.id}')">🗑️ Remove</button>` : ''}
-            </div>
-        </div>`;
-    }
-
-    container.innerHTML = html;
-    
-    // Auto-fetch Ollama models if URL is already configured
-    const ollamaProvider = aiProviders.find(p => p.id === 'ollama');
-    if (ollamaProvider && ollamaProvider.baseUrl) {
-        // Small delay to ensure DOM is ready
-        setTimeout(() => fetchOllamaModels('ollama'), 100);
-    }
-}
-
-async function saveAiProvider(providerId) {
-    const keyInput = document.getElementById(`ai-key-${providerId}`);
-    const urlInput = document.getElementById(`ai-url-${providerId}`);
-    const modelSelect = document.getElementById(`ai-model-${providerId}`);
-    const customModelInput = document.getElementById('ai-model-custom');
-
-    // For Ollama: if models are still loading (disabled), wait for them first
-    if (providerId === 'ollama' && modelSelect && modelSelect.disabled) {
-        await new Promise(resolve => {
-            const check = setInterval(() => {
-                if (!modelSelect.disabled) { clearInterval(check); resolve(); }
-            }, 100);
-            setTimeout(() => { clearInterval(check); resolve(); }, 5000); // max 5s wait
-        });
-    }
-
-    const body = {};
-    if (keyInput && keyInput.value && !keyInput.value.startsWith('••')) {
-        body.apiKey = keyInput.value;
-    }
-    if (urlInput) body.baseUrl = urlInput.value;
-    if (modelSelect && modelSelect.value) body.model = modelSelect.value;
-    if (providerId === 'custom' && customModelInput) body.model = customModelInput.value;
-    const ctxInput = document.getElementById(`ai-ctx-${providerId}`);
-    if (ctxInput && ctxInput.value) body.contextLength = parseInt(ctxInput.value);
-
-    try {
-        await api(`/ai/providers/${providerId}/key`, {
-            method: 'PUT',
-            body: JSON.stringify(body)
-        });
-        showToast(`${providerId} provider saved!`, 'success');
-        // Update selected model in state if this is the active provider
-        if (body.model && aiSelectedProvider === providerId) {
-            aiSelectedModel = body.model;
-            localStorage.setItem('aiModel', aiSelectedModel);
-        }
-        aiProviders = await api('/ai/providers');
-        await renderAiProviderSettings();
-        updateAiProviderBadge();
-    } catch (e) {
-        showToast('Failed to save: ' + e.message, 'error');
-    }
-}
-
-async function testAiProvider(providerId) {
-    try {
-        showToast(`Testing ${providerId}...`, 'info');
-        const result = await api(`/ai/providers/${providerId}/test`);
-        if (result.success) {
-            showToast(`✅ ${providerId} connection successful!`, 'success');
-        } else {
-            showToast(`❌ ${providerId} test failed: ${result.error || 'Unknown error'}`, 'error');
-        }
-    } catch (e) {
-        showToast(`❌ Test failed: ${e.message}`, 'error');
-    }
-}
-
-async function removeAiProvider(providerId) {
-    if (!await confirmDialog(`Remove API key for ${providerId}?`, { title: 'Remove API Key', confirmText: 'Remove', danger: true })) return;
-    try {
-        await api(`/ai/providers/${providerId}/key`, { method: 'DELETE' });
-        showToast(`${providerId} key removed`, 'info');
-        aiProviders = await api('/ai/providers');
-        await renderAiProviderSettings();
-        updateAiProviderBadge();
-    } catch (e) {
-        showToast('Failed to remove: ' + e.message, 'error');
-    }
-}
-
-// Ollama model auto-detection
-let ollamaModelFetchTimeout = null;
-
-async function fetchOllamaModels(providerId) {
-    if (providerId !== 'ollama') return;
-    
-    const urlInput = document.getElementById(`ai-url-${providerId}`);
-    const modelSelect = document.getElementById(`ai-model-${providerId}`);
-    
-    if (!urlInput || !modelSelect) return;
-    
-    const baseUrl = urlInput.value.trim();
-    if (!baseUrl) {
-        // Reset to default hardcoded models if URL is empty
-        resetOllamaModelsToDefault(modelSelect);
-        return;
-    }
-    
-    // Debounce the API call to avoid spamming while user types
-    clearTimeout(ollamaModelFetchTimeout);
-    ollamaModelFetchTimeout = setTimeout(async () => {
-        await performOllamaModelFetch(baseUrl, modelSelect);
-    }, 1000);
-}
-
-async function performOllamaModelFetch(baseUrl, modelSelect) {
-    // Show loading state
-    const originalHTML = modelSelect.innerHTML;
-    modelSelect.innerHTML = '<option value="">🔄 Fetching models...</option>';
-    modelSelect.disabled = true;
-    
-    try {
-        const response = await api(`/ai/models/ollama?baseUrl=${encodeURIComponent(baseUrl)}`);
-        
-        if (response.models && response.models.length > 0) {
-            // Update dropdown with fetched models
-            updateOllamaModelDropdown(modelSelect, response.models);
-        } else {
-            throw new Error('No models found');
-        }
-    } catch (error) {
-        console.error('Failed to fetch Ollama models:', error);
-        
-        // Fallback to hardcoded defaults
-        resetOllamaModelsToDefault(modelSelect);
-        
-        // Only show error if it's not a network timeout/server offline
-        if (!error.message.includes('fetch')) {
-            showToast('Failed to fetch models from server, using defaults', 'warning');
-        }
-    }
-    
-    modelSelect.disabled = false;
-}
-
-function updateOllamaModelDropdown(modelSelect, models) {
-    // Clear existing options
-    modelSelect.innerHTML = '';
-    
-    // Add fetched models
-    for (const model of models) {
-        const option = document.createElement('option');
-        option.value = model.id;
-        option.textContent = model.name;
-        modelSelect.appendChild(option);
-    }
-    
-    // Select saved modelPreference if available, otherwise keep current selection, otherwise first model
-    const ollamaProvider = aiProviders && aiProviders.find(p => p.id === 'ollama');
-    const preferred = ollamaProvider && ollamaProvider.modelPreference;
-    const currentValue = modelSelect.dataset.selectedModel || modelSelect.value;
-    if (preferred && models.some(m => m.id === preferred)) {
-        modelSelect.value = preferred;
-    } else if (currentValue && models.some(m => m.id === currentValue)) {
-        modelSelect.value = currentValue;
-    } else if (models.length > 0) {
-        modelSelect.value = models[0].id;
-    }
-}
-
-function resetOllamaModelsToDefault(modelSelect) {
-    // Fallback to hardcoded default models from PROVIDER_DEFS
-    const defaultModels = [
-        { id: 'llama3', name: 'LLaMA 3' },
-        { id: 'mistral', name: 'Mistral' }
-    ];
-    
-    updateOllamaModelDropdown(modelSelect, defaultModels);
-}
-
-// Conversations panel
-function openAiConversations() {
-    closeAiSettings();
-    document.getElementById('aiPanelOverlay').classList.add('show');
-    document.getElementById('aiConversationPanel').classList.add('show');
-    loadAiConversations();
-}
-
-function closeAiConversations() {
-    document.getElementById('aiPanelOverlay').classList.remove('show');
-    document.getElementById('aiConversationPanel').classList.remove('show');
-}
-
-async function loadAiConversations() {
-    const container = document.getElementById('aiConversationList');
-    try {
-        aiConversations = await api('/ai/conversations');
-    } catch (e) {
-        container.innerHTML = '<div style="padding:16px;color:var(--text-secondary);font-size:0.85rem;">Failed to load conversations</div>';
-        return;
-    }
-
-    if (!aiConversations.length) {
-        container.innerHTML = '<div style="padding:16px;color:var(--text-secondary);font-size:0.85rem;text-align:center;">No conversations yet.<br>Start chatting!</div>';
-        return;
-    }
-
-    let html = '';
-    for (const conv of aiConversations) {
-        const date = new Date(conv.updated_at || conv.created_at);
-        const timeStr = date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) + ' ' + date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-        const isActive = conv.id === aiCurrentConversationId;
-        const isReport = conv.context && conv.context.startsWith('report-');
-        const contextBadge = isReport 
-            ? `<span style="font-size:0.7rem;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:1px 6px;border-radius:8px;">📊 ${conv.context === 'report-daily' ? 'Daily' : 'Weekly'}</span>`
-            : (conv.context && conv.context !== 'general' ?
-            `<span style="font-size:0.7rem;background:var(--bg-tertiary);padding:1px 6px;border-radius:8px;">${conv.context}</span>` : '');
-
-        html += `<div class="ai-conv-item ${isActive ? 'active' : ''}" onclick="loadAiConversation(${conv.id})">
-            <div style="overflow:hidden;">
-                <div class="ai-conv-title">${(conv.title || 'Untitled').replace(/</g, '&lt;')}</div>
-                <div class="ai-conv-meta">${timeStr} ${contextBadge}</div>
-            </div>
-            <button class="ai-conv-delete" onclick="event.stopPropagation();deleteAiConversation(${conv.id})" title="Delete">🗑️</button>
-        </div>`;
-    }
-
-    container.innerHTML = html;
-}
-
-async function loadAiConversation(convId) {
-    try {
-        const conv = await api(`/ai/conversations/${convId}`);
-        aiCurrentConversationId = convId;
-
-        // Clear messages
-        const container = document.getElementById('aiMessages');
-        container.innerHTML = '';
-
-        // Render messages
-        if (conv.messages && conv.messages.length) {
-            for (const msg of conv.messages) {
-                appendAiMessage(msg.content, msg.role);
-            }
-        }
-
-        // Hide welcome and quick actions
-        const welcome = document.getElementById('aiWelcome');
-        if (welcome) welcome.style.display = 'none';
-        const qa = document.getElementById('aiQuickActions');
-        if (qa) qa.style.display = 'none';
-
-        closeAiConversations();
-    } catch (e) {
-        showToast('Failed to load conversation: ' + e.message, 'error');
-    }
-}
-
-// ─── Export AI Response as PDF ─────────────────────────
-function exportAiResponseAsPdf(markdown) {
-    const html = renderAiMarkdown(markdown);
-    const now = new Date();
-    const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-        showToast('Pop-up blocked — please allow pop-ups for this site', 'error');
-        return;
-    }
-
-    printWindow.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Portfolio Pro — AI Analysis</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-  .pdf-header { border-bottom: 2px solid #2962ff; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: baseline; }
-  .pdf-header h1 { font-size: 20px; color: #2962ff; }
-  .pdf-header .date { font-size: 12px; color: #666; }
-  .pdf-content h1 { font-size: 18px; margin: 16px 0 8px; color: #131722; }
-  .pdf-content h2 { font-size: 16px; margin: 14px 0 6px; color: #131722; }
-  .pdf-content h3 { font-size: 14px; margin: 12px 0 4px; color: #131722; }
-  .pdf-content p, .pdf-content li { font-size: 13px; margin-bottom: 4px; }
-  .pdf-content ul, .pdf-content ol { padding-left: 20px; margin-bottom: 8px; }
-  .pdf-content table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-  .pdf-content th, .pdf-content td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-  .pdf-content th { background: #f0f0f0; font-weight: 600; }
-  .pdf-content pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
-  .pdf-content code { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; background: #f0f0f0; padding: 1px 4px; border-radius: 3px; }
-  .pdf-content pre code { background: none; padding: 0; }
-  .pdf-content strong { font-weight: 600; }
-  .pdf-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #999; text-align: center; }
-  @media print {
-    body { padding: 20px; }
-    @page { margin: 1.5cm; }
-  }
-</style></head><body>
-  <div class="pdf-header">
-    <h1>🧠 Portfolio Pro — AI Analysis</h1>
-    <span class="date">${dateStr}</span>
-  </div>
-  <div class="pdf-content">${html}</div>
-  <div class="pdf-footer">Generated by Portfolio Pro Oracle · ${dateStr}</div>
-  <script>window.onload=function(){window.print();}<\/script>
-</body></html>`);
-    printWindow.document.close();
-}
-
-function exportFullConversationAsPdf() {
-    const container = document.getElementById('aiMessages');
-    if (!container) return;
-    const messages = container.querySelectorAll('.ai-message');
-    if (!messages.length) { showToast('No conversation to export', 'info'); return; }
-
-    let contentHtml = '';
-    messages.forEach(msg => {
-        const role = msg.dataset.role;
-        const bubble = msg.querySelector('.ai-message-bubble');
-        if (!bubble) return;
-        // Clone and strip action buttons
-        const clone = bubble.cloneNode(true);
-        clone.querySelectorAll('.ai-message-actions, .ai-action-container').forEach(el => el.remove());
-        const label = role === 'user' ? '👤 You' : '🧠 Oracle';
-        contentHtml += `<div style="margin-bottom:16px;"><strong style="color:${role === 'user' ? '#2962ff' : '#26a69a'}">${label}</strong><div style="margin-top:4px;">${clone.innerHTML}</div></div>`;
-    });
-
-    const now = new Date();
-    const dateStr = now.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) { showToast('Pop-up blocked — please allow pop-ups', 'error'); return; }
-
-    printWindow.document.write(`<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>Portfolio Pro — Conversation Export</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.6; }
-  .pdf-header { border-bottom: 2px solid #2962ff; padding-bottom: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: baseline; }
-  .pdf-header h1 { font-size: 20px; color: #2962ff; }
-  .pdf-header .date { font-size: 12px; color: #666; }
-  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 12px; }
-  th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
-  th { background: #f0f0f0; font-weight: 600; }
-  pre { background: #f5f5f5; border: 1px solid #ddd; border-radius: 4px; padding: 10px; overflow-x: auto; font-size: 12px; margin: 8px 0; }
-  code { font-family: 'SF Mono', Consolas, monospace; font-size: 12px; }
-  .pdf-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid #ddd; font-size: 11px; color: #999; text-align: center; }
-  @media print { body { padding: 20px; } @page { margin: 1.5cm; } }
-</style></head><body>
-  <div class="pdf-header">
-    <h1>🧠 Portfolio Pro — Conversation</h1>
-    <span class="date">${dateStr}</span>
-  </div>
-  ${contentHtml}
-  <div class="pdf-footer">Generated by Portfolio Pro Oracle · ${dateStr}</div>
-  <script>window.onload=function(){window.print();}<\/script>
-</body></html>`);
-    printWindow.document.close();
-}
-
-async function deleteAiConversation(convId) {
-    if (!await confirmDialog('Delete this conversation?', { title: 'Delete Conversation', confirmText: 'Delete', danger: true })) return;
-    try {
-        await api(`/ai/conversations/${convId}`, { method: 'DELETE' });
-        if (aiCurrentConversationId === convId) {
-            newAiChat();
-        }
-        loadAiConversations();
-    } catch (e) {
-        showToast('Failed to delete: ' + e.message, 'error');
-    }
-}
-
+/* AI settings panel → see oracle-settings.js */
+/* Conversations panel → see oracle-conversations.js */
+/* PDF export → see oracle-pdf.js */

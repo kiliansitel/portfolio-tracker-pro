@@ -238,7 +238,7 @@ async function initApp() {
         document.title = info.name;
         const appTitle = document.querySelector('.app-title');
         if (appTitle) appTitle.textContent = info.name;
-    } catch(e) {}
+    } catch(e) { console.debug('[app] /api/info unavailable, using default title:', e.message); }
     
     // Load caches immediately for instant display
     loadPriceCache();
@@ -355,8 +355,9 @@ if (token) {
                 initApp();
             }
         })
-        .catch(() => {
+        .catch((e) => {
             // Network error / aborted — try loading anyway with cached token
+            console.warn('[app] token validation failed, proceeding with cached token:', e.message);
             hideAuth();
             setupSessionTimeout(token);
             initApp();
@@ -428,7 +429,7 @@ document.addEventListener('keydown', (e) => {
                 showToast('⏰ Session expires soon. Re-login to continue.', 'warning');
             }, exp - now - oneHour);
         }
-    } catch(e) { /* ignore parse errors */ }
+    } catch(e) { console.debug('[app] JWT parse error in session-expiry check:', e.message); }
 })();
 
 // Register Service Worker for PWA
