@@ -1,4 +1,21 @@
 # Portfolio Tracker Pro — Version History
+## v0.30.0 — Styled Modals & Code Quality (2026-03-10)
+
+### Features
+- Replace all native browser `confirm()` dialogs with styled custom modals (consistent UX across browsers)
+- Consistent futures badges across all views (positions, watchlist, markets)
+
+### Fixes
+- Dividend yield calculation: dividendYield from Yahoo Finance is in percent form — now correctly divided by 100 (was showing 74.52%, now shows 0.75%)
+- Add missing `updated_at` DB migration for positions table — position edit/delete was crashing the server with "no such column: updated_at"
+- Try/catch error handling on position PUT, DELETE, and close routes — server no longer crashes on DB errors
+- Bug fixes across Ollama integration, auth, wallet sync, portfolio routes, and reports
+
+### Refactors
+- Extract `portfolio.js` into sub-modules: watchlist, charts, performance, dividends, close
+- Extract `oracle.js` into sub-modules: voice, settings, conversations, pdf
+- P3 audit: empty catch blocks documented/logged across utils.js, portfolio.js, oracle.js, markets.js, app.js, charts.js
+
 ## v0.29.0 — Cash Management & Close Positions (2026-02-15)
 
 ### Cash Tracking
