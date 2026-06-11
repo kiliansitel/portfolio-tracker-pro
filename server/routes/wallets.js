@@ -12,7 +12,14 @@ const router = express.Router();
 const EVM_CHAINS = ['eth', 'bnb', 'avax', 'matic', 'arb', 'op'];
 
 // ---- Chains that support token tracking (EVM + Solana SPL) ----
-const TOKEN_CHAINS = ['eth', 'bnb', 'avax', 'matic', 'arb', 'op', 'sol'];
+// Chains we scan for tokens. Token discovery uses Ethereum-mainnet contract
+// addresses (POPULAR_ERC20 / DEFI_TOKENS) queried over the Ethereum RPC, so it is
+// only correct for 'eth'. Including other EVM chains (bnb/avax/matic/arb/op) made
+// the scanner attribute the address's *Ethereum* token balances to those wallets —
+// and because the same 0x address is valid on every EVM chain, the same holdings
+// were counted once per chain. SPL tokens are handled separately for 'sol'.
+// (Re-adding an EVM L2 here requires its own RPC URL and per-chain token list.)
+const TOKEN_CHAINS = ['eth', 'sol'];
 
 // ---- Top ERC-20 tokens to check (no API key needed, uses RPC) ----
 const POPULAR_ERC20 = [
