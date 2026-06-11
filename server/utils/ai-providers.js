@@ -7,6 +7,12 @@
 const crypto = require('crypto');
 const Anthropic = require('@anthropic-ai/sdk').default;
 
+// Outbound fetch timeouts. Without these, a slow/never-closing provider (especially
+// a user-supplied Ollama/custom base URL) hangs the request and ties up the SSE
+// handler indefinitely. Streaming chats get a longer budget than quick test calls.
+const STREAM_TIMEOUT_MS = 120000;
+const TEST_TIMEOUT_MS = 15000;
+
 // ─── Encryption helpers ────────────────────────────────────────────
 const ALGORITHM = 'aes-256-cbc';
 
@@ -202,7 +208,8 @@ class AIProvider {
     const resp = await fetch(url, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(STREAM_TIMEOUT_MS)
     });
 
     if (!resp.ok) {
@@ -361,7 +368,8 @@ class AIProvider {
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(STREAM_TIMEOUT_MS)
     });
 
     if (!resp.ok) {
@@ -416,7 +424,8 @@ class AIProvider {
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(STREAM_TIMEOUT_MS)
     });
 
     if (!resp.ok) {
@@ -452,7 +461,8 @@ class AIProvider {
 
   async _testOpenAI() {
     const resp = await fetch(`${this.baseUrl}/models`, {
-      headers: { 'Authorization': `Bearer ${this.apiKey}` }
+      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      signal: AbortSignal.timeout(TEST_TIMEOUT_MS)
     });
     return resp.ok;
   }
@@ -488,14 +498,17 @@ class AIProvider {
 
   async _testGoogle() {
     const resp = await fetch(
-      `${this.baseUrl}/models?key=${this.apiKey}`
+      `${this.baseUrl}/models?key=${this.apiKey}`,
+      { signal: AbortSignal.timeout(TEST_TIMEOUT_MS) }
     );
     return resp.ok;
   }
 
   async _testOllama() {
     try {
-      const resp = await fetch(`${this.baseUrl}/api/tags`);
+      const resp = await fetch(`${this.baseUrl}/api/tags`, {
+        signal: AbortSignal.timeout(TEST_TIMEOUT_MS)
+      });
       return resp.ok;
     } catch {
       return false;
@@ -504,7 +517,8 @@ class AIProvider {
 
   async _testOpenRouter() {
     const resp = await fetch(`${this.baseUrl}/auth/key`, {
-      headers: { 'Authorization': `Bearer ${this.apiKey}` }
+      headers: { 'Authorization': `Bearer ${this.apiKey}` },
+      signal: AbortSignal.timeout(TEST_TIMEOUT_MS)
     });
     return resp.ok;
   }
@@ -512,7 +526,8 @@ class AIProvider {
   async _testCustom() {
     if (!this.baseUrl) return false;
     const resp = await fetch(`${this.baseUrl}/models`, {
-      headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {}
+      headers: this.apiKey ? { 'Authorization': `Bearer ${this.apiKey}` } : {},
+      signal: AbortSignal.timeout(TEST_TIMEOUT_MS)
     });
     return resp.ok;
   }
