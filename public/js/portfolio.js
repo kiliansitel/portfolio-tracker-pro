@@ -240,7 +240,8 @@ function renderPositions() {
             const pnlDisplay = pos.hasValidCost ? `${pos.pnl >= 0 ? '+' : ''}${fc(pos.pnl)} (${pos.pnlPct >= 0 ? '+' : ''}${pos.pnlPct.toFixed(1)}%)` : '—';
             // Position notes (Feature 6)
             const notesText = pos.notes && !pos.notes.includes('wallet-synced') ? pos.notes : '';
-            const notesHtml = notesText ? `<div style="font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:2px;" title="${notesText.replace(/"/g, '&quot;')}">${notesText.length > 50 ? notesText.substring(0, 50) + '…' : notesText}</div>` : '';
+            const notesPreview = notesText.length > 50 ? notesText.substring(0, 50) + '…' : notesText;
+            const notesHtml = notesText ? `<div style="font-size:0.7rem;color:var(--text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;margin-top:2px;" title="${escapeAttr(notesText)}">${escapeHtml(notesPreview)}</div>` : '';
             
             return `<div class="swipe-container" data-id="${pos.id}" data-type="position" data-symbol="${pos.symbol}" style="${closedStyle}">
                 <div class="swipe-actions">
@@ -449,7 +450,7 @@ function showPositionDetail(posId) {
     if (pos.notes) {
         bodyHtml += `<div class="detail-row">
             <span class="detail-label">Notes</span>
-            <span class="detail-value" style="max-width:60%;word-break:break-word;font-size:0.85rem;">${pos.notes}</span>
+            <span class="detail-value" style="max-width:60%;word-break:break-word;font-size:0.85rem;">${escapeHtml(pos.notes)}</span>
         </div>`;
     }
     bodyHtml += `</div>`;
