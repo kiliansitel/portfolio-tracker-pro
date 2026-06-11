@@ -897,8 +897,12 @@ async function updateCurrencySetting() {
         } catch(e) { console.warn('Failed to save currency setting:', e); }
     }
     showToast('Currency changed to ' + userCurrency, 'success');
-    // Refresh all views
-    renderDashboard();
+    // Refresh all views that display currency-formatted values
+    if (typeof updateSummary === 'function') updateSummary();
+    if (typeof renderPositions === 'function') renderPositions();
+    if (typeof renderWatchlist === 'function') renderWatchlist();
+    if (typeof renderMarkets === 'function') renderMarkets();
+    if (typeof renderAlerts === 'function') renderAlerts();
 }
 
 function initCurrencySetting() {

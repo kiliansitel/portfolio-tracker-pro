@@ -397,12 +397,12 @@ document.addEventListener('keydown', (e) => {
                 if (tickerSearch) tickerSearch.focus();
             }
             break;
-        case '1': if (e.altKey) { e.preventDefault(); switchPage('dashboard'); } break;
-        case '2': if (e.altKey) { e.preventDefault(); switchPage('portfolio'); } break;
-        case '3': if (e.altKey) { e.preventDefault(); switchPage('watchlist'); } break;
-        case '4': if (e.altKey) { e.preventDefault(); switchPage('alerts'); } break;
-        case '5': if (e.altKey) { e.preventDefault(); switchPage('wallets'); } break;
-        case '6': if (e.altKey) { e.preventDefault(); switchPage('settings'); } break;
+        case '1': if (e.altKey) { e.preventDefault(); showPage('dashboard'); } break;
+        case '2': if (e.altKey) { e.preventDefault(); showPage('portfolio'); } break;
+        case '3': if (e.altKey) { e.preventDefault(); showPage('watchlist'); } break;
+        case '4': if (e.altKey) { e.preventDefault(); showPage('alerts'); } break;
+        case '5': if (e.altKey) { e.preventDefault(); showPage('wallets'); } break;
+        case '6': if (e.altKey) { e.preventDefault(); showPage('settings'); } break;
     }
 });
 
