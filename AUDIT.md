@@ -14,6 +14,35 @@ Findings I personally reproduced on a live instance are marked **✓ VERIFIED LI
 
 ---
 
+## Remediation status (branch `claude/portfolio-tracker-audit-wg6sjy`)
+
+All **7 Critical** and **15 High** findings have been fixed and verified, except **H11**
+(JWT in `localStorage`), which is deferred pending a decision because it requires a
+browser-tested rewrite of the auth flow (the httpOnly-cookie infra already exists, and
+its exfiltration vector — the XSS sinks in H9/H10 — is now closed).
+
+Fixed and verified in this branch:
+
+- **C1** frontend truncation — both files restored; all 21 scripts load with zero errors (jsdom).
+- **C2/C3/C7** backup/restore/self-update — gated behind a new `requireAdmin` middleware (`users.is_admin`).
+- **C4** partial-close cash mint — wrapped in a DB transaction; verified cash no longer mints on repeat.
+- **C5** re-buy crash — handler wrapped in try/catch + reopens closed rows; verified server stays up.
+- **C6** static `JWT_SECRET` — removed from compose; secret resolution centralized; boots with no env var.
+- **H1** alert creation — fixed the bad column; verified `POST /api/alerts` returns 200.
+- **H2** demo seeding — now opt-in via `DEMO_MODE`.
+- **H3/H4/H5** close validation, snapshot double-count, delete double-credit — fixed.
+- **H6** ERC-20 wrong-chain scan — restricted to eth/sol.
+- **H7/H8** SSRF + missing timeouts — `assertSafeUrl` guard + `AbortSignal.timeout`; verified metadata IP blocked.
+- **H9/H10** XSS — escape-at-source everywhere; AI markdown safe even without DOMPurify (verified headless).
+- **H12** open registration — gated (`ALLOW_REGISTRATION`, first user bootstraps admin).
+- **H13** FK pragma + atomic DB writes + `is_admin` migration.
+- **H14/H15** workflow least-privilege permissions + CI security gate; `npm audit fix` cleared all 11 advisories; Node 20→22.
+- Also fixed Medium frontend bugs found during live testing: **M-FE1** (`switchPage`→`showPage`), **M-FE2** (`renderDashboard` replaced with real refresh).
+
+**Deferred:** H11 (cookie-only auth migration) and the remaining Medium/Low items.
+
+---
+
 ## CRITICAL
 
 ### C1 — Frontend is broken: two core JS files are truncated and fail to parse ✓ VERIFIED LIVE
