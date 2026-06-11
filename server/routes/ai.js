@@ -15,6 +15,7 @@ const {
   buildMarketContext
 } = require('../utils/ai-providers');
 const { logger } = require('../utils/logger');
+const { assertSafeUrl } = require('../utils/ssrf-guard');
 
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const router = express.Router();
@@ -40,12 +41,9 @@ const analysisLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// JWT_SECRET used for encrypting API keys
+// Application secret, also used to encrypt API keys at rest.
 const crypto = require('crypto');
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required');
-}
+const JWT_SECRET = require('../utils/jwt-secret');
 
 // Find the first configured/available provider for a user
 function findDefaultProvider(userId) {
@@ -253,28 +251,28 @@ router.get('/models/ollama', async (req, res) => {
     return res.status(400).json({ error: 'baseUrl parameter is required' });
   }
 
-  // Validate URL format
+  // Validate URL and block link-local / cloud-metadata targets (SSRF)
+  let cleanBaseUrl;
   try {
-    new URL(baseUrl);
+    cleanBaseUrl = await assertSafeUrl(baseUrl);
   } catch (err) {
-    return res.status(400).json({ error: 'Invalid baseUrl format' });
+    return res.status(400).json({ error: `Invalid baseUrl: ${err.message}` });
   }
 
-  const cleanBaseUrl = baseUrl.replace(/\/+$/, '');
   const tagsUrl = `${cleanBaseUrl}/api/tags`;
-  
+
   try {
-    const resp = await fetch(tagsUrl, { 
+    const resp = await fetch(tagsUrl, {
       signal: AbortSignal.timeout(10000),
       headers: { 'Accept': 'application/json' }
     });
-    
+
     if (!resp.ok) {
-      throw new Error(`Server responded with ${resp.status}: ${resp.statusText}`);
+      throw new Error(`Server responded with ${resp.status}`);
     }
 
     const data = await resp.json();
-    
+
     // Transform Ollama response to our model format
     const models = (data.models || []).map(model => ({
       id: model.name || model.model,
@@ -283,9 +281,11 @@ router.get('/models/ollama', async (req, res) => {
 
     res.json({ models });
   } catch (err) {
+    // Log details server-side; return a generic message so this can't be used as an
+    // oracle for internal services.
     console.error('Ollama model discovery error:', err.message);
-    res.status(500).json({ 
-      error: `Failed to fetch models: ${err.message}`,
+    res.status(502).json({
+      error: 'Failed to fetch models from the configured Ollama server',
       fallback: true // Signal frontend to use hardcoded fallback
     });
   }
@@ -350,12 +350,21 @@ router.get('/providers', (req, res) => {
 });
 
 // PUT /providers/:provider/key — save (or update) API key
-router.put('/providers/:provider/key', (req, res) => {
+router.put('/providers/:provider/key', async (req, res) => {
   const { provider } = req.params;
   const { apiKey, model, baseUrl, contextLength } = req.body;
 
   if (!PROVIDER_DEFS[provider]) {
     return res.status(400).json({ error: `Unknown provider: ${provider}` });
+  }
+
+  // A stored base_url is fetched server-side later, so validate it up front (SSRF).
+  if (baseUrl) {
+    try {
+      await assertSafeUrl(baseUrl);
+    } catch (err) {
+      return res.status(400).json({ error: `Invalid baseUrl: ${err.message}` });
+    }
   }
 
   // Skip key requirement for openclaw when auto-detected via gateway token
@@ -1053,8 +1062,8 @@ router.post('/action', analysisLimiter, async (req, res) => {
           return res.status(400).json({ error: 'Direction must be "above" or "below"' });
         }
         dbRun(
-          'INSERT INTO alerts (user_id, symbol, condition, target_price, value, is_active) VALUES (?, ?, ?, ?, ?, 1)',
-          [req.user.id, symbol.toUpperCase(), direction || 'above', priceVal, priceVal]
+          'INSERT INTO alerts (user_id, symbol, condition, value, is_active) VALUES (?, ?, ?, ?, 1)',
+          [req.user.id, symbol.toUpperCase(), direction || 'above', priceVal]
         );
         return res.json({ success: true, message: `Alert set: ${symbol.toUpperCase()} ${direction || 'above'} $${price}` });
       }

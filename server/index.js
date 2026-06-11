@@ -19,7 +19,7 @@ const { authLimiter, apiLimiter, strictLimiter, sanitizeInput, helmetConfig, hpp
 const { logger, requestLogger } = require('./utils/logger');
 
 // Route modules
-const { router: authRouter, authenticateToken } = require('./routes/auth');
+const { router: authRouter, authenticateToken, requireAdmin } = require('./routes/auth');
 const portfolioRouter = require('./routes/portfolio');
 const watchlistRouter = require('./routes/watchlist');
 const { router: alertsRouter, checkRouter: alertsCheckRouter } = require('./routes/alerts');
@@ -115,8 +115,8 @@ app.use('/api/push', authenticateToken, pushRouter);
 app.use('/api/wallets', authenticateToken, walletsRouter);
 app.use('/api/history/collect', authenticateToken, strictLimiter); // Stricter rate limit for collection
 app.use('/api/history', authenticateToken, historyRouter);
-app.use('/api/updates', authenticateToken, updatesRouter);
-app.use('/api/backup', authenticateToken, backupRouter);
+app.use('/api/updates', authenticateToken, requireAdmin, updatesRouter);
+app.use('/api/backup', authenticateToken, requireAdmin, backupRouter);
 app.use('/api/ai', authenticateToken, aiRouter);
 app.use('/api/ai/reports', authenticateToken, reportsRouter);
 

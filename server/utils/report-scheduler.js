@@ -8,7 +8,7 @@ const { dbAll, dbGet, dbRun } = require('../db');
 const { AIProvider, PROVIDER_DEFS, encryptKey, decryptKey, buildPortfolioContext, buildWatchlistContext, buildMarketContext } = require('./ai-providers');
 const { logger } = require('./logger');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
+const JWT_SECRET = require('./jwt-secret');
 
 // Track last report times to avoid duplicates (userId -> { daily: timestamp, weekly: timestamp })
 const lastReportTimes = {};

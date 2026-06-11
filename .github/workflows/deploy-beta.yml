@@ -9,6 +9,13 @@ env:
   REGISTRY: docker.io
   IMAGE_NAME: kiliansitel/portfolio-tracker-pro
 
+# Least privilege by default; jobs opt into more only if they need it.
+# NOTE: the third-party actions below (docker/*, appleboy/ssh-action) should also be
+# pinned to a full commit SHA — a mutable tag can be repointed at malicious code that
+# would run with the secrets passed to it.
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: CI Checks
@@ -19,7 +26,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
           cache-dependency-path: server/package-lock.json
 
@@ -36,9 +43,10 @@ jobs:
     name: Build & Push Beta Image
     needs: ci
     runs-on: ubuntu-latest
+    # Pushes to Docker Hub using DOCKERHUB_* secrets, not GITHUB_TOKEN — no packages
+    # scope needed.
     permissions:
       contents: read
-      packages: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -67,6 +75,8 @@ jobs:
     name: Deploy to Server
     needs: build-and-push
     runs-on: ubuntu-latest
+    # Uses SSH secrets only; GITHUB_TOKEN needs no access here.
+    permissions: {}
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1

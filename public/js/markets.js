@@ -406,14 +406,17 @@ function renderNews(items) {
             }
         }
         
+        // News fields come from external RSS feeds — escape them. Only allow http(s)
+        // links so a javascript: URL can't end up in href.
+        const safeLink = /^https?:\/\//i.test(item.link || '') ? escapeAttr(item.link) : '#';
         return `
-            <a href="${item.link}" target="_blank" class="news-item">
+            <a href="${safeLink}" target="_blank" rel="noopener noreferrer" class="news-item">
                 <div class="news-icon">${icon}</div>
                 <div class="news-content">
-                    <div class="news-title">${item.title}</div>
+                    <div class="news-title">${escapeHtml(item.title)}</div>
                     <div class="news-meta">
-                        <span class="news-source">${item.source || 'News'}</span>
-                        <span>${item.timeAgo}</span>
+                        <span class="news-source">${escapeHtml(item.source || 'News')}</span>
+                        <span>${escapeHtml(item.timeAgo)}</span>
                     </div>
                 </div>
             </a>
@@ -436,9 +439,5 @@ function refreshNews() {
     }
 }
 
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
+// escapeHtml / escapeAttr are defined in utils.js (loaded first).
 

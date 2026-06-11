@@ -6,6 +6,8 @@ on:
     branches: [main]
     paths: ['wiki/**']
 
+# NOTE: pin Andrew-Chen-Wang/github-wiki-action to a commit SHA — it receives a
+# contents:write token, so a repointed tag could push arbitrary commits.
 permissions:
   contents: write
 

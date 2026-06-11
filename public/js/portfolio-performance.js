@@ -248,3 +248,4 @@ function setPerformanceRange(days) {
     document.querySelectorAll('#performanceCard .chart-btn').forEach(b => b.classList.remove('active'));
     event.target.classList.add('active');
     loadPerformance();
+}

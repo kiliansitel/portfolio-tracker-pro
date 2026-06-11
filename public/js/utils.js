@@ -1,3 +1,26 @@
+// ============ HTML ESCAPING ============
+// Escape text before interpolating it into innerHTML. Use for any value that
+// originates from the API or the user (ticker/company names, notes, wallet labels,
+// news titles, AI output, etc.). Defined here in the first-loaded script so every
+// later module can rely on it.
+function escapeHtml(text) {
+    if (text === null || text === undefined) return '';
+    const div = document.createElement('div');
+    div.textContent = String(text);
+    return div.innerHTML;
+}
+
+// Escape a value for use inside a double-quoted HTML attribute.
+function escapeAttr(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
 // ============ STATE ============
 let token = localStorage.getItem('token');
 let user = JSON.parse(localStorage.getItem('user') || 'null');
@@ -874,8 +897,12 @@ async function updateCurrencySetting() {
         } catch(e) { console.warn('Failed to save currency setting:', e); }
     }
     showToast('Currency changed to ' + userCurrency, 'success');
-    // Refresh all views
-    renderDashboard();
+    // Refresh all views that display currency-formatted values
+    if (typeof updateSummary === 'function') updateSummary();
+    if (typeof renderPositions === 'function') renderPositions();
+    if (typeof renderWatchlist === 'function') renderWatchlist();
+    if (typeof renderMarkets === 'function') renderMarkets();
+    if (typeof renderAlerts === 'function') renderAlerts();
 }
 
 function initCurrencySetting() {

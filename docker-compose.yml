@@ -12,7 +12,11 @@ services:
       - portfolio-data:/app/data
     environment:
       - NODE_ENV=production
-      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      # JWT_SECRET signs sessions AND encrypts stored API keys. If you don't set it,
+      # the app generates a strong random secret on first run and persists it to the
+      # data volume (.jwt_secret). To pin it (e.g. across replicas) set JWT_SECRET in
+      # your shell or a .env file: JWT_SECRET=$(openssl rand -hex 32)
+      - JWT_SECRET=${JWT_SECRET:-}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/tickers/popular"]
       interval: 30s

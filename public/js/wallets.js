@@ -95,11 +95,11 @@ async function renderWallets() {
                     <div style="width:40px;height:40px;border-radius:50%;background:${chainColor}20;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;color:${chainColor};">${chainIcon}</div>
                     <div style="flex:1;min-width:0;">
                         <div style="display:flex;justify-content:space-between;align-items:center;">
-                            <div style="font-weight:600;font-size:0.95rem;">${w.label || w.chain_name || w.chain.toUpperCase()}</div>
+                            <div style="font-weight:600;font-size:0.95rem;">${escapeHtml(w.label || w.chain_name || w.chain.toUpperCase())}</div>
                             <div style="font-weight:600;">${usdStr}</div>
                         </div>
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:2px;">
-                            <div style="font-size:0.8rem;color:var(--text-secondary);font-family:monospace;" title="${w.address}">${truncateAddress(w.address)}</div>
+                            <div style="font-size:0.8rem;color:var(--text-secondary);font-family:monospace;" title="${escapeAttr(w.address)}">${escapeHtml(truncateAddress(w.address))}</div>
                             <div style="font-size:0.8rem;color:var(--text-secondary);">${balStr} ${w.chain.toUpperCase()}</div>
                         </div>
                         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
@@ -108,7 +108,7 @@ async function renderWallets() {
                                 ${hasTokenSupport && tokenCount > 0 ? (() => { const defiCount = tokens.filter(t => t.protocol).length; const label = defiCount > 0 ? `🪙 ${tokenCount - defiCount} token${(tokenCount - defiCount) !== 1 ? 's' : ''} · 🏦 ${defiCount} DeFi` : `🪙 ${tokenCount} token${tokenCount !== 1 ? 's' : ''}`; return `<button onclick="toggleWalletTokens(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.7rem;color:var(--accent-blue);padding:1px 6px;border-radius:10px;border:1px solid var(--accent-blue);">${label}</button>`; })() : ''}
                             </div>
                             <div style="display:flex;gap:8px;align-items:center;">
-                                <button onclick="showWalletTx(${w.id}, '${w.chain}', '${(w.label || w.chain_name || w.chain.toUpperCase()).replace(/'/g, "\\'")}')" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--accent-blue);padding:2px 4px;">📜 Txs</button>
+                                <button onclick="showWalletTx(${w.id}, '${w.chain}', this.dataset.label)" data-label="${escapeAttr(w.label || w.chain_name || w.chain.toUpperCase())}" style="background:none;border:none;cursor:pointer;font-size:0.75rem;color:var(--accent-blue);padding:2px 4px;">📜 Txs</button>
                                 <button onclick="syncWallet(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;color:var(--accent-blue);padding:2px 6px;">🔄 Sync</button>
                                 <button onclick="deleteWallet(${w.id})" style="background:none;border:none;cursor:pointer;font-size:0.8rem;color:var(--accent-red);padding:2px 6px;">🗑️</button>
                             </div>
@@ -138,8 +138,8 @@ async function renderWallets() {
                     const tUsdStr = fc(t.usd_value || 0);
                     html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.8rem;">
                         <div style="display:flex;align-items:center;gap:6px;min-width:0;">
-                            <span style="font-weight:600;color:var(--text-primary);">${t.symbol}</span>
-                            <span style="color:var(--text-secondary);font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;" title="${t.name}">${t.name}</span>
+                            <span style="font-weight:600;color:var(--text-primary);">${escapeHtml(t.symbol)}</span>
+                            <span style="color:var(--text-secondary);font-size:0.7rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px;" title="${escapeAttr(t.name)}">${escapeHtml(t.name)}</span>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-weight:500;">${tUsdStr}</div>
@@ -161,8 +161,8 @@ async function renderWallets() {
                     const badgeColor = t.protocol === 'Aave' ? '#B6509E' : t.protocol === 'Compound' ? '#00D395' : t.protocol === 'Lido' ? '#00A3FF' : t.protocol === 'Rocket Pool' ? '#FF6E40' : 'var(--accent-blue)';
                     html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;font-size:0.8rem;">
                         <div style="display:flex;align-items:center;gap:6px;min-width:0;">
-                            <span style="font-weight:600;color:var(--text-primary);">${t.symbol}</span>
-                            <span style="font-size:0.6rem;padding:1px 5px;border-radius:8px;background:${badgeColor}20;color:${badgeColor};font-weight:600;white-space:nowrap;">${protocolIcon} ${t.protocol}</span>
+                            <span style="font-weight:600;color:var(--text-primary);">${escapeHtml(t.symbol)}</span>
+                            <span style="font-size:0.6rem;padding:1px 5px;border-radius:8px;background:${badgeColor}20;color:${badgeColor};font-weight:600;white-space:nowrap;">${protocolIcon} ${escapeHtml(t.protocol)}</span>
                         </div>
                         <div style="text-align:right;flex-shrink:0;">
                             <div style="font-weight:500;">${tUsdStr}</div>

@@ -138,13 +138,13 @@ function renderDropdown(tickers, dropdown) {
     selectedIndex = -1; // Reset selection
 
     targetDropdown.innerHTML = tickers.map((ticker, index) => `
-        <div class="autocomplete-item" 
-             data-symbol="${ticker.symbol.replace(/"/g, '&quot;')}" 
-             data-name="${ticker.name.replace(/"/g, '&quot;')}"
+        <div class="autocomplete-item"
+             data-symbol="${escapeAttr(ticker.symbol)}"
+             data-name="${escapeAttr(ticker.name)}"
              onmousedown="event.preventDefault(); selectTickerFromClick(this)"
              ontouchend="event.preventDefault(); selectTickerFromClick(this)">
-            <span class="autocomplete-symbol">${ticker.symbol}</span>
-            <span class="autocomplete-name">${ticker.name}</span>
+            <span class="autocomplete-symbol">${escapeHtml(ticker.symbol)}</span>
+            <span class="autocomplete-name">${escapeHtml(ticker.name)}</span>
         </div>
     `).join('');
 }

@@ -2,7 +2,7 @@
 # Multi-stage build for smaller image
 
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 WORKDIR /app
 
@@ -12,11 +12,12 @@ RUN apk add --no-cache python3 make g++
 # Copy package files
 COPY server/package*.json ./
 
-# Install dependencies (including devDependencies for build)
-RUN npm ci
+# Install all dependencies (devDependencies are needed to build native modules),
+# then drop them so only production deps ship in the final image.
+RUN npm ci && npm prune --omit=dev
 
 # Production stage
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
 

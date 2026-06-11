@@ -270,8 +270,8 @@ function renderExposureDonut(type, data, labelKey) {
             if (st < 0) st += 2*Math.PI;
             if (en < 0) en += 2*Math.PI;
             if (angle >= st && angle < en) {
-                const posNames = s.positions.map(p => p.symbol).slice(0, 5).join(', ');
-                tooltip.innerHTML = `<div style="font-weight:600;color:${s.color};">${s.label}</div><div>${fc(s.value)}</div><div style="color:var(--text-secondary);">${s.pct.toFixed(1)}%</div><div style="color:var(--text-secondary);font-size:0.75rem;margin-top:2px;">${posNames}${s.positions.length > 5 ? '...' : ''}</div>`;
+                const posNames = s.positions.map(p => escapeHtml(p.symbol)).slice(0, 5).join(', ');
+                tooltip.innerHTML = `<div style="font-weight:600;color:${s.color};">${escapeHtml(s.label)}</div><div>${fc(s.value)}</div><div style="color:var(--text-secondary);">${s.pct.toFixed(1)}%</div><div style="color:var(--text-secondary);font-size:0.75rem;margin-top:2px;">${posNames}${s.positions.length > 5 ? '...' : ''}</div>`;
                 tooltip.style.display = 'block';
                 tooltip.style.left = (x+15)+'px';
                 tooltip.style.top = (y-10)+'px';

@@ -19,8 +19,13 @@ async function collectDailySnapshot(portfolioId) {
     throw new Error(`Portfolio ${portfolioId} not found`);
   }
 
-  // Get all positions
-  const positions = dbAll('SELECT * FROM positions WHERE portfolio_id = ?', [portfolioId]);
+  // Get OPEN positions only. Closed positions keep their quantity but their value
+  // already sits in cash as sale proceeds — including them here double-counted the
+  // value of every closed position in every snapshot.
+  const positions = dbAll(
+    "SELECT * FROM positions WHERE portfolio_id = ? AND (status IS NULL OR status != 'closed')",
+    [portfolioId]
+  );
 
   // Fetch current prices and calculate positions value
   let positionsValue = 0;

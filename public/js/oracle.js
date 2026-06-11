@@ -308,17 +308,21 @@ function createActionButtons(actions) {
 // Message rendering
 function renderAiMarkdown(text) {
     if (!text) return '';
-    let html = text;
 
-    // Code blocks (``` ... ```)
+    // Escape HTML up front so any literal or injected markup in the model output is
+    // rendered inert. Markdown syntax (#, *, |, -, `) is unaffected, and every
+    // transform below only wraps this already-escaped text in our own safe tags — so
+    // the result is safe even if DOMPurify fails to load.
+    let html = String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+    // Code blocks (``` ... ```) — content is already escaped above
     html = html.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
-        return `<pre><code>${code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</code></pre>`;
+        return `<pre><code>${code}</code></pre>`;
     });
 
-    // Inline code (escape HTML inside)
+    // Inline code — content is already escaped above
     html = html.replace(/`([^`]+)`/g, (_, code) => {
-        const escaped = code.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        return `<code>${escaped}</code>`;
+        return `<code>${code}</code>`;
     });
 
     // Headers
@@ -970,10 +974,10 @@ function aiTickerAutocomplete(el) {
 
             aiTickerSelected = -1;
             dd.innerHTML = results.map((t, i) => `
-                <div class="autocomplete-item" data-symbol="${t.symbol}" 
-                     onmousedown="event.preventDefault(); insertAiTicker('${t.symbol}')">
-                    <span class="autocomplete-symbol">${t.symbol}</span>
-                    <span class="autocomplete-name">${t.name}</span>
+                <div class="autocomplete-item" data-symbol="${escapeAttr(t.symbol)}"
+                     onmousedown="event.preventDefault(); insertAiTicker(this.dataset.symbol)">
+                    <span class="autocomplete-symbol">${escapeHtml(t.symbol)}</span>
+                    <span class="autocomplete-name">${escapeHtml(t.name)}</span>
                 </div>
             `).join('');
             dd.classList.remove('hidden');
@@ -1031,10 +1035,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 tickerSearchSelected = 0;
                 dd.innerHTML = results.map((t, i) => `
-                    <div class="autocomplete-item${i === 0 ? ' selected' : ''}" data-symbol="${t.symbol}"
-                         onmousedown="event.preventDefault(); selectTickerSearch('${t.symbol}')">
-                        <span class="autocomplete-symbol">${t.symbol}</span>
-                        <span class="autocomplete-name">${t.name || ''}</span>
+                    <div class="autocomplete-item${i === 0 ? ' selected' : ''}" data-symbol="${escapeAttr(t.symbol)}"
+                         onmousedown="event.preventDefault(); selectTickerSearch(this.dataset.symbol)">
+                        <span class="autocomplete-symbol">${escapeHtml(t.symbol)}</span>
+                        <span class="autocomplete-name">${escapeHtml(t.name || '')}</span>
                     </div>
                 `).join('');
                 dd.classList.remove('hidden');

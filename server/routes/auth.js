@@ -10,27 +10,7 @@ const { logSecurityEvent } = require('../utils/logger');
 
 const router = express.Router();
 
-const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
-const JWT_SECRET = (() => {
-  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
-  // Persist secret next to the database so it survives Docker restarts
-  const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/app/data') ? '/app/data' : __dirname);
-  const secretPath = path.join(DATA_DIR, '.jwt_secret');
-  try {
-    if (fs.existsSync(secretPath)) return fs.readFileSync(secretPath, 'utf8').trim();
-  } catch (e) { /* fall through to generate */ }
-  const generated = crypto.randomBytes(64).toString('hex');
-  try {
-    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-    fs.writeFileSync(secretPath, generated, { mode: 0o600 });
-    console.log('🔑 JWT secret generated and persisted to', secretPath);
-  } catch (e) {
-    console.warn('⚠️  Could not persist JWT secret to', secretPath, '— sessions will NOT survive restarts. Set JWT_SECRET env var for production.');
-  }
-  return generated;
-})();
+const JWT_SECRET = require('../utils/jwt-secret');
 
 // Auth middleware
 function authenticateToken(req, res, next) {
@@ -47,7 +27,7 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
+  jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }, (err, user) => {
     if (err) {
       return res.status(403).json({ error: 'Invalid or expired token' });
     }
@@ -61,10 +41,34 @@ function authenticateToken(req, res, next) {
   });
 }
 
+// Admin-only middleware. Must run after authenticateToken. Reads is_admin from
+// the DB (not the token) so revoking admin takes effect immediately.
+function requireAdmin(req, res, next) {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const dbUser = dbGet('SELECT is_admin FROM users WHERE id = ?', [req.user.id]);
+  if (!dbUser || !dbUser.is_admin) {
+    logSecurityEvent(req, 'ADMIN_FORBIDDEN', { userId: req.user.id, path: req.originalUrl });
+    return res.status(403).json({ error: 'Administrator privileges required' });
+  }
+  next();
+}
+
 // Register
 router.post('/register', strictLimiter, registerValidation, async (req, res) => {
   try {
     const { username, email, password } = req.body;
+
+    // Registration gate. The first account (bootstrap) is always allowed and becomes
+    // the admin. After that, registration is closed unless ALLOW_REGISTRATION=true,
+    // so an exposed single-user instance can't be signed up to by strangers.
+    const userCountRow = dbGet('SELECT COUNT(*) AS c FROM users');
+    const isFirstUser = (userCountRow?.c || 0) === 0;
+    if (!isFirstUser && process.env.ALLOW_REGISTRATION !== 'true') {
+      logSecurityEvent(req, 'REGISTRATION_DISABLED', { username });
+      return res.status(403).json({ error: 'Registration is disabled on this instance.' });
+    }
 
     // Check if user exists (generic message to prevent user enumeration)
     const existing = dbGet('SELECT id FROM users WHERE username = ? OR email = ?', [username, email.toLowerCase()]);
@@ -81,8 +85,8 @@ router.post('/register', strictLimiter, registerValidation, async (req, res) => 
       parallelism: 1
     });
     
-    const result = dbRun('INSERT INTO users (username, email, password) VALUES (?, ?, ?)', 
-      [username, email.toLowerCase(), hashedPassword]);
+    const result = dbRun('INSERT INTO users (username, email, password, is_admin) VALUES (?, ?, ?, ?)',
+      [username, email.toLowerCase(), hashedPassword, isFirstUser ? 1 : 0]);
     const userId = result.lastInsertRowid;
     
     // Create default portfolio
@@ -93,8 +97,8 @@ router.post('/register', strictLimiter, registerValidation, async (req, res) => 
     dbRun('INSERT INTO watchlists (user_id, name) VALUES (?, ?)', 
       [userId, 'Main Watchlist']);
     
-    const token = jwt.sign({ id: userId, username }, JWT_SECRET, { expiresIn: '30d' });
-    
+    const token = jwt.sign({ id: userId, username, tv: 0 }, JWT_SECRET, { expiresIn: '30d' });
+
     // Set httpOnly cookie
     res.cookie('auth_token', token, { 
       httpOnly: true, 
@@ -326,4 +330,4 @@ router.post('/logout', (req, res) => {
   res.json({ message: 'Logged out successfully' });
 });
 
-module.exports = { router, authenticateToken };
+module.exports = { router, authenticateToken, requireAdmin };

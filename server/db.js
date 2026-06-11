@@ -7,17 +7,24 @@ const { logger } = require('./utils/logger');
 const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/app/data') ? '/app/data' : __dirname);
 const DB_PATH = path.join(DATA_DIR, 'portfolio.db');
 
-// Seed demo database on fresh install: if no DB exists yet, copy demo-portfolio.db as starting point
+// Seed demo database on fresh install ONLY when DEMO_MODE is explicitly enabled.
+// The demo DB ships with a publicly-known login (demo / DemoPass123!), so seeding
+// it on every install would hand an attacker a working account on any exposed
+// deployment. Default: start with an empty database and let the first registration
+// bootstrap the admin account.
 if (!fs.existsSync(DB_PATH)) {
   // Ensure data directory exists
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
   }
   const seedPath = path.join(__dirname, 'demo-portfolio.db');
-  if (fs.existsSync(seedPath)) {
+  if (process.env.DEMO_MODE === 'true' && fs.existsSync(seedPath)) {
     fs.copyFileSync(seedPath, DB_PATH);
     // eslint-disable-next-line no-console
-    console.log('📦 Fresh install detected — seeded database from demo-portfolio.db');
+    console.log('📦 DEMO_MODE — seeded database from demo-portfolio.db (public demo login enabled)');
+  } else {
+    // eslint-disable-next-line no-console
+    console.log('📦 Fresh install — starting with an empty database (set DEMO_MODE=true to seed the demo data)');
   }
 }
 
@@ -30,7 +37,11 @@ let savePending = false;
 function saveDatabaseImmediate() {
   const data = db.export();
   const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_PATH, buffer);
+  // Write to a temp file then atomically rename, so a crash mid-write can never
+  // leave a truncated/corrupt DB file (sql.js has no journal/WAL to recover from).
+  const tmpPath = `${DB_PATH}.tmp`;
+  fs.writeFileSync(tmpPath, buffer);
+  fs.renameSync(tmpPath, DB_PATH);
   savePending = false;
 }
 
@@ -78,6 +89,23 @@ function dbAll(sql, params = []) {
   return results;
 }
 
+// Run a set of statements atomically. The callback performs the work using the
+// normal dbRun/dbGet/dbAll helpers; if it throws, everything is rolled back so a
+// failed multi-step operation can't leave the DB half-updated (e.g. cash credited
+// but the matching position write never applied).
+function runTransaction(fn) {
+  db.run('BEGIN');
+  try {
+    const result = fn();
+    db.run('COMMIT');
+    saveDatabase();
+    return result;
+  } catch (err) {
+    try { db.run('ROLLBACK'); } catch (_) { /* nothing to roll back */ }
+    throw err;
+  }
+}
+
 // Initialize database
 async function initDatabase() {
   const SQL = await initSqlJs();
@@ -89,6 +117,9 @@ async function initDatabase() {
   } else {
     db = new SQL.Database();
   }
+
+  // Enforce declared foreign keys / ON DELETE CASCADE (sql.js defaults this OFF)
+  db.run('PRAGMA foreign_keys = ON');
 
   // Initialize tables
   db.run(`
@@ -115,6 +146,28 @@ async function initDatabase() {
     db.run(`ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 0`);
   } catch (e) {
     // Column already exists, ignore
+  }
+
+  // Admin flag — gates privileged operations (backup, restore, self-update)
+  try {
+    db.run(`ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+  // Bootstrap: if there are users but none is admin (e.g. an existing single-user
+  // install upgrading to this version), promote the earliest-created account so the
+  // owner retains access to admin-only endpoints.
+  try {
+    const adminCount = db.exec("SELECT COUNT(*) FROM users WHERE is_admin = 1");
+    const haveAdmin = (adminCount?.[0]?.values?.[0]?.[0] || 0) > 0;
+    const userCount = db.exec("SELECT COUNT(*) FROM users");
+    const haveUsers = (userCount?.[0]?.values?.[0]?.[0] || 0) > 0;
+    if (haveUsers && !haveAdmin) {
+      db.run("UPDATE users SET is_admin = 1 WHERE id = (SELECT id FROM users ORDER BY id ASC LIMIT 1)");
+      logger.info('Promoted earliest user to admin (no admin existed)');
+    }
+  } catch (e) {
+    // users table may not exist yet on a brand-new DB; first registration handles it
   }
 
   db.run(`
@@ -472,6 +525,7 @@ function replaceDb(uint8Array) {
     throw new Error('Cannot determine SQL.Database constructor');
   }
   const newDb = new SQL.Database(uint8Array);
+  newDb.run('PRAGMA foreign_keys = ON');
   // Verify it has expected tables
   const tables = newDb.exec("SELECT name FROM sqlite_master WHERE type='table'");
   const tableNames = tables[0]?.values.map(v => v[0]) || [];
@@ -492,6 +546,7 @@ module.exports = {
   dbRun,
   dbGet,
   dbAll,
+  runTransaction,
   getDb,
   replaceDb
 };
