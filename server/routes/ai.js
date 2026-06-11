@@ -40,12 +40,9 @@ const analysisLimiter = rateLimit({
   legacyHeaders: false
 });
 
-// JWT_SECRET used for encrypting API keys
+// Application secret, also used to encrypt API keys at rest.
 const crypto = require('crypto');
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is required');
-}
+const JWT_SECRET = require('../utils/jwt-secret');
 
 // Find the first configured/available provider for a user
 function findDefaultProvider(userId) {

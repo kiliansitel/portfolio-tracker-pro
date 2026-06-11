@@ -13,7 +13,8 @@ services:
     environment:
       - NODE_ENV=production
       - APP_ENV=beta
-      - JWT_SECRET=${JWT_SECRET_BETA:-change-this-beta-secret-in-production}
+      # Auto-generated and persisted to the data volume if unset (see docker-compose.yml).
+      - JWT_SECRET=${JWT_SECRET_BETA:-}
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/tickers/popular"]
       interval: 30s

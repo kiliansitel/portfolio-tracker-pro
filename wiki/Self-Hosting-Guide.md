@@ -48,7 +48,9 @@ services:
     ports:
       - "8080:8080"
     environment:
-      - JWT_SECRET=your-secret-here-generate-with-openssl-rand-hex-32
+      # Optional: pin the secret. If omitted, a strong one is generated on first run
+      # and persisted to the data volume. Generate with: openssl rand -hex 32
+      - JWT_SECRET=${JWT_SECRET:-}
       - NODE_ENV=production
     volumes:
       - portfolio-data:/app/data
