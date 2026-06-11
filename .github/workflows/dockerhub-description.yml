@@ -8,6 +8,12 @@ on:
       - 'docs/DOCKER.md'
   workflow_dispatch:
 
+# Only needs to read the repo; the Docker Hub update uses DOCKERHUB_* secrets.
+# NOTE: pin peter-evans/dockerhub-description to a commit SHA and use a Docker Hub
+# token scoped to description updates rather than a full-access token.
+permissions:
+  contents: read
+
 jobs:
   update:
     runs-on: ubuntu-latest
