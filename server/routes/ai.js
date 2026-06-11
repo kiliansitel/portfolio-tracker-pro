@@ -1053,8 +1053,8 @@ router.post('/action', analysisLimiter, async (req, res) => {
           return res.status(400).json({ error: 'Direction must be "above" or "below"' });
         }
         dbRun(
-          'INSERT INTO alerts (user_id, symbol, condition, target_price, value, is_active) VALUES (?, ?, ?, ?, ?, 1)',
-          [req.user.id, symbol.toUpperCase(), direction || 'above', priceVal, priceVal]
+          'INSERT INTO alerts (user_id, symbol, condition, value, is_active) VALUES (?, ?, ?, ?, 1)',
+          [req.user.id, symbol.toUpperCase(), direction || 'above', priceVal]
         );
         return res.json({ success: true, message: `Alert set: ${symbol.toUpperCase()} ${direction || 'above'} $${price}` });
       }

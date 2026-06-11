@@ -9,6 +9,7 @@ const fs = require('fs');
 // Set test environment — must match api.test.js DATA_DIR since modules are cached
 process.env.JWT_SECRET = 'test-secret-key';
 process.env.DATA_DIR = '/tmp/portfolio-tracker-test';
+process.env.ALLOW_REGISTRATION = 'true'; // tests create multiple users
 
 // Clean up test database before tests
 beforeAll(() => {

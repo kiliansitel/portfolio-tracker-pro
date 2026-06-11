@@ -1,5 +1,5 @@
 const express = require('express');
-const { dbRun, dbGet, dbAll } = require('../db');
+const { dbRun, dbGet, dbAll, runTransaction } = require('../db');
 const { createPortfolioValidation, positionValidation, idParamValidation } = require('../validators/portfolio');
 const { strictLimiter } = require('../middleware/security');
 const { autoAddToWatchlist } = require('../utils/watchlist-sync');
@@ -97,114 +97,105 @@ router.get('/:id/positions', (req, res) => {
 
 // Add position
 router.post('/:id/positions', positionValidation, async (req, res) => {
-  const { id } = req.params;
-  const { symbol, quantity, avg_cost, entry_price, location, name, type, entry_date, notes, strike_price, expiry_date, multiplier, current_price, currency, source, affects_cash } = req.body;
-  
-  const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
-  if (!portfolio) {
-    return res.status(404).json({ error: 'Portfolio not found' });
-  }
-  
-  const price = entry_price || avg_cost; // Support both field names
-  
-  if (!symbol || !quantity || !price) {
-    return res.status(400).json({ error: 'Symbol, quantity, and price required' });
-  }
-  
-  const posSource = source || 'manual';
-  // Default affects_cash: true for manual, false for wallet
-  const shouldAffectCash = affects_cash !== undefined ? !!affects_cash : (posSource !== 'wallet');
-  const mult = multiplier || 1;
-  const fees = req.body.fees || 0;
-  let cashImpact = 0;
-  
-  // Check if position already exists
-  const existingPosition = dbGet('SELECT * FROM positions WHERE portfolio_id = ? AND symbol = ? AND status != ?', [id, symbol.toUpperCase(), 'closed']);
-  
-  if (existingPosition) {
-    // Update existing position
-    const newQuantity = existingPosition.quantity + quantity;
-    const newAvgCost = ((existingPosition.quantity * existingPosition.entry_price) + (quantity * price)) / newQuantity;
-    
-    const updateFields = ['quantity = ?', 'entry_price = ?', 'updated_at = CURRENT_TIMESTAMP'];
-    const updateParams = [newQuantity, newAvgCost];
-    if (location !== undefined) {
-      updateFields.push('location = ?');
-      updateParams.push(location || null);
+  try {
+    const { id } = req.params;
+    const { symbol, quantity, avg_cost, entry_price, location, name, type, entry_date, notes, strike_price, expiry_date, multiplier, current_price, currency, source, affects_cash } = req.body;
+
+    const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ? AND user_id = ?', [id, req.user.id]);
+    if (!portfolio) {
+      return res.status(404).json({ error: 'Portfolio not found' });
     }
-    if (type) { updateFields.push('type = ?'); updateParams.push(type); }
-    if (entry_date) { updateFields.push('entry_date = ?'); updateParams.push(entry_date); }
-    if (notes !== undefined) { updateFields.push('notes = ?'); updateParams.push(notes || null); }
-    if (currency) { updateFields.push('currency = ?'); updateParams.push(currency); }
-    updateParams.push(existingPosition.id);
-    
-    dbRun(`UPDATE positions SET ${updateFields.join(', ')} WHERE id = ?`, updateParams);
-    
-    // Cash impact for the added quantity
+
+    const price = entry_price || avg_cost; // Support both field names
+
+    if (!symbol || !quantity || !price) {
+      return res.status(400).json({ error: 'Symbol, quantity, and price required' });
+    }
+
+    const sym = symbol.toUpperCase();
+    const posSource = source || 'manual';
+    // Default affects_cash: true for manual, false for wallet
+    const shouldAffectCash = affects_cash !== undefined ? !!affects_cash : (posSource !== 'wallet');
+    const mult = multiplier || 1;
+    const fees = req.body.fees || 0;
+    let cashImpact = 0;
+
+    // Look up ANY existing position for this symbol, including a previously closed
+    // one. UNIQUE(portfolio_id, symbol) covers closed rows too, so re-buying a closed
+    // symbol must reopen the existing row rather than INSERT a duplicate — the old
+    // code excluded closed rows and the duplicate INSERT threw, crashing the server.
+    const existingPosition = dbGet('SELECT * FROM positions WHERE portfolio_id = ? AND symbol = ?', [id, sym]);
+    const isReopen = existingPosition && existingPosition.status === 'closed';
+
+    // Currency conversion needs an await, so compute cash impact before opening the txn.
     if (shouldAffectCash && price > 0) {
       const cost = quantity * price * mult + fees;
-      const posCurrency = currency || existingPosition.currency || 'USD';
+      const posCurrency = currency || existingPosition?.currency || 'USD';
       const cashCurrency = portfolio.cash_currency || 'USD';
-      
       if (posCurrency !== cashCurrency) {
         const rates = await fetchExchangeRates();
         cashImpact = convertCurrency(cost, posCurrency, cashCurrency, rates);
       } else {
         cashImpact = cost;
       }
-
-      if (cashImpact !== null) {
-        dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashImpact, id]);
-      }
-
-      // Create buy transaction
-      dbRun(
-        'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, source, affects_cash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [id, symbol.toUpperCase(), type || 'stock', 'buy', quantity, price, fees, entry_date || new Date().toISOString().split('T')[0], posSource, 1]
-      );
     }
 
-    const updated = dbGet('SELECT * FROM positions WHERE id = ?', [existingPosition.id]);
-    const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [id]);
-    res.json({ ...updated, cash: updatedPortfolio.cash, cash_impact: cashImpact });
-  } else {
-    // Create new position
-    const result = dbRun(
-      `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, source, location, name, type, entry_date, notes, strike_price, expiry_date, multiplier, current_price, currency, status) 
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')`, 
-      [id, symbol.toUpperCase(), quantity, price, posSource, location || null, name || null, type || 'stock', entry_date || null, notes || null, strike_price || null, expiry_date || null, mult, current_price || null, currency || 'USD']);
-    
-    // Cash impact
-    if (shouldAffectCash && price > 0) {
-      const cost = quantity * price * mult + fees;
-      const posCurrency = currency || 'USD';
-      const cashCurrency = portfolio.cash_currency || 'USD';
-      
-      if (posCurrency !== cashCurrency) {
-        const rates = await fetchExchangeRates();
-        cashImpact = convertCurrency(cost, posCurrency, cashCurrency, rates);
+    let positionId;
+    runTransaction(() => {
+      if (existingPosition && !isReopen) {
+        // Add to an existing open position (weighted-average cost)
+        const newQuantity = existingPosition.quantity + quantity;
+        const newAvgCost = ((existingPosition.quantity * existingPosition.entry_price) + (quantity * price)) / newQuantity;
+
+        const updateFields = ['quantity = ?', 'entry_price = ?', 'updated_at = CURRENT_TIMESTAMP'];
+        const updateParams = [newQuantity, newAvgCost];
+        if (location !== undefined) { updateFields.push('location = ?'); updateParams.push(location || null); }
+        if (type) { updateFields.push('type = ?'); updateParams.push(type); }
+        if (entry_date) { updateFields.push('entry_date = ?'); updateParams.push(entry_date); }
+        if (notes !== undefined) { updateFields.push('notes = ?'); updateParams.push(notes || null); }
+        if (currency) { updateFields.push('currency = ?'); updateParams.push(currency); }
+        updateParams.push(existingPosition.id);
+        dbRun(`UPDATE positions SET ${updateFields.join(', ')} WHERE id = ?`, updateParams);
+        positionId = existingPosition.id;
+      } else if (isReopen) {
+        // Reopen a previously closed position as a fresh lot
+        dbRun(
+          `UPDATE positions SET quantity = ?, entry_price = ?, status = 'open', closed_at = NULL, close_price = NULL, realized_pnl = NULL,
+             source = ?, location = ?, name = ?, type = ?, entry_date = ?, notes = ?, strike_price = ?, expiry_date = ?, multiplier = ?, current_price = ?, currency = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [quantity, price, posSource, location || null, name || null, type || 'stock', entry_date || null, notes || null, strike_price || null, expiry_date || null, mult, current_price || null, currency || existingPosition.currency || 'USD', existingPosition.id]
+        );
+        positionId = existingPosition.id;
       } else {
-        cashImpact = cost;
+        // Create new position
+        const result = dbRun(
+          `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, source, location, name, type, entry_date, notes, strike_price, expiry_date, multiplier, current_price, currency, status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'open')`,
+          [id, sym, quantity, price, posSource, location || null, name || null, type || 'stock', entry_date || null, notes || null, strike_price || null, expiry_date || null, mult, current_price || null, currency || 'USD']);
+        positionId = result.lastInsertRowid;
       }
 
-      if (cashImpact !== null) {
+      // Cash impact + buy transaction (atomic with the position write)
+      if (shouldAffectCash && price > 0 && cashImpact !== null) {
         dbRun('UPDATE portfolios SET cash = cash - ? WHERE id = ?', [cashImpact, id]);
+        dbRun(
+          'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, source, affects_cash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [id, sym, type || 'stock', 'buy', quantity, price, fees, entry_date || new Date().toISOString().split('T')[0], posSource, 1]
+        );
       }
+    });
 
-      // Create buy transaction
-      dbRun(
-        'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, source, affects_cash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [id, symbol.toUpperCase(), type || 'stock', 'buy', quantity, price, fees, entry_date || new Date().toISOString().split('T')[0], posSource, 1]
-      );
-    }
-
-    const newPosition = dbGet('SELECT * FROM positions WHERE id = ?', [result.lastInsertRowid]);
+    const savedPosition = dbGet('SELECT * FROM positions WHERE id = ?', [positionId]);
     const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [id]);
-    res.json({ ...newPosition, cash: updatedPortfolio.cash, cash_impact: cashImpact });
-  }
 
-  // Auto-add to watchlist regardless of new/existing
-  autoAddToWatchlist(req.user.id, symbol.toUpperCase());
+    // Auto-add to watchlist regardless of new/existing
+    autoAddToWatchlist(req.user.id, sym);
+
+    res.json({ ...savedPosition, cash: updatedPortfolio.cash, cash_impact: cashImpact });
+  } catch (err) {
+    console.error('POST /:id/positions error:', err.message);
+    res.status(500).json({ error: 'Failed to add position' });
+  }
 });
 
 // Update position
@@ -298,45 +289,53 @@ router.delete('/positions/:id', idParamValidation, async (req, res) => {
     return res.status(404).json({ error: 'Position not found' });
   }
   
-  // Check for cash-affecting buy transactions and reverse
+  // Reverse the NET cash flow of this position's cash-affecting transactions. Buys
+  // debited cash (reverse by adding it back); sells credited cash (reverse by removing
+  // it). The old code only reversed buys, so deleting a position that had already been
+  // (partially) closed re-credited the buy cost on top of the proceeds already
+  // credited at close time — a double credit.
   const cashTxs = dbAll(
-    `SELECT * FROM transactions WHERE portfolio_id = ? AND symbol = ? AND action = 'buy' AND affects_cash = 1`,
+    `SELECT * FROM transactions WHERE portfolio_id = ? AND symbol = ? AND affects_cash = 1`,
     [position.portfolio_id, position.symbol]
   );
-  
+
   let cashReversed = 0;
   if (cashTxs.length > 0) {
-    // Calculate total cost that was deducted
-    let totalCostInPosCurrency = 0;
+    let netCostInPosCurrency = 0;
     for (const tx of cashTxs) {
-      totalCostInPosCurrency += tx.quantity * tx.price * (position.multiplier || 1) + (tx.fees || 0);
+      const gross = tx.quantity * tx.price * (position.multiplier || 1);
+      if (tx.action === 'sell') {
+        netCostInPosCurrency -= (gross - (tx.fees || 0));
+      } else {
+        netCostInPosCurrency += gross + (tx.fees || 0);
+      }
     }
-    
+
     const portfolio = dbGet('SELECT * FROM portfolios WHERE id = ?', [position.portfolio_id]);
     const cashCurrency = portfolio.cash_currency || 'USD';
     const posCurrency = position.currency || 'USD';
-    
+
     if (posCurrency !== cashCurrency) {
       const rates = await fetchExchangeRates();
-      cashReversed = convertCurrency(totalCostInPosCurrency, posCurrency, cashCurrency, rates);
+      cashReversed = convertCurrency(netCostInPosCurrency, posCurrency, cashCurrency, rates);
     } else {
-      cashReversed = totalCostInPosCurrency;
-    }
-
-    if (cashReversed !== null) {
-      dbRun('UPDATE portfolios SET cash = cash + ? WHERE id = ?', [cashReversed, position.portfolio_id]);
+      cashReversed = netCostInPosCurrency;
     }
   }
-  
-  // Delete associated transactions
-  dbRun('DELETE FROM transactions WHERE portfolio_id = ? AND symbol = ?', [position.portfolio_id, position.symbol]);
-  dbRun('DELETE FROM positions WHERE id = ?', [id]);
-  
+
+  runTransaction(() => {
+    if (cashReversed !== null && cashReversed !== 0) {
+      dbRun('UPDATE portfolios SET cash = cash + ? WHERE id = ?', [cashReversed, position.portfolio_id]);
+    }
+    dbRun('DELETE FROM transactions WHERE portfolio_id = ? AND symbol = ?', [position.portfolio_id, position.symbol]);
+    dbRun('DELETE FROM positions WHERE id = ?', [id]);
+  });
+
   const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [position.portfolio_id]);
   res.json({ message: 'Position deleted', cash: updatedPortfolio.cash, cash_reversed: cashReversed });
   } catch (err) {
     console.error('DELETE /positions/:id error:', err.message);
-    res.status(500).json({ error: 'Failed to delete position', detail: err.message });
+    res.status(500).json({ error: 'Failed to delete position' });
   }
 });
 
@@ -364,62 +363,75 @@ router.post('/:id/positions/:posId/close', async (req, res) => {
   }
   
   const mult = position.multiplier || 1;
-  const quantityToClose = closeQty || position.quantity;
+
+  // Validate close price and quantity — previously a NaN/string close_price stored
+  // NaN realized P&L, and an out-of-range quantity (negative, or larger than the
+  // position) produced phantom proceeds or even increased the position.
+  const closePriceNum = Number(close_price);
+  if (!Number.isFinite(closePriceNum) || closePriceNum < 0) {
+    return res.status(400).json({ error: 'close_price must be a non-negative number' });
+  }
+  const quantityToClose = (closeQty === undefined || closeQty === null) ? position.quantity : Number(closeQty);
+  if (!Number.isFinite(quantityToClose) || quantityToClose <= 0 || quantityToClose > position.quantity) {
+    return res.status(400).json({ error: `quantity to close must be greater than 0 and at most ${position.quantity}` });
+  }
   const isPartial = quantityToClose < position.quantity;
   const closeDate = date || new Date().toISOString().split('T')[0];
-  
+
   // Calculate realized PnL
-  const realizedPnl = (close_price - position.entry_price) * quantityToClose * mult;
-  
-  // Currency conversion for cash impact
+  const realizedPnl = (closePriceNum - position.entry_price) * quantityToClose * mult;
+
+  // Currency conversion for cash impact (needs an await, so done before the txn)
   const posCurrency = position.currency || 'USD';
   const cashCurrency = portfolio.cash_currency || 'USD';
   let cashImpact = 0;
   let proceeds = 0;
-  
+
   if (affects_cash) {
-    proceeds = close_price * quantityToClose * mult;
+    proceeds = closePriceNum * quantityToClose * mult;
     const proceedsMinusFees = proceeds - fees;
-    
+
     if (posCurrency !== cashCurrency) {
       const rates = await fetchExchangeRates();
       cashImpact = convertCurrency(proceedsMinusFees, posCurrency, cashCurrency, rates);
     } else {
       cashImpact = proceedsMinusFees;
     }
+  }
 
-    if (cashImpact !== null) {
+  // Credit cash, update the position, and record the sell — atomically. The old code
+  // credited cash first and then, on a partial close, INSERTed a duplicate
+  // (portfolio_id, symbol) row which violated the UNIQUE constraint and threw: cash
+  // stayed credited while nothing else applied, so repeating the call minted cash.
+  runTransaction(() => {
+    if (affects_cash && cashImpact !== null) {
       dbRun('UPDATE portfolios SET cash = cash + ? WHERE id = ?', [cashImpact, id]);
     }
-  }
-  
-  if (isPartial) {
-    // Partial close: create a new closed record, reduce original
-    const proportionalEntryPrice = position.entry_price; // same avg cost
-    
+
+    if (isPartial) {
+      // Partial close: reduce the remaining quantity and accumulate realized P&L on
+      // the same row. We cannot insert a second closed row for the same symbol
+      // (UNIQUE constraint); the sell transaction below is the per-lot record.
+      const remainingQty = position.quantity - quantityToClose;
+      dbRun(
+        `UPDATE positions SET quantity = ?, realized_pnl = COALESCE(realized_pnl, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [remainingQty, realizedPnl, posId]
+      );
+    } else {
+      // Full close
+      dbRun(
+        `UPDATE positions SET status = 'closed', closed_at = ?, close_price = ?, realized_pnl = COALESCE(realized_pnl, 0) + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [closeDate, closePriceNum, realizedPnl, posId]
+      );
+    }
+
+    // Create sell transaction
     dbRun(
-      `INSERT INTO positions (portfolio_id, symbol, quantity, entry_price, source, location, name, type, entry_date, notes, strike_price, expiry_date, multiplier, current_price, currency, status, closed_at, close_price, realized_pnl)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'closed', ?, ?, ?)`,
-      [position.portfolio_id, position.symbol, quantityToClose, proportionalEntryPrice, position.source, position.location, position.name, position.type, position.entry_date, position.notes, position.strike_price, position.expiry_date, mult, null, posCurrency, closeDate, close_price, realizedPnl]
+      'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, source, affects_cash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, position.symbol, position.type || 'stock', 'sell', quantityToClose, closePriceNum, fees, closeDate, position.source || 'manual', affects_cash ? 1 : 0]
     );
-    
-    // Reduce original position quantity
-    const remainingQty = position.quantity - quantityToClose;
-    dbRun('UPDATE positions SET quantity = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [remainingQty, posId]);
-  } else {
-    // Full close
-    dbRun(
-      `UPDATE positions SET status = 'closed', closed_at = ?, close_price = ?, realized_pnl = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [closeDate, close_price, realizedPnl, posId]
-    );
-  }
-  
-  // Create sell transaction
-  dbRun(
-    'INSERT INTO transactions (portfolio_id, symbol, type, action, quantity, price, fees, executed_at, source, affects_cash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    [id, position.symbol, position.type || 'stock', 'sell', quantityToClose, close_price, fees, closeDate, position.source || 'manual', affects_cash ? 1 : 0]
-  );
-  
+  });
+
   const updatedPosition = dbGet('SELECT * FROM positions WHERE id = ?', [posId]);
   const updatedPortfolio = dbGet('SELECT cash FROM portfolios WHERE id = ?', [id]);
   

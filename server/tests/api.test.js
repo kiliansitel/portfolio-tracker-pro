@@ -9,6 +9,7 @@ const fs = require('fs');
 // Set test environment
 process.env.JWT_SECRET = 'test-secret-key';
 process.env.DATA_DIR = '/tmp/portfolio-tracker-test';
+process.env.ALLOW_REGISTRATION = 'true'; // tests create multiple users
 
 // Clean up test database before tests
 beforeAll(() => {
